@@ -22,7 +22,7 @@ cli.command("sync", "Sync workspace with remote")
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 2,
+		default: 4,
 	})
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
@@ -48,7 +48,7 @@ cli.command("update", "Update all submodules by checking out to tracking branche
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 2,
+		default: 4,
 	})
 	.action(async (options) => {
 		const result = await updateCommand({
