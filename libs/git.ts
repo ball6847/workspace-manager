@@ -1,7 +1,6 @@
 import { Result } from "typescript-result";
-import { isDir } from "./file.ts";
 
-export async function gitSubmoduleRemove(path: string, projectRoot: string) {
+export async function gitSubmoduleRemove(path: string, _projectRoot: string) {
 	// De-initialize the submodule
 	// TODO: check if we need to join with projectRoot
 	const deInit = await gitDeInit(path);

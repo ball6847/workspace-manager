@@ -1,10 +1,10 @@
-import * as path from "@std/path";
-import { AsyncResult, Result } from "typescript-result";
-import { parseConfigFile, WorkspaceConfigItem } from "../libs/config.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
-import { gitSubmoduleRemove } from "../libs/git.ts";
 import { blue, green, red, yellow } from "@std/fmt/colors";
+import * as path from "@std/path";
+import { Result } from "typescript-result";
+import { parseConfigFile } from "../libs/config.ts";
+import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { gitSubmoduleRemove } from "../libs/git.ts";
 import { goWorkInit, goWorkRemove, goWorkUse, isGoAvailable } from "../libs/go.ts";
 
 export type SyncCommandOption = {
