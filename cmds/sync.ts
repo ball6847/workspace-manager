@@ -60,6 +60,7 @@ export async function syncCommand(option: SyncCommandOption) {
 	// Remove all inactive git submodules
 
 	// remove inactive items
+	// TODO: batch process based on configured concurrent level
 	for (const workspace of inactiveWorkspaces) {
 		const workspacePath = path.join(workspaceRoot, workspace.path);
 		const dir = await isDir(workspacePath);
@@ -82,6 +83,7 @@ export async function syncCommand(option: SyncCommandOption) {
 	// clone git repository if not exist
 
 	// make sure all active items are checked out
+	// TODO: batch process based on configured concurrent level
 	for (const workspace of activeWorkspaces) {
 		const workspacePath = path.join(workspaceRoot, workspace.path);
 		const dir = await isDir(workspacePath);

@@ -41,8 +41,8 @@ export async function goWorkInit(path: string) {
 		return Result.error(new ErrorWithCause(`failed to run "go work init"`, result.error));
 	}
 
-	const stderr = new TextDecoder().decode(result.value.stderr);
-	if (!stderr.trim().endsWith("go.work already exists")) {
+	const stderr = new TextDecoder().decode(result.value.stderr).trim();
+	if (stderr !== "" && !stderr.endsWith("go.work already exists")) {
 		return Result.error(
 			new Error(`expected stderr to ends with "go.work already exists, got "${stderr}"`),
 		);
