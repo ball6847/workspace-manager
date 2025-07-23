@@ -3,5 +3,5 @@ workspaces:
     path: tools/git-commit-ai
     branch: main
     isGolang: false
-    active: true
+    active: false
   
