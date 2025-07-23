@@ -51,14 +51,14 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 	// validate workspace directory and parse config file
 	const validated = await validateWorkspaceDir(workspaceRoot);
 	if (!validated.ok) {
-		console.log(red("Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
 		return Result.error(validated.error);
 	}
 
 	// parse config file
 	const parseConfig = await parseConfigFile(configFile);
 	if (!parseConfig.ok) {
-		console.log(red("Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
 		return Result.error(parseConfig.error);
 	}
 	const config = parseConfig.value;
@@ -67,7 +67,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 	const activeWorkspaces = config.workspaces.filter((item) => item.active);
 
 	if (debug) {
-		console.log(blue(`Found ${activeWorkspaces.length} active workspaces to update`));
+		console.log(blue(`📊 Found ${activeWorkspaces.length} active workspaces to update`));
 	}
 
 	// update all active workspaces concurrently
@@ -77,17 +77,17 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			const workspacePath = path.join(workspaceRoot, workspace.path);
 			const dir = await isDir(workspacePath);
 			if (!dir.ok) {
-				console.log(yellow(`Workspace directory does not exist, skipping: ${workspace.path}`));
+				console.log(yellow(`⚠️  Workspace directory does not exist, skipping: ${workspace.path}`));
 				return Result.ok();
 			}
 
-			console.log(blue(`Updating workspace: ${workspace.path} (branch: ${workspace.branch})`));
+			console.log(blue(`🔄 Updating workspace: ${workspace.path} (branch: ${workspace.branch})`));
 
 			// checkout to tracking branch
 			const checkoutResult = await gitCheckoutBranch(workspace.branch, workspacePath);
 			if (!checkoutResult.ok) {
 				console.log(
-					red(`Failed to checkout to branch ${workspace.branch} in ${workspace.path}`),
+					red(`❌ Failed to checkout to branch ${workspace.branch} in ${workspace.path}`),
 					`(${checkoutResult.error.message})`,
 				);
 				return Result.error(checkoutResult.error);
@@ -101,7 +101,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			const isCleanResult = await gitIsWorkingDirectoryClean(workspacePath);
 			if (!isCleanResult.ok) {
 				console.log(
-					red(`Failed to check working directory status in ${workspace.path}`),
+					red(`❌ Failed to check working directory status in ${workspace.path}`),
 					`(${isCleanResult.error.message})`,
 				);
 				return Result.error(isCleanResult.error);
@@ -112,11 +112,11 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 
 			// stash changes if working directory is dirty
 			if (!isClean) {
-				console.log(yellow(`Working directory is dirty in ${workspace.path}, stashing changes...`));
+				console.log(yellow(`💾 Working directory is dirty in ${workspace.path}, stashing changes...`));
 				const stashResult = await gitStash(workspacePath, `workspace-manager auto-stash before update`);
 				if (!stashResult.ok) {
 					console.log(
-						red(`Failed to stash changes in ${workspace.path}`),
+						red(`❌ Failed to stash changes in ${workspace.path}`),
 						`(${stashResult.error.message})`,
 					);
 					return Result.error(stashResult.error);
@@ -131,7 +131,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			const fetchResult = await gitFetch(workspacePath);
 			if (!fetchResult.ok) {
 				console.log(
-					red(`Failed to fetch latest changes from origin in ${workspace.path}`),
+					red(`❌ Failed to fetch latest changes from origin in ${workspace.path}`),
 					`(${fetchResult.error.message})`,
 				);
 				return Result.error(fetchResult.error);
@@ -145,7 +145,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			const pullResult = await gitPullOriginBranch(workspace.branch, workspacePath);
 			if (!pullResult.ok) {
 				console.log(
-					red(`Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}`),
+					red(`❌ Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}`),
 					`(${pullResult.error.message})`,
 				);
 				return Result.error(pullResult.error);
@@ -157,18 +157,18 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 
 			// pop stashed changes if we stashed them
 			if (hasStashedChanges) {
-				console.log(blue(`Restoring stashed changes in ${workspace.path}...`));
+				console.log(blue(`🔄 Restoring stashed changes in ${workspace.path}...`));
 				const popResult = await gitStashPop(workspacePath);
 				if (!popResult.ok) {
 					console.log(
 						yellow(
-							`Warning: Failed to pop stash in ${workspace.path}. You may need to manually resolve conflicts.`,
+							`⚠️  Warning: Failed to pop stash in ${workspace.path}. You may need to manually resolve conflicts.`,
 						),
 						`(${popResult.error.message})`,
 					);
 					// Don't return error here, as the update was successful, just the stash pop failed
 					console.log(
-						yellow(`You can manually run 'git stash pop' in ${workspace.path} to restore your changes.`),
+						yellow(`💡 You can manually run 'git stash pop' in ${workspace.path} to restore your changes.`),
 					);
 				} else {
 					if (debug) {
@@ -177,7 +177,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 				}
 			}
 
-			console.log(green(`✓ Successfully updated workspace: ${workspace.path}`));
+			console.log(green(`✅ Successfully updated workspace: ${workspace.path}`));
 			return Result.ok();
 		},
 		concurrency,

@@ -47,14 +47,14 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 	// validate workspace directory and parse config file
 	const validated = await validateWorkspaceDir(workspaceRoot);
 	if (!validated.ok) {
-		console.log(red("Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
 		return Result.error(validated.error);
 	}
 
 	// parse config file
 	const parseConfig = await parseConfigFile(configFile);
 	if (!parseConfig.ok) {
-		console.log(red("Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
 		return Result.error(parseConfig.error);
 	}
 	const config = parseConfig.value;
@@ -76,15 +76,18 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 				return Result.ok(); // skip if directory does not exist
 			}
 
-			console.log(yellow(`Removing inactive workspace: ${workspace.path}`));
+			console.log(yellow(`🗑️  Removing inactive workspace: ${workspace.path}`));
 
 			const remove = await gitSubmoduleRemove(workspace.path, workspaceRoot);
 			if (!remove.ok) {
-				console.log(red(`Failed to remove inactive workspace: ${workspace.path}`), `(${remove.error.message})`);
+				console.log(
+					red(`❌ Failed to remove inactive workspace: ${workspace.path}`),
+					`(${remove.error.message})`,
+				);
 				return Result.error(remove.error);
 			}
 
-			console.log(green(`Successfully removed inactive workspace: ${workspace.path}`));
+			console.log(green(`✅ Successfully removed inactive workspace: ${workspace.path}`));
 			return Result.ok();
 		},
 		concurrency,
@@ -104,22 +107,27 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 			const workspacePath = path.join(workspaceRoot, workspace.path);
 			const dir = await isDir(workspacePath);
 			if (dir.ok) {
-				console.log(blue(`Workspace directory already exists, skipping checkout: ${workspace.path}`));
+				console.log(blue(`ℹ️  Workspace directory already exists, skipping checkout: ${workspace.path}`));
 				return Result.ok();
 			}
 
 			console.log(
-				yellow(`Checking out workspace: ${workspace.path} from ${workspace.url} on branch ${workspace.branch}`),
+				yellow(
+					`📥 Checking out workspace: ${workspace.path} from ${workspace.url} on branch ${workspace.branch}`,
+				),
 			);
 
 			// Update the submodule to the specified branch
 			const updateResult = await gitSubmoduleAdd(workspace.url, workspace.path, workspace.branch, workspaceRoot);
 			if (!updateResult.ok) {
-				console.log(red(`Failed to checkout workspace: ${workspace.path}`), `(${updateResult.error.message})`);
+				console.log(
+					red(`❌ Failed to checkout workspace: ${workspace.path}`),
+					`(${updateResult.error.message})`,
+				);
 				return Result.error(updateResult.error);
 			}
 
-			console.log(green(`Successfully checked out workspace: ${workspace.path}`));
+			console.log(green(`✅ Successfully checked out workspace: ${workspace.path}`));
 			return Result.ok();
 		},
 		concurrency,
@@ -133,7 +141,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 	// manage go workspace
 
 	if (debug) {
-		console.log(blue("Setting up go workspace"));
+		console.log(blue("🔧 Setting up go workspace"));
 	}
 
 	const goWorkToRemove = inactiveWorkspaces.filter((w) => w.isGolang).map((w) => w.path);
@@ -141,10 +149,11 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 
 	const goWorkspace = await setupGoWorkspace(goWorkToUse, goWorkToRemove, workspaceRoot);
 	if (!goWorkspace.ok) {
-		console.log(red("Failed to setup Go workspace: "), goWorkspace.error.message);
+		console.log(red("❌ Failed to setup Go workspace: "), goWorkspace.error.message);
 		return Result.error(goWorkspace.error);
 	}
 
+	console.log(green("🎉 Workspace sync completed successfully!"));
 	return Result.ok();
 }
 
