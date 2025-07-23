@@ -1,0 +1,20 @@
+{
+    "deno.enable": true,
+    "[typescript]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "denoland.vscode-deno",
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "never"
+        },
+        "editor.tabSize": 4
+    },
+    "[json]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "vscode.json-language-features",
+    },
+    "cSpell.words": [
+        "dropuse",
+        "idempotently"
+    ]
+}

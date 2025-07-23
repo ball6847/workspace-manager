@@ -1,0 +1,7 @@
+workspaces:
+  - url: git@git.7solutions.co.th:checkinplus/shared-lib-checkinplus-platform.git
+    path: shared-lib
+    branch: main
+    isGolang: true
+    active: true
+  

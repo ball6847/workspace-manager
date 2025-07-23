@@ -1,0 +1,54 @@
+{
+    "tasks": {
+        "check": "deno check **/*.ts",
+        "fmt": "deno fmt",
+        "fmt:check": "deno fmt --check",
+        "lint": "deno lint"
+    },
+    "imports": {
+        "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
+        "@cliffy/prompt": "jsr:@cliffy/prompt@^1.0.0-rc.8",
+        "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
+        "@std/fmt/colors": "jsr:@std/fmt@^1.0.8/colors",
+        "@std/path": "jsr:@std/path@^1.1.1",
+        "@std/yaml": "jsr:@std/yaml@^1.0.8",
+        "@ts-types/deep-partial": "npm:@ts-types/deep-partial@^0.0.1",
+        "typescript-result": "npm:typescript-result@^3.5.1",
+        "zod": "npm:zod@^3.25.67"
+    },
+    "fmt": {
+        "exclude": [
+            "node_modules",
+            "dist",
+            "build"
+        ],
+        "include": [
+            "**/*.ts"
+        ],
+        "indentWidth": 4,
+        "lineWidth": 120,
+        "proseWrap": "preserve",
+        "singleQuote": false,
+        "useTabs": true
+    },
+    "lint": {
+        "exclude": [
+            "node_modules",
+            "dist",
+            "build",
+            "generated"
+        ],
+        "include": [
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.jsx"
+        ],
+        "rules": {
+            "tags": [
+                "recommended"
+            ]
+        }
+    },
+    "nodeModulesDir": "auto"
+}
