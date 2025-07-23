@@ -85,6 +85,70 @@ export async function gitCheckoutBranch(branch: string, cwd: string) {
 }
 
 /**
+ * Fetch latest changes from origin
+ * @param cwd - Working directory for the git command
+ */
+export async function gitFetch(cwd: string) {
+	return await Result.fromAsyncCatching(() =>
+		new Deno.Command("git", {
+			args: ["fetch", "origin"],
+			cwd,
+			stderr: "null",
+		}).output()
+	).mapError((error) => new ErrorWithCause(`Failed to fetch latest changes from origin`, error));
+}
+
+/**
+ * Check if working directory is clean (no uncommitted changes)
+ * @param cwd - Working directory for the git command
+ * @returns Result with boolean indicating if working directory is clean
+ */
+export async function gitIsWorkingDirectoryClean(cwd: string): Promise<Result<boolean, Error>> {
+	return await Result.fromAsyncCatching(async () => {
+		const result = await new Deno.Command("git", {
+			args: ["status", "--porcelain"],
+			cwd,
+			stderr: "null",
+		}).output();
+		const output = new TextDecoder().decode(result.stdout).trim();
+		return output.length === 0;
+	}).mapError((error) => new ErrorWithCause(`Failed to check git status`, error));
+}
+
+/**
+ * Stash current changes
+ * @param cwd - Working directory for the git command
+ * @param message - Optional stash message
+ */
+export async function gitStash(cwd: string, message?: string) {
+	const args = ["stash", "push"];
+	if (message) {
+		args.push("-m", message);
+	}
+	return await Result.fromAsyncCatching(() =>
+		new Deno.Command("git", {
+			args,
+			cwd,
+			stderr: "null",
+		}).output()
+	).mapError((error) => new ErrorWithCause(`Failed to stash changes`, error));
+}
+
+/**
+ * Pop the most recent stash
+ * @param cwd - Working directory for the git command
+ */
+export async function gitStashPop(cwd: string) {
+	return await Result.fromAsyncCatching(() =>
+		new Deno.Command("git", {
+			args: ["stash", "pop"],
+			cwd,
+			stderr: "null",
+		}).output()
+	).mapError((error) => new ErrorWithCause(`Failed to pop stash`, error));
+}
+
+/**
  * Pull latest changes from origin for specified branch
  * @param branch - Branch to pull from
  * @param cwd - Working directory for the git command
