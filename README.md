@@ -14,6 +14,33 @@ A command-line tool for managing workspaces with Git submodules and Go workspace
 
 Requires Deno 2.4 or later.
 
+### Global Installation (Recommended)
+
+Install globally using Deno:
+
+```bash
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc1/build/cli.js
+```
+
+After installation, you can use the tool from anywhere:
+
+```bash
+workspace-manager sync
+workspace-manager update
+```
+
+### Uninstall
+
+To uninstall the global installation:
+
+```bash
+deno uninstall workspace-manager
+```
+
+### Local Development
+
+Alternatively, clone and run locally:
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -30,6 +57,10 @@ deno run --allow-all main.ts
 Sync workspace with remote repositories:
 
 ```bash
+# Using global installation
+workspace-manager sync [options]
+
+# Or using local development setup
 deno run --allow-all main.ts sync [options]
 ```
 
@@ -45,6 +76,10 @@ deno run --allow-all main.ts sync [options]
 Update all submodules by checking out to tracking branches and pulling latest changes:
 
 ```bash
+# Using global installation
+workspace-manager update [options]
+
+# Or using local development setup
 deno run --allow-all main.ts update [options]
 ```
 
@@ -59,6 +94,10 @@ deno run --allow-all main.ts update [options]
 Show current workspace status:
 
 ```bash
+# Using global installation
+workspace-manager status
+
+# Or using local development setup
 deno run --allow-all main.ts status
 ```
 
@@ -85,6 +124,8 @@ workspaces:
 - `active` - Whether to include this workspace in sync
 
 ## Development
+
+For contributors working on the workspace-manager project:
 
 ```bash
 # Format code
