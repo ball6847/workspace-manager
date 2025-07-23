@@ -7160,26 +7160,28 @@ async function goWorkUse(paths, cwd) {
   return Result2.ok();
 }
 async function goWorkRemove(paths, cwd) {
-  const result = await Result2.fromAsyncCatching(async () => {
-    const command = new Deno.Command("go", {
-      args: [
-        "work",
-        "edit",
-        "-dropuse",
-        ...paths
-      ],
-      stdout: "piped",
-      stderr: "piped",
-      cwd
+  for (const path of paths) {
+    const result = await Result2.fromAsyncCatching(async () => {
+      const command = new Deno.Command("go", {
+        args: [
+          "work",
+          "edit",
+          "-dropuse",
+          path
+        ],
+        stdout: "piped",
+        stderr: "piped",
+        cwd
+      });
+      return await command.output();
     });
-    return await command.output();
-  });
-  if (!result.ok) {
-    return Result2.error(new ErrorWithCause(`failed to run "go work edit -dropuse"`, result.error));
-  }
-  if (result.value.code !== 0) {
-    const stderr = new TextDecoder().decode(result.value.stderr);
-    return Result2.error(new Error(stderr.trim()));
+    if (!result.ok) {
+      return Result2.error(new ErrorWithCause(`failed to run "go work edit -dropuse" for path: ${path}`, result.error));
+    }
+    if (result.value.code !== 0) {
+      const stderr = new TextDecoder().decode(result.value.stderr);
+      return Result2.error(new Error(`Failed to remove path "${path}": ${stderr.trim()}`));
+    }
   }
   return Result2.ok();
 }

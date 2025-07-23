@@ -19,7 +19,6 @@
     "jsr:@std/path@~1.0.6": "1.0.9",
     "jsr:@std/text@~1.0.7": "1.0.15",
     "jsr:@std/yaml@^1.0.8": "1.0.9",
-    "npm:@ts-types/deep-partial@^0.0.1": "0.0.1",
     "npm:@types/node@*": "22.15.15",
     "npm:mkdirp@*": "3.0.1",
     "npm:typescript-result@^3.5.1": "3.5.1",
@@ -110,9 +109,6 @@
     }
   },
   "npm": {
-    "@ts-types/deep-partial@0.0.1": {
-      "integrity": "sha512-zl+3sYy7VBsVpO5sHcL6MM10qEp15XI2Q/oeZuI7lPI/s0zaYrjJ4hP8TQeP17wrNH+3wNFD1a1uMLBPC9VLtg=="
-    },
     "@types/node@22.15.15": {
       "integrity": "sha512-R5muMcZob3/Jjchn5LcO8jdKwSCbzqmPB6ruBxMcf9kbxtniZHP327s6C37iOfuw8mbKK3cAQa7sEl7afLrQ8A==",
       "dependencies": [
@@ -141,7 +137,6 @@
       "jsr:@std/fmt@^1.0.8",
       "jsr:@std/path@^1.1.1",
       "jsr:@std/yaml@^1.0.8",
-      "npm:@ts-types/deep-partial@^0.0.1",
       "npm:typescript-result@^3.5.1",
       "npm:zod@^3.25.67"
     ]

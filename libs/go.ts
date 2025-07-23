@@ -79,7 +79,7 @@ export async function goWorkUse(paths: string[], cwd?: string) {
 	return Result.ok();
 }
 /**
- * Run `go work edit -dropuse path1 path2`
+ * Run `go work edit -dropuse path` for each path individually
  *
  * Note that, the input must match the go.work file, running this from different directory will cause unmatched module name and go will silently ignore it
  *
@@ -87,23 +87,28 @@ export async function goWorkUse(paths: string[], cwd?: string) {
  * @param cwd - Working directory where the go.work file is located
  */
 export async function goWorkRemove(paths: string[], cwd?: string) {
-	const result = await Result.fromAsyncCatching(async () => {
-		const command = new Deno.Command("go", {
-			args: ["work", "edit", "-dropuse", ...paths],
-			stdout: "piped",
-			stderr: "piped",
-			cwd,
+	// Process each path individually since go work edit -dropuse only accepts one argument
+	for (const path of paths) {
+		const result = await Result.fromAsyncCatching(async () => {
+			const command = new Deno.Command("go", {
+				args: ["work", "edit", "-dropuse", path],
+				stdout: "piped",
+				stderr: "piped",
+				cwd,
+			});
+			return await command.output();
 		});
-		return await command.output();
-	});
 
-	if (!result.ok) {
-		return Result.error(new ErrorWithCause(`failed to run "go work edit -dropuse"`, result.error));
-	}
+		if (!result.ok) {
+			return Result.error(
+				new ErrorWithCause(`failed to run "go work edit -dropuse" for path: ${path}`, result.error),
+			);
+		}
 
-	if (result.value.code !== 0) {
-		const stderr = new TextDecoder().decode(result.value.stderr);
-		return Result.error(new Error(stderr.trim()));
+		if (result.value.code !== 0) {
+			const stderr = new TextDecoder().decode(result.value.stderr);
+			return Result.error(new Error(`Failed to remove path "${path}": ${stderr.trim()}`));
+		}
 	}
 
 	return Result.ok();
