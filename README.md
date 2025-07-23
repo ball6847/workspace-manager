@@ -37,7 +37,22 @@ deno run --allow-all main.ts sync [options]
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 2)
 - `-y, --yes` - Accept all changes (not yet implemented)
+
+### Update Command
+
+Update all submodules by checking out to tracking branches and pulling latest changes:
+
+```bash
+deno run --allow-all main.ts update [options]
+```
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 2)
 
 ### Status Command
 
@@ -103,8 +118,8 @@ The following improvements are planned based on code review:
 - [ ] **Fix path handling** using proper path joining methods instead of string concatenation
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
 - [x] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
-- [ ] **Batch processing for "sync" command** - multiple modules at a time
-- [ ] **Batch processing for "update" command** - multiple modules at a time
+- [x] **Batch processing for "sync" command** - multiple modules at a time
+- [x] **Batch processing for "update" command** - multiple modules at a time
 
 ### Low Priority
 

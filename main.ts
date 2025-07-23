@@ -21,12 +21,16 @@ cli.command("sync", "Sync workspace with remote")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 2,
+	})
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
 		const result = await syncCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
+			concurrency: options.concurrency,
 		});
 		if (!result.ok) {
 			console.log(red("❌ Sync failed:"), result.error.message);
@@ -43,11 +47,15 @@ cli.command("update", "Update all submodules by checking out to tracking branche
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 2,
+	})
 	.action(async (options) => {
 		const result = await updateCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
+			concurrency: options.concurrency,
 		});
 		if (!result.ok) {
 			console.log(red("❌ Update failed:"), result.error.message);

@@ -1,6 +1,7 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import { processConcurrently } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
@@ -21,6 +22,11 @@ export type SyncCommandOption = {
 	 * If true, print debug information
 	 */
 	debug?: boolean;
+
+	/**
+	 * Number of concurrent operations, default is 2
+	 */
+	concurrency?: number;
 };
 
 /**
@@ -36,6 +42,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 	const configFile = option.config ??= "workspace.yml";
 	const workspaceRoot = option.workspaceRoot ??= ".";
 	const debug = option.debug ?? false;
+	const concurrency = option.concurrency ?? 2;
 
 	// validate workspace directory and parse config file
 	const validated = await validateWorkspaceDir(workspaceRoot);
@@ -59,51 +66,67 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 	// -------------------------------------------------------------------
 	// Remove all inactive git submodules
 
-	// remove inactive items
-	// TODO: batch process based on configured concurrent level
-	for (const workspace of inactiveWorkspaces) {
-		const workspacePath = path.join(workspaceRoot, workspace.path);
-		const dir = await isDir(workspacePath);
-		if (!dir.ok) {
-			continue; // skip if directory does not exist
-		}
+	// remove inactive items concurrently
+	const removeResult = await processConcurrently(
+		inactiveWorkspaces,
+		async (workspace) => {
+			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const dir = await isDir(workspacePath);
+			if (!dir.ok) {
+				return Result.ok(); // skip if directory does not exist
+			}
 
-		console.log(yellow(`Removing inactive workspace: ${workspace.path}`));
+			console.log(yellow(`Removing inactive workspace: ${workspace.path}`));
 
-		const remove = await gitSubmoduleRemove(workspace.path, workspaceRoot);
-		if (!remove.ok) {
-			console.log(red(`Failed to remove inactive workspace: ${workspace.path}`), `(${remove.error.message})`);
-			return Result.error(remove.error);
-		}
+			const remove = await gitSubmoduleRemove(workspace.path, workspaceRoot);
+			if (!remove.ok) {
+				console.log(red(`Failed to remove inactive workspace: ${workspace.path}`), `(${remove.error.message})`);
+				return Result.error(remove.error);
+			}
 
-		console.log(green(`Successfully removed inactive workspace: ${workspace.path}`));
+			console.log(green(`Successfully removed inactive workspace: ${workspace.path}`));
+			return Result.ok();
+		},
+		concurrency,
+	);
+
+	if (!removeResult.ok) {
+		return removeResult;
 	}
 
 	// -------------------------------------------------------------------
 	// clone git repository if not exist
 
-	// make sure all active items are checked out
-	// TODO: batch process based on configured concurrent level
-	for (const workspace of activeWorkspaces) {
-		const workspacePath = path.join(workspaceRoot, workspace.path);
-		const dir = await isDir(workspacePath);
-		if (dir.ok) {
-			console.log(blue(`Workspace directory already exists, skipping checkout: ${workspace.path}`));
-			continue;
-		}
+	// make sure all active items are checked out concurrently
+	const checkoutResult = await processConcurrently(
+		activeWorkspaces,
+		async (workspace) => {
+			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const dir = await isDir(workspacePath);
+			if (dir.ok) {
+				console.log(blue(`Workspace directory already exists, skipping checkout: ${workspace.path}`));
+				return Result.ok();
+			}
 
-		console.log(
-			yellow(`Checking out workspace: ${workspace.path} from ${workspace.url} on branch ${workspace.branch}`),
-		);
+			console.log(
+				yellow(`Checking out workspace: ${workspace.path} from ${workspace.url} on branch ${workspace.branch}`),
+			);
 
-		// Update the submodule to the specified branch
-		const updateResult = await gitSubmoduleAdd(workspace.url, workspace.path, workspace.branch, workspaceRoot);
-		if (!updateResult.ok) {
-			console.log(red(`Failed to checkout workspace: ${workspace.path}`), `(${updateResult.error.message})`);
-			return Result.error(updateResult.error);
-		}
+			// Update the submodule to the specified branch
+			const updateResult = await gitSubmoduleAdd(workspace.url, workspace.path, workspace.branch, workspaceRoot);
+			if (!updateResult.ok) {
+				console.log(red(`Failed to checkout workspace: ${workspace.path}`), `(${updateResult.error.message})`);
+				return Result.error(updateResult.error);
+			}
 
-		console.log(green(`Successfully checked out workspace: ${workspace.path}`));
+			console.log(green(`Successfully checked out workspace: ${workspace.path}`));
+			return Result.ok();
+		},
+		concurrency,
+	);
+
+	if (!checkoutResult.ok) {
+		return checkoutResult;
 	}
 
 	// -------------------------------------------------------------------
