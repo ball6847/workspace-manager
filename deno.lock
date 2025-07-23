@@ -21,6 +21,7 @@
     "jsr:@std/yaml@^1.0.8": "1.0.9",
     "npm:@ts-types/deep-partial@^0.0.1": "0.0.1",
     "npm:@types/node@*": "22.15.15",
+    "npm:mkdirp@*": "3.0.1",
     "npm:typescript-result@^3.5.1": "3.5.1",
     "npm:zod@^3.25.67": "3.25.67"
   },
@@ -117,6 +118,10 @@
       "dependencies": [
         "undici-types"
       ]
+    },
+    "mkdirp@3.0.1": {
+      "integrity": "sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==",
+      "bin": true
     },
     "typescript-result@3.5.1": {
       "integrity": "sha512-jDHjAUjo2N4hUCXhLxEMdMP+DWJ1ey+A9tpb57RIpV+z+P4RFUk1FamlIKiGYgeoTZewjJz1XjXDhZVuIl66ow=="
