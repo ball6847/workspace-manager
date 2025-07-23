@@ -4,3 +4,8 @@ workspaces:
     branch: main
     isGolang: false
     active: false
+  - url: git@github.com:ball6847/7solutions-backend-challenges.git
+    path: projects/7solutions-backend-challenges
+    branch: main
+    isGolang: true
+    active: false

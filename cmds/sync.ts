@@ -207,8 +207,8 @@ async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: str
 
 	// Remove inactive Go modules
 	if (remove.length > 0) {
-		// TODO: check if we can prepend goWorkRoot to each path
-		const removeResult = await goWorkRemove(remove);
+		// Use relative paths but run from goWorkRoot directory
+		const removeResult = await goWorkRemove(remove, goWorkRoot);
 		if (!removeResult.ok) {
 			return Result.error(removeResult.error);
 		}
@@ -216,8 +216,8 @@ async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: str
 
 	// Add active Go modules
 	if (add.length > 0) {
-		// TODO: check if we can prepend goWorkRoot to each path
-		const addResult = await goWorkUse(add);
+		// Use relative paths but run from goWorkRoot directory
+		const addResult = await goWorkUse(add, goWorkRoot);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
 		}

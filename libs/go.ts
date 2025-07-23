@@ -53,14 +53,16 @@ export async function goWorkInit(path: string) {
 /**
  * Run `go work use path1 path2`
  *
- * @param paths
+ * @param paths - Array of module paths to add to the workspace
+ * @param cwd - Working directory where the go.work file is located
  */
-export async function goWorkUse(paths: string[]) {
+export async function goWorkUse(paths: string[], cwd?: string) {
 	const result = await Result.fromAsyncCatching(async () => {
 		const command = new Deno.Command("go", {
 			args: ["work", "use", ...paths],
 			stdout: "piped",
 			stderr: "piped",
+			cwd,
 		});
 		return await command.output();
 	});
@@ -80,16 +82,17 @@ export async function goWorkUse(paths: string[]) {
  * Run `go work edit -dropuse path1 path2`
  *
  * Note that, the input must match the go.work file, running this from different directory will cause unmatched module name and go will silently ignore it
- * TODO: should detect if go.work is really in current directory, warn use if not
  *
- * @param paths
+ * @param paths - Array of module paths to remove from the workspace
+ * @param cwd - Working directory where the go.work file is located
  */
-export async function goWorkRemove(paths: string[]) {
+export async function goWorkRemove(paths: string[], cwd?: string) {
 	const result = await Result.fromAsyncCatching(async () => {
 		const command = new Deno.Command("go", {
 			args: ["work", "edit", "-dropuse", ...paths],
 			stdout: "piped",
 			stderr: "piped",
+			cwd,
 		});
 		return await command.output();
 	});
