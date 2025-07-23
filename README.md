@@ -94,7 +94,7 @@ The following improvements are planned based on code review:
 - [ ] **Add schema validation** using Zod (already imported) for the workspace configuration
 - [ ] **Implement the `--yes` option** to handle automatic confirmations when removing dirty directories
 - [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
-- [ ] **Add "update" command** to pull all submodules from tracking branches
+- [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
 
 ### Medium Priority
@@ -102,7 +102,7 @@ The following improvements are planned based on code review:
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
 - [ ] **Fix path handling** using proper path joining methods instead of string concatenation
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
-- [ ] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
+- [x] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
 - [ ] **Batch processing for "sync" command** - multiple modules at a time
 - [ ] **Batch processing for "update" command** - multiple modules at a time
 
