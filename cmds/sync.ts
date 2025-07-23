@@ -4,7 +4,7 @@ import { Result } from "typescript-result";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
-import { gitSubmoduleRemove } from "../libs/git.ts";
+import { gitCheckoutBranch, gitPullOriginBranch, gitSubmoduleAddWithBranch, gitSubmoduleRemove } from "../libs/git.ts";
 import { goWorkInit, goWorkRemove, goWorkUse, isGoAvailable } from "../libs/go.ts";
 
 export type SyncCommandOption = {
@@ -114,7 +114,7 @@ export async function syncCommand(option: SyncCommandOption) {
 	const goWorkToRemove = inactiveWorkspaces.filter((w) => w.isGolang).map((w) => w.path);
 	const goWorkToUse = activeWorkspaces.filter((w) => w.isGolang).map((w) => w.path);
 
-	const goWorkspace = await setupGoWorkspace(goWorkToUse, goWorkToRemove);
+	const goWorkspace = await setupGoWorkspace(goWorkToUse, goWorkToRemove, workspaceRoot);
 	if (!goWorkspace.ok) {
 		console.log(red("Failed to setup Go workspace: "), goWorkspace.error.message);
 	}
@@ -140,44 +140,22 @@ async function validateWorkspaceDir(path: string) {
  */
 async function gitSubmoduleAdd(url: string, path: string, branch: string, projectRoot: string) {
 	// Add submodule with specified branch
-	const addResult = await Result.fromAsyncCatching(() =>
-		new Deno.Command("git", {
-			args: ["submodule", "add", "--force", "-b", branch, url, path],
-			cwd: projectRoot,
-			stderr: "null",
-		}).output()
-	);
-
+	const addResult = await gitSubmoduleAddWithBranch(url, path, branch, projectRoot);
 	if (!addResult.ok) {
-		return Result.error(
-			new ErrorWithCause(`Failed to add submodule at ${path} with branch ${branch}`, addResult.error),
-		);
+		return Result.error(addResult.error);
 	}
 
-	// check out the submodule to the specified branch
-	const checkoutResult = await Result.fromAsyncCatching(() =>
-		new Deno.Command("git", {
-			args: ["checkout", branch],
-			cwd: `${projectRoot}/${path}`,
-			stderr: "null",
-		}).output()
-	);
-
+	// Check out the submodule to the specified branch
+	const submodulePath = `${projectRoot}/${path}`;
+	const checkoutResult = await gitCheckoutBranch(branch, submodulePath);
 	if (!checkoutResult.ok) {
 		return Result.error(
 			new ErrorWithCause(`Failed to checkout submodule at ${path} to branch ${branch}`, checkoutResult.error),
 		);
 	}
 
-	// pull the latest changes from the specified branch
-	const pullResult = await Result.fromAsyncCatching(() =>
-		new Deno.Command("git", {
-			args: ["pull", "origin", branch],
-			cwd: `${projectRoot}/${path}`,
-			stderr: "null",
-		}).output()
-	);
-
+	// Pull the latest changes from the specified branch
+	const pullResult = await gitPullOriginBranch(branch, submodulePath);
 	if (!pullResult.ok) {
 		return Result.error(
 			new ErrorWithCause(
@@ -201,9 +179,10 @@ async function gitSubmoduleAdd(url: string, path: string, branch: string, projec
  *
  * @param add - Array of module paths to add to the workspace
  * @param remove - Array of module paths to remove from the workspace
+ * @param goWorkRoot - Root directory where the go.work file should be initialized
  * @returns Result indicating success or failure with appropriate error
  */
-async function setupGoWorkspace(add: string[], remove: string[]): Promise<Result<void, Error>> {
+async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: string): Promise<Result<void, Error>> {
 	// Check if Go is available
 	const goAvailable = await isGoAvailable();
 	if (!goAvailable.ok) {
@@ -216,13 +195,14 @@ async function setupGoWorkspace(add: string[], remove: string[]): Promise<Result
 	}
 
 	// Initialize go workspace if it doesn't exist
-	const initResult = await goWorkInit(".");
+	const initResult = await goWorkInit(goWorkRoot);
 	if (!initResult.ok) {
 		return Result.error(initResult.error);
 	}
 
 	// Remove inactive Go modules
 	if (remove.length > 0) {
+		// TODO: check if we can prepend goWorkRoot to each path
 		const removeResult = await goWorkRemove(remove);
 		if (!removeResult.ok) {
 			return Result.error(removeResult.error);
@@ -231,6 +211,7 @@ async function setupGoWorkspace(add: string[], remove: string[]): Promise<Result
 
 	// Add active Go modules
 	if (add.length > 0) {
+		// TODO: check if we can prepend goWorkRoot to each path
 		const addResult = await goWorkUse(add);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
