@@ -1,6 +1,6 @@
 workspaces:
   - url: git@github.com:ball6847/git-commit-ai.git
-    path: shared-lib
+    path: tools/git-commit-ai
     branch: main
     isGolang: false
     active: true
