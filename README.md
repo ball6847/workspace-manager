@@ -114,6 +114,23 @@ The following improvements are planned based on code review:
 - [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
 - [ ] **Add emoji to output** to make it more eye-catching
 - [ ] **Add spinner for long-running actions** to improve user experience
+- [ ] **Add install instruction using `deno install from jsdelivr`** for easier distribution
+
+## Important Notes
+
+### Renaming Workspaces or Changing URLs
+
+**⚠️ Important:** Renaming a workspace or changing its URL requires special handling due to Git submodule limitations.
+
+To rename a workspace or change its URL:
+
+1. **Deactivate the workspace** by setting `active: false` in your `workspace.yml`
+2. **Run sync** to remove the existing submodule: `deno run --allow-all main.ts sync`
+3. **Make your changes** (rename path or change URL) in `workspace.yml`
+4. **Reactivate the workspace** by setting `active: true`
+5. **Run sync again** to add the workspace with new configuration: `deno run --allow-all main.ts sync`
+
+This process ensures that Git submodules are properly removed and re-added with the new configuration, avoiding conflicts and corruption.
 
 ## Architecture
 
