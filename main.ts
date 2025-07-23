@@ -1,5 +1,6 @@
 import { Command } from "@cliffy/command";
 import { red, yellow } from "@std/fmt/colors";
+import { Result } from "typescript-result";
 import { syncCommand } from "./cmds/sync.ts";
 
 const VERSION = "0.0.1-rc1";
@@ -21,11 +22,15 @@ cli.command("sync", "Sync workspace with remote")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
-		await syncCommand({
+		const result = await syncCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 		});
+		if (!result.ok) {
+			console.log(red("❌ Sync failed:"), result.error.message);
+			Deno.exit(1);
+		}
 	});
 
 // Status command
@@ -38,10 +43,9 @@ cli.command("status", "Show current workspace status")
 
 // Handle main execution
 if (import.meta.main) {
-	try {
-		await cli.parse(Deno.args);
-	} catch (error) {
-		console.log(red("❌ CLI Error:"), error instanceof Error ? error.message : "Unknown error");
+	const result = await Result.fromAsyncCatching(() => cli.parse(Deno.args));
+	if (!result.ok) {
+		console.log(red("❌ CLI Error:"), result.error.message);
 		Deno.exit(1);
 	}
 }

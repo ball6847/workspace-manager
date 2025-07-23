@@ -29,9 +29,9 @@ export type SyncCommandOption = {
  * - make sure all active items are checked out
  *
  * @param option
- * @returns
+ * @returns Result indicating success or failure
  */
-export async function syncCommand(option: SyncCommandOption) {
+export async function syncCommand(option: SyncCommandOption): Promise<Result<void, Error>> {
 	// handle default values
 	const configFile = option.config ??= "workspace.yml";
 	const workspaceRoot = option.workspaceRoot ??= ".";
@@ -41,14 +41,14 @@ export async function syncCommand(option: SyncCommandOption) {
 	const validated = await validateWorkspaceDir(workspaceRoot);
 	if (!validated.ok) {
 		console.log(red("Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return;
+		return Result.error(validated.error);
 	}
 
 	// parse config file
 	const parseConfig = await parseConfigFile(configFile);
 	if (!parseConfig.ok) {
 		console.log(red("Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return;
+		return Result.error(parseConfig.error);
 	}
 	const config = parseConfig.value;
 
@@ -73,7 +73,7 @@ export async function syncCommand(option: SyncCommandOption) {
 		const remove = await gitSubmoduleRemove(workspace.path, workspaceRoot);
 		if (!remove.ok) {
 			console.log(red(`Failed to remove inactive workspace: ${workspace.path}`), `(${remove.error.message})`);
-			return;
+			return Result.error(remove.error);
 		}
 
 		console.log(green(`Successfully removed inactive workspace: ${workspace.path}`));
@@ -119,7 +119,10 @@ export async function syncCommand(option: SyncCommandOption) {
 	const goWorkspace = await setupGoWorkspace(goWorkToUse, goWorkToRemove, workspaceRoot);
 	if (!goWorkspace.ok) {
 		console.log(red("Failed to setup Go workspace: "), goWorkspace.error.message);
+		return Result.error(goWorkspace.error);
 	}
+
+	return Result.ok();
 }
 
 async function validateWorkspaceDir(path: string) {

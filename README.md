@@ -91,22 +91,29 @@ The following improvements are planned based on code review:
 
 ### High Priority
 
-1. **Add schema validation** using Zod (already imported) for the workspace configuration
-2. **Implement the `--yes` option** to handle automatic confirmations when removing dirty directories
-3. **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
+- [ ] **Add schema validation** using Zod (already imported) for the workspace configuration
+- [ ] **Implement the `--yes` option** to handle automatic confirmations when removing dirty directories
+- [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
+- [ ] **Add "update" command** to pull all submodules from tracking branches
+- [ ] **Confirm before removing** - list what will be removed and let user confirm it
 
 ### Medium Priority
 
-4. **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
-5. **Fix path handling** using proper path joining methods instead of string concatenation
-6. **Add input validation** for workspace URLs and paths to prevent invalid configurations
+- [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
+- [ ] **Fix path handling** using proper path joining methods instead of string concatenation
+- [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
+- [ ] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
+- [ ] **Batch processing for "sync" command** - multiple modules at a time
+- [ ] **Batch processing for "update" command** - multiple modules at a time
 
 ### Low Priority
 
-7. **Consider adding transaction-like behavior** to rollback changes if any step fails during sync
-8. **Complete Go workspace path resolution** - fix TODO comments about prepending `goWorkRoot` to paths
-9. **Implement status command** to show current workspace state
-10. **Add confirmation prompts** for destructive operations when `--yes` is not specified
+- [ ] **Consider adding transaction-like behavior** to rollback changes if any step fails during sync
+- [ ] **Complete Go workspace path resolution** - fix TODO comments about prepending `goWorkRoot` to paths
+- [ ] **Implement status command** to show current workspace state
+- [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
+- [ ] **Add emoji to output** to make it more eye-catching
+- [ ] **Add spinner for long-running actions** to improve user experience
 
 ## Architecture
 
