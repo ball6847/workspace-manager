@@ -152,6 +152,8 @@ The following improvements are planned based on code review:
 - [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
+- [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
+- [ ] **Add "serve" command** `workspace-manager serve` to launch web UI for workspace management
 
 ### Medium Priority
 
@@ -170,7 +172,7 @@ The following improvements are planned based on code review:
 - [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
 - [x] **Add emoji to output** to make it more eye-catching
 - [ ] **Add spinner for long-running actions** to improve user experience
-- [ ] **Add install instruction using `deno install from jsdelivr`** for easier distribution
+- [x] **Add install instruction using `deno install from jsdelivr`** for easier distribution
 
 ## Important Notes
 
