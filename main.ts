@@ -4,7 +4,7 @@ import { Result } from "typescript-result";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc1";
+const VERSION = "0.0.1-rc3";
 
 // Create CLI application
 const cli = new Command()
