@@ -173,6 +173,7 @@ The following improvements are planned based on code review:
 - [x] **Add emoji to output** to make it more eye-catching
 - [ ] **Add spinner for long-running actions** to improve user experience
 - [x] **Add install instruction using `deno install from jsdelivr`** for easier distribution
+- [ ] **Auto-generate .env file from template** to maintain a single .env file and distribute it across submodules
 
 ## Important Notes
 
