@@ -1,6 +1,8 @@
 import { Command } from "@cliffy/command";
 import { red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import { disableCommand } from "./cmds/disable.ts";
+import { enableCommand } from "./cmds/enable.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
@@ -59,6 +61,52 @@ cli.command("update", "Update all submodules by checking out to tracking branche
 		});
 		if (!result.ok) {
 			console.log(red("❌ Update failed:"), result.error.message);
+			Deno.exit(1);
+		}
+	});
+
+// Enable command
+cli.command("enable", "Enable a disabled workspace repository")
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-y, --yes", "Skip sync confirmation prompt")
+	.action(async (options) => {
+		const result = await enableCommand({
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+			yes: options.yes,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Enable failed:"), result.error.message);
+			Deno.exit(1);
+		}
+	});
+
+// Disable command
+cli.command("disable", "Disable an active workspace repository")
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-y, --yes", "Skip sync confirmation prompt")
+	.action(async (options) => {
+		const result = await disableCommand({
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+			yes: options.yes,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Disable failed:"), result.error.message);
 			Deno.exit(1);
 		}
 	});
