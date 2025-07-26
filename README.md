@@ -147,9 +147,9 @@ The following improvements are planned based on code review:
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
 - [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
-- [ ] **Add "enable" command** to re-enable disabled repositories in workspace configuration
-- [ ] **Add "disable" command** to disable active repositories in workspace configuration
-- [ ] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
+- [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
+- [x] **Add "disable" command** to disable active repositories in workspace configuration
+- [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
 
 ### Medium Priority
 
