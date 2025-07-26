@@ -6,7 +6,7 @@ import { enableCommand } from "./cmds/enable.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc3";
+const VERSION = "0.0.1-rc4";
 
 // Create CLI application
 const cli = new Command()
