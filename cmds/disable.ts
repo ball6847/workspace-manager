@@ -4,6 +4,7 @@ import { Result } from "typescript-result";
 import { parseConfigFile, WorkspaceConfig, WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { syncCommand } from "./sync.ts";
 
 export type DisableCommandOption = {
 	/**
@@ -59,7 +60,7 @@ export async function disableCommand(option: DisableCommandOption): Promise<Resu
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(autoSync);
+	const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
@@ -143,9 +144,17 @@ async function selectAndDisableWorkspace(
  * Handle sync confirmation and execution
  *
  * @param autoSync Whether auto-sync is enabled
+ * @param configFile Path to config file
+ * @param workspaceRoot Path to workspace root directory
+ * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-async function handleSyncConfirmation(autoSync: boolean): Promise<Result<void, Error>> {
+async function handleSyncConfirmation(
+	autoSync: boolean,
+	configFile: string,
+	workspaceRoot: string,
+	debug: boolean,
+): Promise<Result<void, Error>> {
 	// Prompt for sync if not auto-sync
 	if (!autoSync) {
 		const syncResult = await promptSyncConfirmation();
@@ -164,8 +173,18 @@ async function handleSyncConfirmation(autoSync: boolean): Promise<Result<void, E
 	}
 
 	// Sync here - either auto-sync is enabled or user confirmed sync
-	// TODO: implement this
-	console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
+	const syncResult = await syncCommand({
+		config: configFile,
+		workspaceRoot,
+		debug,
+		concurrency: 2,
+	});
+
+	if (!syncResult.ok) {
+		console.log(red("❌ Sync failed:"), syncResult.error.message);
+		return Result.error(syncResult.error);
+	}
+
 	return Result.ok();
 }
 

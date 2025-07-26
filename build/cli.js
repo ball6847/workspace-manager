@@ -1,3 +1,9 @@
+var __defProp = Object.defineProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
 // deno:https://jsr.io/@std/text/1.0.15/levenshtein_distance.ts
 var { ceil } = Math;
 var peq = new Uint32Array(1114112);
@@ -853,6 +859,11 @@ function italic(str2) {
     3
   ], 23));
 }
+function underline(str2) {
+  return run(str2, code([
+    4
+  ], 24));
+}
 function red(str2) {
   return run(str2, code([
     31
@@ -1126,8 +1137,8 @@ var TooManyArgumentsError = class _TooManyArgumentsError extends ValidationError
 
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/exit.ts
 function exit(code2) {
-  const { Deno: Deno3, process } = globalThis;
-  const exit2 = Deno3?.exit ?? process?.exit;
+  const { Deno: Deno4, process: process2 } = globalThis;
+  const exit2 = Deno4?.exit ?? process2?.exit;
   if (exit2) {
     exit2(code2);
   }
@@ -1136,17 +1147,17 @@ function exit(code2) {
 
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_args.ts
 function getArgs() {
-  const { Deno: Deno3, process } = globalThis;
-  return Deno3?.args ?? process?.argv.slice(2) ?? [];
+  const { Deno: Deno4, process: process2 } = globalThis;
+  return Deno4?.args ?? process2?.argv.slice(2) ?? [];
 }
 
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_env.ts
 function getEnv(name) {
-  const { Deno: Deno3, process } = globalThis;
-  if (Deno3) {
-    return Deno3.env.get(name);
-  } else if (process) {
-    return process.env[name];
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    return Deno4.env.get(name);
+  } else if (process2) {
+    return process2.env[name];
   }
   throw new Error("unsupported runtime");
 }
@@ -1376,8 +1387,8 @@ var Column = class _Column {
     return this;
   }
   /** Set column padding. */
-  padding(padding) {
-    this.opts.padding = padding;
+  padding(padding3) {
+    this.opts.padding = padding3;
     return this;
   }
   /** Set column alignment. */
@@ -1663,7 +1674,7 @@ var TableLayout = class {
         }
       }
     }
-    const padding = [];
+    const padding3 = [];
     const width = [];
     for (let colIndex = 0; colIndex < columns; colIndex++) {
       const column = this.options.columns.at(colIndex);
@@ -1671,10 +1682,10 @@ var TableLayout = class {
       const maxColWidth = column?.getMaxWidth() ?? (Array.isArray(this.options.maxColWidth) ? this.options.maxColWidth[colIndex] : this.options.maxColWidth);
       const colWidth = longest(colIndex, rows, maxColWidth);
       width[colIndex] = Math.min(maxColWidth, Math.max(minColWidth, colWidth));
-      padding[colIndex] = column?.getPadding() ?? (Array.isArray(this.options.padding) ? this.options.padding[colIndex] : this.options.padding);
+      padding3[colIndex] = column?.getPadding() ?? (Array.isArray(this.options.padding) ? this.options.padding[colIndex] : this.options.padding);
     }
     return {
-      padding,
+      padding: padding3,
       width,
       rows,
       columns,
@@ -2251,9 +2262,9 @@ var Table = class _Table extends Array {
    * @param padding   Cell padding.
    * @param override  Override existing value.
    */
-  padding(padding, override = true) {
+  padding(padding3, override = true) {
     if (override || typeof this.options.padding === "undefined") {
-      this.options.padding = padding;
+      this.options.padding = padding3;
     }
     return this;
   }
@@ -2349,8 +2360,8 @@ var Table = class _Table extends Array {
 
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/inspect.ts
 function inspect(value, colors) {
-  const { Deno: Deno3 } = globalThis;
-  return Deno3?.inspect(value, {
+  const { Deno: Deno4 } = globalThis;
+  return Deno4?.inspect(value, {
     depth: 1,
     colors,
     trailingComma: false
@@ -4330,39 +4341,39 @@ var AsyncResult = class _AsyncResult extends Promise {
     return result.fold(onSuccess, onFailure);
   }
   onFailure(action) {
-    return new _AsyncResult((resolve3, reject) => this.then(async (result) => {
+    return new _AsyncResult((resolve5, reject) => this.then(async (result) => {
       try {
         if (!result.ok) {
           await action(result.error);
         }
-        resolve3(result);
+        resolve5(result);
       } catch (e) {
         reject(e);
       }
     }).catch(reject));
   }
   onSuccess(action) {
-    return new _AsyncResult((resolve3, reject) => this.then(async (result) => {
+    return new _AsyncResult((resolve5, reject) => this.then(async (result) => {
       try {
         if (result.ok) {
           await action(result.value);
         }
-        resolve3(result);
+        resolve5(result);
       } catch (error) {
         reject(error);
       }
     }).catch(reject));
   }
   map(transform) {
-    return new _AsyncResult((resolve3, reject) => {
-      this.then(async (result) => resolve3(await result.map(transform))).catch(reject);
+    return new _AsyncResult((resolve5, reject) => {
+      this.then(async (result) => resolve5(await result.map(transform))).catch(reject);
     });
   }
   mapCatching(transformValue, transformError) {
-    return new _AsyncResult((resolve3, reject) => {
-      this.map(transformValue).then((result) => resolve3(result)).catch((error) => {
+    return new _AsyncResult((resolve5, reject) => {
+      this.map(transformValue).then((result) => resolve5(result)).catch((error) => {
         try {
-          resolve3(ResultFactory.error(transformError ? transformError(error) : error));
+          resolve5(ResultFactory.error(transformError ? transformError(error) : error));
         } catch (err) {
           reject(err);
         }
@@ -4370,47 +4381,47 @@ var AsyncResult = class _AsyncResult extends Promise {
     });
   }
   mapError(transform) {
-    return new _AsyncResult((resolve3, reject) => this.then(async (result) => {
+    return new _AsyncResult((resolve5, reject) => this.then(async (result) => {
       try {
-        resolve3(result.mapError(transform));
+        resolve5(result.mapError(transform));
       } catch (error) {
         reject(error);
       }
     }).catch(reject));
   }
   recover(onFailure) {
-    return new _AsyncResult((resolve3, reject) => this.then(async (result) => {
+    return new _AsyncResult((resolve5, reject) => this.then(async (result) => {
       try {
         const outcome = await result.recover(onFailure);
-        resolve3(outcome);
+        resolve5(outcome);
       } catch (error) {
         reject(error);
       }
     }).catch(reject));
   }
   recoverCatching(onFailure, transformError) {
-    return new _AsyncResult((resolve3, reject) => this.then((result) => {
-      resolve3(result.recoverCatching(onFailure, transformError));
+    return new _AsyncResult((resolve5, reject) => this.then((result) => {
+      resolve5(result.recoverCatching(onFailure, transformError));
     }).catch(reject));
   }
   toString() {
     return "AsyncResult";
   }
   static error(error) {
-    return new _AsyncResult((resolve3) => resolve3(ResultFactory.error(error)));
+    return new _AsyncResult((resolve5) => resolve5(ResultFactory.error(error)));
   }
   static ok(value) {
-    return new _AsyncResult((resolve3) => resolve3(ResultFactory.ok(value)));
+    return new _AsyncResult((resolve5) => resolve5(ResultFactory.ok(value)));
   }
   static fromPromise(promise) {
-    return new _AsyncResult((resolve3, reject) => {
-      promise.then((value) => resolve3(ResultFactory.isResult(value) ? value : ResultFactory.ok(value))).catch(reject);
+    return new _AsyncResult((resolve5, reject) => {
+      promise.then((value) => resolve5(ResultFactory.isResult(value) ? value : ResultFactory.ok(value))).catch(reject);
     });
   }
   static fromPromiseCatching(promise, transform) {
-    return new _AsyncResult((resolve3) => {
-      promise.then((value) => resolve3(ResultFactory.isResult(value) ? value : ResultFactory.ok(value))).catch((caughtError) => {
-        resolve3(ResultFactory.error(transform?.(caughtError) ?? caughtError));
+    return new _AsyncResult((resolve5) => {
+      promise.then((value) => resolve5(ResultFactory.isResult(value) ? value : ResultFactory.ok(value))).catch((caughtError) => {
+        resolve5(ResultFactory.error(transform?.(caughtError) ?? caughtError));
       });
     });
   }
@@ -4487,8 +4498,8 @@ var Result = class {
     if (this.failure) {
       const outcome = action(this._error);
       if (isAsync) {
-        return new AsyncResult((resolve3) => {
-          outcome.then(() => resolve3(ResultFactory.error(this._error)));
+        return new AsyncResult((resolve5) => {
+          outcome.then(() => resolve5(ResultFactory.error(this._error)));
         });
       }
       return this;
@@ -4500,8 +4511,8 @@ var Result = class {
     if (this.success) {
       const outcome = action(this._value);
       if (isAsync) {
-        return new AsyncResult((resolve3) => {
-          outcome.then(() => resolve3(ResultFactory.ok(this._value)));
+        return new AsyncResult((resolve5) => {
+          outcome.then(() => resolve5(ResultFactory.ok(this._value)));
         });
       }
       return this;
@@ -4598,7 +4609,7 @@ var ResultFactory = class _ResultFactory {
       }
     }
     if (isAsync) {
-      return new AsyncResult((resolve3, reject) => {
+      return new AsyncResult((resolve5, reject) => {
         const asyncResults = [];
         const asyncIndexes = [];
         for (let i = 0; i < flattened.length; i++) {
@@ -4617,10 +4628,10 @@ var ResultFactory = class _ResultFactory {
           }
           const firstFailedResult = merged.find((resolvedResult) => !resolvedResult.ok);
           if (firstFailedResult) {
-            resolve3(firstFailedResult);
+            resolve5(firstFailedResult);
             return;
           }
-          resolve3(_ResultFactory.ok(merged.map((result) => result.getOrNull())));
+          resolve5(_ResultFactory.ok(merged.map((result) => result.getOrNull())));
         }).catch((reason) => {
           reject(reason);
         });
@@ -4731,39 +4742,1006 @@ var ResultFactory = class _ResultFactory {
 };
 var Result2 = ResultFactory;
 
-// deno:https://jsr.io/@std/internal/1.0.10/_os.ts
-function checkWindows() {
-  const global = globalThis;
-  const os = global.Deno?.build?.os;
-  return typeof os === "string" ? os === "windows" : global.navigator?.platform?.startsWith("Win") ?? global.process?.platform?.startsWith("win") ?? false;
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/read_sync.ts
+var { Deno: Deno3, process, Buffer: Buffer2 } = globalThis;
+var { readSync: readSyncNode } = process ? await import("node:fs") : {
+  readSync: null
+};
+function readSync(data2) {
+  if (Deno3) {
+    return Deno3.stdin.readSync(data2);
+  } else if (readSyncNode) {
+    const buffer = Buffer2.alloc(data2.byteLength);
+    const bytesRead = readSyncNode(process.stdout.fd, buffer, 0, buffer.length, null);
+    for (let i = 0; i < bytesRead; i++) {
+      data2[i] = buffer[i];
+    }
+    return bytesRead;
+  } else {
+    throw new Error("unsupported runtime");
+  }
 }
 
-// deno:https://jsr.io/@std/internal/1.0.10/os.ts
-var isWindows = checkWindows();
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/set_raw.ts
+function setRaw(mode, { cbreak } = {}) {
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    Deno4.stdin.setRaw(mode, {
+      cbreak
+    });
+  } else if (process2) {
+    process2.stdin.setRawMode(mode);
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
 
-// deno:https://jsr.io/@std/path/1.1.1/_common/assert_path.ts
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/write_sync.ts
+function writeSync(data2) {
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    return Deno4.stdout.writeSync(data2);
+  } else if (process2) {
+    process2.stdout.write(data2);
+    return data2.byteLength;
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/ansi/1.0.0-rc.8/ansi_escapes.ts
+var ansi_escapes_exports = {};
+__export(ansi_escapes_exports, {
+  bel: () => bel,
+  clearScreen: () => clearScreen,
+  clearTerminal: () => clearTerminal,
+  cursorBackward: () => cursorBackward,
+  cursorDown: () => cursorDown,
+  cursorForward: () => cursorForward,
+  cursorHide: () => cursorHide,
+  cursorLeft: () => cursorLeft,
+  cursorMove: () => cursorMove,
+  cursorNextLine: () => cursorNextLine,
+  cursorPosition: () => cursorPosition,
+  cursorPrevLine: () => cursorPrevLine,
+  cursorRestore: () => cursorRestore,
+  cursorSave: () => cursorSave,
+  cursorShow: () => cursorShow,
+  cursorTo: () => cursorTo,
+  cursorUp: () => cursorUp,
+  eraseDown: () => eraseDown,
+  eraseLine: () => eraseLine,
+  eraseLineEnd: () => eraseLineEnd,
+  eraseLineStart: () => eraseLineStart,
+  eraseLines: () => eraseLines,
+  eraseScreen: () => eraseScreen,
+  eraseUp: () => eraseUp,
+  image: () => image,
+  link: () => link,
+  scrollDown: () => scrollDown,
+  scrollUp: () => scrollUp
+});
+
+// deno:https://jsr.io/@std/encoding/1.0.10/_common64.ts
+var padding = "=".charCodeAt(0);
+var alphabet = {
+  base64: new TextEncoder().encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"),
+  base64url: new TextEncoder().encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+};
+var rAlphabet = {
+  base64: new Uint8Array(128).fill(64),
+  base64url: new Uint8Array(128).fill(64)
+};
+alphabet.base64.forEach((byte, i) => rAlphabet.base64[byte] = i);
+alphabet.base64url.forEach((byte, i) => rAlphabet.base64url[byte] = i);
+function calcSizeBase64(originalSize) {
+  return ((originalSize + 2) / 3 | 0) * 4;
+}
+function encode(buffer, i, o, alphabet3, padding3) {
+  i += 2;
+  for (; i < buffer.length; i += 3) {
+    const x = buffer[i - 2] << 16 | buffer[i - 1] << 8 | buffer[i];
+    buffer[o++] = alphabet3[x >> 18];
+    buffer[o++] = alphabet3[x >> 12 & 63];
+    buffer[o++] = alphabet3[x >> 6 & 63];
+    buffer[o++] = alphabet3[x & 63];
+  }
+  switch (i) {
+    case buffer.length + 1: {
+      const x = buffer[i - 2] << 16;
+      buffer[o++] = alphabet3[x >> 18];
+      buffer[o++] = alphabet3[x >> 12 & 63];
+      buffer[o++] = padding3;
+      buffer[o++] = padding3;
+      break;
+    }
+    case buffer.length: {
+      const x = buffer[i - 2] << 16 | buffer[i - 1] << 8;
+      buffer[o++] = alphabet3[x >> 18];
+      buffer[o++] = alphabet3[x >> 12 & 63];
+      buffer[o++] = alphabet3[x >> 6 & 63];
+      buffer[o++] = padding3;
+      break;
+    }
+  }
+  return o;
+}
+
+// deno:https://jsr.io/@std/encoding/1.0.10/_common_detach.ts
+function detach(buffer, maxSize) {
+  const originalSize = buffer.length;
+  if (buffer.byteOffset) {
+    const b = new Uint8Array(buffer.buffer);
+    b.set(buffer);
+    buffer = b.subarray(0, originalSize);
+  }
+  buffer = new Uint8Array(buffer.buffer.transfer(maxSize));
+  buffer.set(buffer.subarray(0, originalSize), maxSize - originalSize);
+  return [
+    buffer,
+    maxSize - originalSize
+  ];
+}
+
+// deno:https://jsr.io/@std/encoding/1.0.10/base64.ts
+var padding2 = "=".charCodeAt(0);
+var alphabet2 = new TextEncoder().encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
+var rAlphabet2 = new Uint8Array(128).fill(64);
+alphabet2.forEach((byte, i) => rAlphabet2[byte] = i);
+function encodeBase64(data2) {
+  if (typeof data2 === "string") {
+    data2 = new TextEncoder().encode(data2);
+  } else if (data2 instanceof ArrayBuffer) data2 = new Uint8Array(data2).slice();
+  else data2 = data2.slice();
+  const [output, i] = detach(data2, calcSizeBase64(data2.length));
+  encode(output, i, 0, alphabet2, padding2);
+  return new TextDecoder().decode(output);
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_os.ts
+function getOs() {
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    return Deno4.build.os;
+  } else if (process2) {
+    return process2.platform;
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/ansi/1.0.0-rc.8/ansi_escapes.ts
+var ESC = "\x1B";
+var CSI = `${ESC}[`;
+var OSC = `${ESC}]`;
+var SEP = ";";
+var bel = "\x07";
+var cursorPosition = `${CSI}6n`;
+function cursorTo(x, y) {
+  if (typeof y !== "number") {
+    return `${CSI}${x}G`;
+  }
+  return `${CSI}${y};${x}H`;
+}
+function cursorMove(x, y) {
+  let ret = "";
+  if (x < 0) {
+    ret += `${CSI}${-x}D`;
+  } else if (x > 0) {
+    ret += `${CSI}${x}C`;
+  }
+  if (y < 0) {
+    ret += `${CSI}${-y}A`;
+  } else if (y > 0) {
+    ret += `${CSI}${y}B`;
+  }
+  return ret;
+}
+function cursorUp(count = 1) {
+  return `${CSI}${count}A`;
+}
+function cursorDown(count = 1) {
+  return `${CSI}${count}B`;
+}
+function cursorForward(count = 1) {
+  return `${CSI}${count}C`;
+}
+function cursorBackward(count = 1) {
+  return `${CSI}${count}D`;
+}
+function cursorNextLine(count = 1) {
+  return `${CSI}E`.repeat(count);
+}
+function cursorPrevLine(count = 1) {
+  return `${CSI}F`.repeat(count);
+}
+var cursorLeft = `${CSI}G`;
+var cursorHide = `${CSI}?25l`;
+var cursorShow = `${CSI}?25h`;
+var cursorSave = `${ESC}7`;
+var cursorRestore = `${ESC}8`;
+function scrollUp(count = 1) {
+  return `${CSI}S`.repeat(count);
+}
+function scrollDown(count = 1) {
+  return `${CSI}T`.repeat(count);
+}
+var eraseScreen = `${CSI}2J`;
+function eraseUp(count = 1) {
+  return `${CSI}1J`.repeat(count);
+}
+function eraseDown(count = 1) {
+  return `${CSI}0J`.repeat(count);
+}
+var eraseLine = `${CSI}2K`;
+var eraseLineEnd = `${CSI}0K`;
+var eraseLineStart = `${CSI}1K`;
+function eraseLines(count) {
+  let clear = "";
+  for (let i = 0; i < count; i++) {
+    clear += eraseLine + (i < count - 1 ? cursorUp() : "");
+  }
+  clear += cursorLeft;
+  return clear;
+}
+var clearScreen = "\x1Bc";
+var clearTerminal = getOs() === "windows" ? `${eraseScreen}${CSI}0f` : `${eraseScreen}${CSI}3J${CSI}H`;
+function link(text, url) {
+  return [
+    OSC,
+    "8",
+    SEP,
+    SEP,
+    url,
+    bel,
+    text,
+    OSC,
+    "8",
+    SEP,
+    SEP,
+    bel
+  ].join("");
+}
+function image(buffer, options) {
+  let ret = `${OSC}1337;File=inline=1`;
+  if (options?.width) {
+    ret += `;width=${options.width}`;
+  }
+  if (options?.height) {
+    ret += `;height=${options.height}`;
+  }
+  if (options?.preserveAspectRatio === false) {
+    ret += ";preserveAspectRatio=0";
+  }
+  return ret + ":" + encodeBase64(buffer) + bel;
+}
+
+// deno:https://jsr.io/@cliffy/ansi/1.0.0-rc.8/cursor_position.ts
+var encoder = new TextEncoder();
+var decoder = new TextDecoder();
+function getCursorPosition({ reader = {
+  readSync,
+  setRaw
+}, writer = {
+  writeSync
+} } = {}) {
+  const data2 = new Uint8Array(8);
+  reader.setRaw(true);
+  writer.writeSync(encoder.encode(cursorPosition));
+  reader.readSync(data2);
+  reader.setRaw(false);
+  const [y, x] = decoder.decode(data2).match(/\[(\d+);(\d+)R/)?.slice(1, 3).map(Number) ?? [
+    0,
+    0
+  ];
+  return {
+    x,
+    y
+  };
+}
+
+// deno:https://jsr.io/@cliffy/ansi/1.0.0-rc.8/tty.ts
+var tty = factory();
+var encoder2 = new TextEncoder();
+function factory(options) {
+  let result = "";
+  let stack = [];
+  const writer = options?.writer ?? {
+    writeSync
+  };
+  const reader = options?.reader ?? {
+    readSync,
+    setRaw
+  };
+  const tty2 = function(...args) {
+    if (this) {
+      update(args);
+      writer.writeSync(encoder2.encode(result));
+      return this;
+    }
+    return factory(args[0] ?? options);
+  };
+  tty2.text = function(text) {
+    stack.push([
+      text,
+      []
+    ]);
+    update();
+    writer.writeSync(encoder2.encode(result));
+    return this;
+  };
+  tty2.getCursorPosition = () => getCursorPosition({
+    writer,
+    reader
+  });
+  const methodList = Object.entries(ansi_escapes_exports);
+  for (const [name, method] of methodList) {
+    if (name === "cursorPosition") {
+      continue;
+    }
+    Object.defineProperty(tty2, name, {
+      get() {
+        stack.push([
+          method,
+          []
+        ]);
+        return this;
+      }
+    });
+  }
+  return tty2;
+  function update(args) {
+    if (!stack.length) {
+      return;
+    }
+    if (args) {
+      stack[stack.length - 1][1] = args;
+    }
+    result = stack.reduce((prev, [cur, args2]) => prev + (typeof cur === "string" ? cur : cur.call(tty2, ...args2)), "");
+    stack = [];
+  }
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/runtime_name.ts
+function getRuntimeName() {
+  switch (true) {
+    case "Deno" in globalThis:
+      return "deno";
+    case "Bun" in globalThis:
+      return "bun";
+    case "process" in globalThis:
+      return "node";
+    default:
+      throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/keycode/1.0.0-rc.8/_key_codes.ts
+var KeyMap = {
+  /* xterm/gnome ESC [ letter (with modifier) */
+  "[P": "f1",
+  "[Q": "f2",
+  "[R": "f3",
+  "[S": "f4",
+  /* xterm/gnome ESC O letter (without modifier) */
+  "OP": "f1",
+  "OQ": "f2",
+  "OR": "f3",
+  "OS": "f4",
+  /* xterm/rxvt ESC [ number ~ */
+  "[11~": "f1",
+  "[12~": "f2",
+  "[13~": "f3",
+  "[14~": "f4",
+  /* from Cygwin and used in libuv */
+  "[[A": "f1",
+  "[[B": "f2",
+  "[[C": "f3",
+  "[[D": "f4",
+  "[[E": "f5",
+  /* common */
+  "[15~": "f5",
+  "[17~": "f6",
+  "[18~": "f7",
+  "[19~": "f8",
+  "[20~": "f9",
+  "[21~": "f10",
+  "[23~": "f11",
+  "[24~": "f12",
+  /* xterm ESC [ letter */
+  "[A": "up",
+  "[B": "down",
+  "[C": "right",
+  "[D": "left",
+  "[E": "clear",
+  "[F": "end",
+  "[H": "home",
+  /* xterm/gnome ESC O letter */
+  "OA": "up",
+  "OB": "down",
+  "OC": "right",
+  "OD": "left",
+  "OE": "clear",
+  "OF": "end",
+  "OH": "home",
+  /* xterm/rxvt ESC [ number ~ */
+  "[1~": "home",
+  "[2~": "insert",
+  "[3~": "delete",
+  "[4~": "end",
+  "[5~": "pageup",
+  "[6~": "pagedown",
+  /* putty */
+  "[[5~": "pageup",
+  "[[6~": "pagedown",
+  /* rxvt */
+  "[7~": "home",
+  "[8~": "end"
+};
+var KeyMapShift = {
+  /* rxvt keys with modifiers */
+  "[a": "up",
+  "[b": "down",
+  "[c": "right",
+  "[d": "left",
+  "[e": "clear",
+  "[2$": "insert",
+  "[3$": "delete",
+  "[5$": "pageup",
+  "[6$": "pagedown",
+  "[7$": "home",
+  "[8$": "end",
+  "[Z": "tab"
+};
+var KeyMapCtrl = {
+  /* rxvt keys with modifiers */
+  "Oa": "up",
+  "Ob": "down",
+  "Oc": "right",
+  "Od": "left",
+  "Oe": "clear",
+  "[2^": "insert",
+  "[3^": "delete",
+  "[5^": "pageup",
+  "[6^": "pagedown",
+  "[7^": "home",
+  "[8^": "end"
+};
+var SpecialKeyMap = {
+  "\r": "return",
+  "\n": "enter",
+  "	": "tab",
+  "\b": "backspace",
+  "\x7F": "backspace",
+  "\x1B": "escape",
+  " ": "space"
+};
+
+// deno:https://jsr.io/@cliffy/keycode/1.0.0-rc.8/key_code.ts
+var kUTF16SurrogateThreshold = 65536;
+var kEscape = "\x1B";
+function parse(data2) {
+  let index = -1;
+  const keys = [];
+  const input = data2 instanceof Uint8Array ? new TextDecoder().decode(data2) : data2;
+  const hasNext = () => input.length - 1 >= index + 1;
+  const next = () => input[++index];
+  parseNext();
+  return keys;
+  function parseNext() {
+    let ch = next();
+    let s = ch;
+    let escaped = false;
+    const key = {
+      name: void 0,
+      char: void 0,
+      sequence: void 0,
+      code: void 0,
+      ctrl: false,
+      meta: false,
+      shift: false
+    };
+    if (ch === kEscape && hasNext()) {
+      escaped = true;
+      s += ch = next();
+      if (ch === kEscape) {
+        s += ch = next();
+      }
+    }
+    if (escaped && (ch === "O" || ch === "[")) {
+      let code2 = ch;
+      let modifier = 0;
+      if (ch === "O") {
+        s += ch = next();
+        if (ch >= "0" && ch <= "9") {
+          modifier = (Number(ch) >> 0) - 1;
+          s += ch = next();
+        }
+        code2 += ch;
+      } else if (ch === "[") {
+        s += ch = next();
+        if (ch === "[") {
+          code2 += ch;
+          s += ch = next();
+        }
+        const cmdStart = s.length - 1;
+        if (ch >= "0" && ch <= "9") {
+          s += ch = next();
+          if (ch >= "0" && ch <= "9") {
+            s += ch = next();
+          }
+        }
+        if (ch === ";") {
+          s += ch = next();
+          if (ch >= "0" && ch <= "9") {
+            s += next();
+          }
+        }
+        const cmd = s.slice(cmdStart);
+        let match;
+        if (match = cmd.match(/^(\d\d?)(;(\d))?([~^$])$/)) {
+          code2 += match[1] + match[4];
+          modifier = (Number(match[3]) || 1) - 1;
+        } else if (match = cmd.match(/^((\d;)?(\d))?([A-Za-z])$/)) {
+          code2 += match[4];
+          modifier = (Number(match[3]) || 1) - 1;
+        } else {
+          code2 += cmd;
+        }
+      }
+      key.ctrl = !!(modifier & 4);
+      key.meta = !!(modifier & 10);
+      key.shift = !!(modifier & 1);
+      key.code = code2;
+      if (code2 in KeyMap) {
+        key.name = KeyMap[code2];
+      } else if (code2 in KeyMapShift) {
+        key.name = KeyMapShift[code2];
+        key.shift = true;
+      } else if (code2 in KeyMapCtrl) {
+        key.name = KeyMapCtrl[code2];
+        key.ctrl = true;
+      } else {
+        key.name = "undefined";
+      }
+    } else if (ch in SpecialKeyMap) {
+      key.name = SpecialKeyMap[ch];
+      key.meta = escaped;
+      if (key.name === "space") {
+        key.char = ch;
+      }
+    } else if (!escaped && ch <= "") {
+      key.name = String.fromCharCode(ch.charCodeAt(0) + "a".charCodeAt(0) - 1);
+      key.ctrl = true;
+      key.char = key.name;
+    } else if (/^[0-9A-Za-z]$/.test(ch)) {
+      key.name = ch.toLowerCase();
+      key.shift = /^[A-Z]$/.test(ch);
+      key.meta = escaped;
+      key.char = ch;
+    } else if (escaped) {
+      key.name = ch.length ? void 0 : "escape";
+      key.meta = true;
+    } else {
+      key.name = ch;
+      key.char = ch;
+    }
+    key.sequence = s;
+    if (s.length !== 0 && (key.name !== void 0 || escaped) || charLengthAt(s, 0) === s.length) {
+      keys.push(key);
+    } else {
+      throw new Error("Unrecognized or broken escape sequence");
+    }
+    if (hasNext()) {
+      parseNext();
+    }
+  }
+}
+function charLengthAt(str2, i) {
+  const pos = str2.codePointAt(i);
+  if (typeof pos === "undefined") {
+    return 1;
+  }
+  return pos >= kUTF16SurrogateThreshold ? 2 : 1;
+}
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_figures.ts
+var main = {
+  ARROW_UP: "\u2191",
+  ARROW_DOWN: "\u2193",
+  ARROW_LEFT: "\u2190",
+  ARROW_RIGHT: "\u2192",
+  ARROW_UP_LEFT: "\u2196",
+  ARROW_UP_RIGHT: "\u2197",
+  ARROW_DOWN_RIGHT: "\u2198",
+  ARROW_DOWN_LEFT: "\u2199",
+  RADIO_ON: "\u25C9",
+  RADIO_OFF: "\u25EF",
+  TICK: "\u2714",
+  CROSS: "\u2718",
+  ELLIPSIS: "\u2026",
+  POINTER_SMALL: "\u203A",
+  POINTER_SMALL_LEFT: "\u2039",
+  LINE: "\u2500",
+  POINTER: "\u276F",
+  POINTER_LEFT: "\u276E",
+  INFO: "\u2139",
+  TAB_LEFT: "\u21E4",
+  TAB_RIGHT: "\u21E5",
+  ESCAPE: "\u238B",
+  BACKSPACE: "\u232B",
+  PAGE_UP: "\u21DE",
+  PAGE_DOWN: "\u21DF",
+  ENTER: "\u21B5",
+  SEARCH: "\u{1F50E}",
+  FOLDER: "\u{1F4C1}",
+  FOLDER_OPEN: "\u{1F4C2}"
+};
+var win = {
+  ...main,
+  RADIO_ON: "(*)",
+  RADIO_OFF: "( )",
+  TICK: "\u221A",
+  CROSS: "\xD7",
+  POINTER_SMALL: "\xBB"
+};
+var Figures = getOs() === "windows" ? win : main;
+var keyMap = {
+  up: "ARROW_UP",
+  down: "ARROW_DOWN",
+  left: "ARROW_LEFT",
+  right: "ARROW_RIGHT",
+  pageup: "PAGE_UP",
+  pagedown: "PAGE_DOWN",
+  tab: "TAB_RIGHT",
+  enter: "ENTER",
+  return: "ENTER"
+};
+function getFiguresByKeys(keys) {
+  const figures = [];
+  for (const key of keys) {
+    const figure = Figures[keyMap[key]] ?? key;
+    if (!figures.includes(figure)) {
+      figures.push(figure);
+    }
+  }
+  return figures;
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_columns.ts
+function getColumns() {
+  try {
+    const { Deno: Deno4, process: process2 } = globalThis;
+    if (Deno4) {
+      return Deno4.consoleSize().columns ?? null;
+    } else if (process2) {
+      return process2.stdout.columns ?? null;
+    }
+  } catch (_error) {
+    return null;
+  }
+  throw new Error("unsupported runtime");
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/is_terminal.ts
+function isTerminal() {
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    return Deno4.stdin.isTerminal();
+  } else if (process2) {
+    return process2.stdin.isTTY;
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/read.ts
+async function read(data2) {
+  const { Deno: Deno4, Bun, process: process2 } = globalThis;
+  if (Deno4) {
+    return await Deno4.stdin.read(data2);
+  } else if (Bun) {
+    const reader = Bun.stdin.stream().getReader();
+    const { value: buffer } = await reader.read();
+    await reader.cancel();
+    for (let i = 0; i < buffer.length; i++) {
+      data2[i] = buffer[i];
+    }
+    return buffer.length;
+  } else if (process2) {
+    return await new Promise((resolve5, reject) => {
+      process2.stdin.once("readable", () => {
+        try {
+          const buffer = process2.stdin.read();
+          if (buffer === null) {
+            return resolve5(null);
+          }
+          for (let i = 0; i < buffer.length; i++) {
+            data2[i] = buffer[i];
+          }
+          resolve5(buffer.length);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_generic_prompt.ts
+var GenericPrompt = class _GenericPrompt {
+  static injectedValue;
+  cursor = {
+    x: 0,
+    y: 0
+  };
+  #value;
+  #lastError;
+  #isFirstRun = true;
+  #encoder = new TextEncoder();
+  /**
+   * Inject prompt value. If called, the prompt doesn't prompt for an input and
+   * returns immediately the injected value. Can be used for unit tests or pre
+   * selections.
+   *
+   * @param value Input value.
+   */
+  static inject(value) {
+    _GenericPrompt.injectedValue = value;
+  }
+  getDefaultSettings(options) {
+    return {
+      ...options,
+      tty: tty({
+        // Stdin is only used by getCursorPosition which we don't need.
+        reader: {
+          readSync,
+          setRaw
+        },
+        writer: options.writer ?? {
+          writeSync
+        }
+      }),
+      cbreak: options.cbreak ?? false,
+      reader: options.reader ?? {
+        read,
+        setRaw,
+        isTerminal
+      },
+      writer: options.writer ?? {
+        writeSync
+      },
+      pointer: options.pointer ?? brightBlue(Figures.POINTER_SMALL),
+      prefix: options.prefix ?? yellow("? "),
+      indent: options.indent ?? "",
+      keys: {
+        submit: [
+          "enter",
+          "return"
+        ],
+        ...options.keys ?? {}
+      }
+    };
+  }
+  /** Execute the prompt. */
+  async prompt() {
+    try {
+      return await this.#execute();
+    } finally {
+      this.settings.tty.cursorShow();
+    }
+  }
+  /** Clear prompt output. */
+  clear() {
+    this.settings.tty.cursorLeft.eraseDown();
+  }
+  /** Execute the prompt. */
+  #execute = async () => {
+    if (typeof _GenericPrompt.injectedValue !== "undefined" && this.#lastError) {
+      throw new Error(this.error());
+    }
+    await this.render();
+    this.#lastError = void 0;
+    if (!await this.read()) {
+      return this.#execute();
+    }
+    if (typeof this.#value === "undefined") {
+      throw new Error("internal error: failed to read value");
+    }
+    this.clear();
+    const successMessage = this.success(this.#value);
+    if (successMessage) {
+      this.settings.writer.writeSync(this.#encoder.encode(successMessage + "\n"));
+    }
+    _GenericPrompt.injectedValue = void 0;
+    this.settings.tty.cursorShow();
+    return this.#value;
+  };
+  /** Render prompt. */
+  async render() {
+    const result = await Promise.all([
+      this.message(),
+      this.body?.(),
+      this.footer()
+    ]);
+    const content = result.filter(Boolean).join("\n");
+    const lines = content.split("\n");
+    const columns = getColumns();
+    const linesCount = columns ? lines.reduce((prev, next) => {
+      const length = stripAnsiCode(next).length;
+      return prev + (length > columns ? Math.ceil(length / columns) : 1);
+    }, 0) : content.split("\n").length;
+    const y = linesCount - this.cursor.y - 1;
+    if (!this.#isFirstRun || this.#lastError) {
+      this.clear();
+    }
+    this.#isFirstRun = false;
+    this.settings.writer.writeSync(this.#encoder.encode(content));
+    if (y) {
+      this.settings.tty.cursorUp(y);
+    }
+    this.settings.tty.cursorTo(this.cursor.x);
+  }
+  /** Read user input from stdin, handle events and validate user input. */
+  async read() {
+    if (typeof _GenericPrompt.injectedValue !== "undefined") {
+      const value = _GenericPrompt.injectedValue;
+      await this.#validateValue(value);
+    } else {
+      const events = await this.#readKey();
+      if (!events.length) {
+        return false;
+      }
+      for (const event of events) {
+        await this.handleEvent(event);
+      }
+    }
+    return typeof this.#value !== "undefined";
+  }
+  submit() {
+    return this.#validateValue(this.getValue());
+  }
+  message() {
+    return `${this.settings.indent}${this.settings.prefix}` + bold(this.settings.message) + this.defaults();
+  }
+  defaults() {
+    let defaultMessage = "";
+    if (typeof this.settings.default !== "undefined" && !this.settings.hideDefault) {
+      defaultMessage += dim(` (${this.format(this.settings.default)})`);
+    }
+    return defaultMessage;
+  }
+  /** Get prompt success message. */
+  success(value) {
+    return `${this.settings.indent}${this.settings.prefix}` + bold(this.settings.message) + this.defaults() + " " + this.settings.pointer + " " + green(this.format(value));
+  }
+  footer() {
+    return this.error() ?? this.hint();
+  }
+  error() {
+    return this.#lastError ? this.settings.indent + red(bold(`${Figures.CROSS} `) + this.#lastError) : void 0;
+  }
+  hint() {
+    return this.settings.hint ? this.settings.indent + italic(brightBlue(dim(`${Figures.POINTER} `) + this.settings.hint)) : void 0;
+  }
+  setErrorMessage(message) {
+    this.#lastError = message;
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case (event.name === "c" && event.ctrl):
+        this.clear();
+        this.settings.tty.cursorShow();
+        exit(130);
+        return;
+      case this.isKey(this.settings.keys, "submit", event):
+        await this.submit();
+        break;
+    }
+  }
+  /** Read user input from stdin and pars ansi codes. */
+  #readKey = async () => {
+    const data2 = await this.#readChar();
+    return data2.length ? parse(data2) : [];
+  };
+  /** Read user input from stdin. */
+  #readChar = async () => {
+    const buffer = new Uint8Array(getRuntimeName() === "deno" ? 8 : 4096);
+    const isTty = this.settings.reader.isTerminal();
+    if (isTty) {
+      this.settings.reader.setRaw(true, {
+        cbreak: this.settings.cbreak
+      });
+    }
+    const nread = await this.settings.reader.read(buffer);
+    if (isTty) {
+      this.settings.reader.setRaw(false);
+    }
+    if (nread === null) {
+      return buffer;
+    }
+    return buffer.subarray(0, nread);
+  };
+  /**
+   * Map input value to output value. If a custom transform handler ist set, the
+   * custom handler will be executed, otherwise the default transform handler
+   * from the prompt will be executed.
+   * @param value The value to transform.
+   */
+  #transformValue = (value) => {
+    return this.settings.transform ? this.settings.transform(value) : this.transform(value);
+  };
+  /**
+   * Validate input value. Set error message if validation fails and transform
+   * output value on success.
+   * If a default value is set, the default will be used as value without any
+   * validation.
+   * If a custom validation handler ist set, the custom handler will
+   * be executed, otherwise a prompt specific default validation handler will be
+   * executed.
+   * @param value The value to validate.
+   */
+  #validateValue = async (value) => {
+    if (!value && typeof this.settings.default !== "undefined") {
+      this.#value = this.settings.default;
+      return;
+    }
+    this.#value = void 0;
+    this.#lastError = void 0;
+    const validation = await (this.settings.validate ? this.settings.validate(value) : this.validate(value));
+    if (validation === false) {
+      this.#lastError = `Invalid answer.`;
+    } else if (typeof validation === "string") {
+      this.#lastError = validation;
+    } else {
+      this.#value = this.#transformValue(value);
+    }
+  };
+  /**
+   * Check if key event has given name or sequence.
+   * @param keys  Key map.
+   * @param name  Key name.
+   * @param event Key event.
+   */
+  isKey(keys, name, event) {
+    const keyNames = keys?.[name];
+    return typeof keyNames !== "undefined" && (typeof event.name !== "undefined" && keyNames.indexOf(event.name) !== -1 || typeof event.sequence !== "undefined" && keyNames.indexOf(event.sequence) !== -1);
+  }
+};
+
+// deno:https://jsr.io/@std/path/1.0.9/_os.ts
+var isWindows = globalThis.Deno?.build.os === "windows" || globalThis.navigator?.platform?.startsWith("Win") || globalThis.process?.platform?.startsWith("win") || false;
+
+// deno:https://jsr.io/@std/path/1.0.9/_common/assert_path.ts
 function assertPath(path) {
   if (typeof path !== "string") {
     throw new TypeError(`Path must be a string, received "${JSON.stringify(path)}"`);
   }
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/_common/from_file_url.ts
-function assertArg(url) {
-  url = url instanceof URL ? url : new URL(url);
-  if (url.protocol !== "file:") {
-    throw new TypeError(`URL must be a file URL: received "${url.protocol}"`);
+// deno:https://jsr.io/@std/path/1.0.9/_common/strip_trailing_separators.ts
+function stripTrailingSeparators(segment, isSep) {
+  if (segment.length <= 1) {
+    return segment;
   }
-  return url;
+  let end = segment.length;
+  for (let i = segment.length - 1; i > 0; i--) {
+    if (isSep(segment.charCodeAt(i))) {
+      end = i;
+    } else {
+      break;
+    }
+  }
+  return segment.slice(0, end);
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/posix/from_file_url.ts
-function fromFileUrl(url) {
-  url = assertArg(url);
-  return decodeURIComponent(url.pathname.replace(/%(?![0-9A-Fa-f]{2})/g, "%25"));
-}
-
-// deno:https://jsr.io/@std/path/1.1.1/_common/constants.ts
+// deno:https://jsr.io/@std/path/1.0.9/_common/constants.ts
 var CHAR_UPPERCASE_A = 65;
 var CHAR_LOWERCASE_A = 97;
 var CHAR_UPPERCASE_Z = 90;
@@ -4773,12 +5751,15 @@ var CHAR_FORWARD_SLASH = 47;
 var CHAR_BACKWARD_SLASH = 92;
 var CHAR_COLON = 58;
 
-// deno:https://jsr.io/@std/path/1.1.1/posix/_util.ts
+// deno:https://jsr.io/@std/path/1.0.9/posix/_util.ts
 function isPosixPathSeparator(code2) {
   return code2 === CHAR_FORWARD_SLASH;
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/windows/_util.ts
+// deno:https://jsr.io/@std/path/1.0.9/windows/_util.ts
+function isPosixPathSeparator2(code2) {
+  return code2 === CHAR_FORWARD_SLASH;
+}
 function isPathSeparator(code2) {
   return code2 === CHAR_FORWARD_SLASH || code2 === CHAR_BACKWARD_SLASH;
 }
@@ -4786,24 +5767,111 @@ function isWindowsDeviceRoot(code2) {
   return code2 >= CHAR_LOWERCASE_A && code2 <= CHAR_LOWERCASE_Z || code2 >= CHAR_UPPERCASE_A && code2 <= CHAR_UPPERCASE_Z;
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/windows/from_file_url.ts
-function fromFileUrl2(url) {
-  url = assertArg(url);
-  let path = decodeURIComponent(url.pathname.replace(/\//g, "\\").replace(/%(?![0-9A-Fa-f]{2})/g, "%25")).replace(/^\\*([A-Za-z]:)(\\|$)/, "$1\\");
-  if (url.hostname !== "") {
-    path = `\\\\${url.hostname}${path}`;
-  }
-  return path;
+// deno:https://jsr.io/@std/path/1.0.9/_common/dirname.ts
+function assertArg(path) {
+  assertPath(path);
+  if (path.length === 0) return ".";
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/_common/normalize.ts
+// deno:https://jsr.io/@std/path/1.0.9/posix/dirname.ts
+function dirname(path) {
+  assertArg(path);
+  let end = -1;
+  let matchedNonSeparator = false;
+  for (let i = path.length - 1; i >= 1; --i) {
+    if (isPosixPathSeparator(path.charCodeAt(i))) {
+      if (matchedNonSeparator) {
+        end = i;
+        break;
+      }
+    } else {
+      matchedNonSeparator = true;
+    }
+  }
+  if (end === -1) {
+    return isPosixPathSeparator(path.charCodeAt(0)) ? "/" : ".";
+  }
+  return stripTrailingSeparators(path.slice(0, end), isPosixPathSeparator);
+}
+
+// deno:https://jsr.io/@std/path/1.0.9/windows/dirname.ts
+function dirname2(path) {
+  assertArg(path);
+  const len = path.length;
+  let rootEnd = -1;
+  let end = -1;
+  let matchedSlash = true;
+  let offset = 0;
+  const code2 = path.charCodeAt(0);
+  if (len > 1) {
+    if (isPathSeparator(code2)) {
+      rootEnd = offset = 1;
+      if (isPathSeparator(path.charCodeAt(1))) {
+        let j = 2;
+        let last = j;
+        for (; j < len; ++j) {
+          if (isPathSeparator(path.charCodeAt(j))) break;
+        }
+        if (j < len && j !== last) {
+          last = j;
+          for (; j < len; ++j) {
+            if (!isPathSeparator(path.charCodeAt(j))) break;
+          }
+          if (j < len && j !== last) {
+            last = j;
+            for (; j < len; ++j) {
+              if (isPathSeparator(path.charCodeAt(j))) break;
+            }
+            if (j === len) {
+              return path;
+            }
+            if (j !== last) {
+              rootEnd = offset = j + 1;
+            }
+          }
+        }
+      }
+    } else if (isWindowsDeviceRoot(code2)) {
+      if (path.charCodeAt(1) === CHAR_COLON) {
+        rootEnd = offset = 2;
+        if (len > 2) {
+          if (isPathSeparator(path.charCodeAt(2))) rootEnd = offset = 3;
+        }
+      }
+    }
+  } else if (isPathSeparator(code2)) {
+    return path;
+  }
+  for (let i = len - 1; i >= offset; --i) {
+    if (isPathSeparator(path.charCodeAt(i))) {
+      if (!matchedSlash) {
+        end = i;
+        break;
+      }
+    } else {
+      matchedSlash = false;
+    }
+  }
+  if (end === -1) {
+    if (rootEnd === -1) return ".";
+    else end = rootEnd;
+  }
+  return stripTrailingSeparators(path.slice(0, end), isPosixPathSeparator2);
+}
+
+// deno:https://jsr.io/@std/path/1.0.9/dirname.ts
+function dirname3(path) {
+  return isWindows ? dirname2(path) : dirname(path);
+}
+
+// deno:https://jsr.io/@std/path/1.0.9/_common/normalize.ts
 function assertArg4(path) {
   assertPath(path);
   if (path.length === 0) return ".";
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/_common/normalize_string.ts
-function normalizeString(path, allowAboveRoot, separator, isPathSeparator2) {
+// deno:https://jsr.io/@std/path/1.0.9/_common/normalize_string.ts
+function normalizeString(path, allowAboveRoot, separator, isPathSeparator3) {
   let res = "";
   let lastSegmentLength = 0;
   let lastSlash = -1;
@@ -4811,9 +5879,9 @@ function normalizeString(path, allowAboveRoot, separator, isPathSeparator2) {
   let code2;
   for (let i = 0; i <= path.length; ++i) {
     if (i < path.length) code2 = path.charCodeAt(i);
-    else if (isPathSeparator2(code2)) break;
+    else if (isPathSeparator3(code2)) break;
     else code2 = CHAR_FORWARD_SLASH;
-    if (isPathSeparator2(code2)) {
+    if (isPathSeparator3(code2)) {
       if (lastSlash === i - 1 || dots === 1) {
       } else if (lastSlash !== i - 1 && dots === 2) {
         if (res.length < 2 || lastSegmentLength !== 2 || res.charCodeAt(res.length - 1) !== CHAR_DOT || res.charCodeAt(res.length - 2) !== CHAR_DOT) {
@@ -4858,50 +5926,37 @@ function normalizeString(path, allowAboveRoot, separator, isPathSeparator2) {
   return res;
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/posix/normalize.ts
+// deno:https://jsr.io/@std/path/1.0.9/posix/normalize.ts
 function normalize(path) {
-  if (path instanceof URL) {
-    path = fromFileUrl(path);
-  }
   assertArg4(path);
-  const isAbsolute3 = isPosixPathSeparator(path.charCodeAt(0));
+  const isAbsolute5 = isPosixPathSeparator(path.charCodeAt(0));
   const trailingSeparator = isPosixPathSeparator(path.charCodeAt(path.length - 1));
-  path = normalizeString(path, !isAbsolute3, "/", isPosixPathSeparator);
-  if (path.length === 0 && !isAbsolute3) path = ".";
+  path = normalizeString(path, !isAbsolute5, "/", isPosixPathSeparator);
+  if (path.length === 0 && !isAbsolute5) path = ".";
   if (path.length > 0 && trailingSeparator) path += "/";
-  if (isAbsolute3) return `/${path}`;
+  if (isAbsolute5) return `/${path}`;
   return path;
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/posix/join.ts
-function join(path, ...paths) {
-  if (path === void 0) return ".";
-  if (path instanceof URL) {
-    path = fromFileUrl(path);
-  }
-  paths = path ? [
-    path,
-    ...paths
-  ] : paths;
-  paths.forEach((path2) => assertPath(path2));
-  const joined = paths.filter((path2) => path2.length > 0).join("/");
+// deno:https://jsr.io/@std/path/1.0.9/posix/join.ts
+function join(...paths) {
+  if (paths.length === 0) return ".";
+  paths.forEach((path) => assertPath(path));
+  const joined = paths.filter((path) => path.length > 0).join("/");
   return joined === "" ? "." : normalize(joined);
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/windows/normalize.ts
+// deno:https://jsr.io/@std/path/1.0.9/windows/normalize.ts
 function normalize2(path) {
-  if (path instanceof URL) {
-    path = fromFileUrl2(path);
-  }
   assertArg4(path);
   const len = path.length;
   let rootEnd = 0;
   let device;
-  let isAbsolute3 = false;
+  let isAbsolute5 = false;
   const code2 = path.charCodeAt(0);
   if (len > 1) {
     if (isPathSeparator(code2)) {
-      isAbsolute3 = true;
+      isAbsolute5 = true;
       if (isPathSeparator(path.charCodeAt(1))) {
         let j = 2;
         let last = j;
@@ -4936,7 +5991,7 @@ function normalize2(path) {
         rootEnd = 2;
         if (len > 2) {
           if (isPathSeparator(path.charCodeAt(2))) {
-            isAbsolute3 = true;
+            isAbsolute5 = true;
             rootEnd = 3;
           }
         }
@@ -4947,38 +6002,31 @@ function normalize2(path) {
   }
   let tail;
   if (rootEnd < len) {
-    tail = normalizeString(path.slice(rootEnd), !isAbsolute3, "\\", isPathSeparator);
+    tail = normalizeString(path.slice(rootEnd), !isAbsolute5, "\\", isPathSeparator);
   } else {
     tail = "";
   }
-  if (tail.length === 0 && !isAbsolute3) tail = ".";
+  if (tail.length === 0 && !isAbsolute5) tail = ".";
   if (tail.length > 0 && isPathSeparator(path.charCodeAt(len - 1))) {
     tail += "\\";
   }
   if (device === void 0) {
-    if (isAbsolute3) {
+    if (isAbsolute5) {
       if (tail.length > 0) return `\\${tail}`;
       else return "\\";
     }
     return tail;
-  } else if (isAbsolute3) {
+  } else if (isAbsolute5) {
     if (tail.length > 0) return `${device}\\${tail}`;
     else return `${device}\\`;
   }
   return device + tail;
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/windows/join.ts
-function join2(path, ...paths) {
-  if (path instanceof URL) {
-    path = fromFileUrl2(path);
-  }
-  paths = path ? [
-    path,
-    ...paths
-  ] : paths;
-  paths.forEach((path2) => assertPath(path2));
-  paths = paths.filter((path2) => path2.length > 0);
+// deno:https://jsr.io/@std/path/1.0.9/windows/join.ts
+function join2(...paths) {
+  paths.forEach((path) => assertPath(path));
+  paths = paths.filter((path) => path.length > 0);
   if (paths.length === 0) return ".";
   let needsReplace = true;
   let slashCount = 0;
@@ -5008,33 +6056,628 @@ function join2(path, ...paths) {
   return normalize2(joined);
 }
 
-// deno:https://jsr.io/@std/path/1.1.1/join.ts
-function join3(path, ...paths) {
-  return isWindows ? join2(path, ...paths) : join(path, ...paths);
+// deno:https://jsr.io/@std/path/1.0.9/join.ts
+function join3(...paths) {
+  return isWindows ? join2(...paths) : join(...paths);
 }
 
-// libs/concurrent.ts
-async function processConcurrently(items, processor, concurrency = 2) {
-  if (items.length === 0) {
-    return Result2.ok();
+// deno:https://jsr.io/@std/path/1.0.9/normalize.ts
+function normalize3(path) {
+  return isWindows ? normalize2(path) : normalize(path);
+}
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_generic_input.ts
+var GenericInput = class extends GenericPrompt {
+  inputValue = "";
+  inputIndex = 0;
+  getDefaultSettings(options) {
+    const settings = super.getDefaultSettings(options);
+    return {
+      ...settings,
+      keys: {
+        moveCursorLeft: [
+          "left"
+        ],
+        moveCursorRight: [
+          "right"
+        ],
+        deleteCharLeft: [
+          "backspace"
+        ],
+        deleteCharRight: [
+          "delete"
+        ],
+        ...settings.keys ?? {}
+      }
+    };
   }
-  const batches = [];
-  for (let i = 0; i < items.length; i += concurrency) {
-    batches.push(items.slice(i, i + concurrency));
+  getCurrentInputValue() {
+    return this.inputValue;
   }
-  for (const batch of batches) {
-    const promises = batch.map((item) => processor(item));
-    const results = await Promise.all(promises);
-    for (const result of results) {
-      if (!result.ok) {
-        return result;
+  message() {
+    const message = super.message() + " " + this.settings.pointer + " ";
+    this.cursor.x = stripAnsiCode(message).length + this.inputIndex + 1;
+    return message + this.input();
+  }
+  input() {
+    return underline(this.inputValue);
+  }
+  highlight(value, color1 = dim, color2 = brightBlue) {
+    value = value.toString();
+    const inputLowerCase = this.getCurrentInputValue().toLowerCase();
+    const valueLowerCase = value.toLowerCase();
+    const index = valueLowerCase.indexOf(inputLowerCase);
+    const matched = value.slice(index, index + inputLowerCase.length);
+    return index >= 0 ? color1(value.slice(0, index)) + color2(matched) + color1(value.slice(index + inputLowerCase.length)) : value;
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case this.isKey(this.settings.keys, "moveCursorLeft", event):
+        this.moveCursorLeft();
+        break;
+      case this.isKey(this.settings.keys, "moveCursorRight", event):
+        this.moveCursorRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharRight", event):
+        this.deleteCharRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharLeft", event):
+        this.deleteChar();
+        break;
+      case (event.char && !event.meta && !event.ctrl):
+        this.addChar(event.char);
+        break;
+      default:
+        await super.handleEvent(event);
+    }
+  }
+  /** Add character to current input. */
+  addChar(char) {
+    this.inputValue = this.inputValue.slice(0, this.inputIndex) + char + this.inputValue.slice(this.inputIndex);
+    this.inputIndex++;
+  }
+  /** Move prompt cursor left. */
+  moveCursorLeft() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+    }
+  }
+  /** Move prompt cursor right. */
+  moveCursorRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputIndex++;
+    }
+  }
+  /** Delete char left. */
+  deleteChar() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+      this.deleteCharRight();
+    }
+  }
+  /** Delete char right. */
+  deleteCharRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputValue = this.inputValue.slice(0, this.inputIndex) + this.inputValue.slice(this.inputIndex + 1);
+    }
+  }
+};
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/stat.ts
+async function stat(input) {
+  const { Deno: Deno4 } = globalThis;
+  if (Deno4) {
+    return Deno4.stat(input);
+  }
+  const { statSync } = await import("node:fs");
+  const stats = statSync(input);
+  return {
+    get isDirectory() {
+      return stats.isDirectory();
+    }
+  };
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/is_directory.ts
+async function isDirectory(path) {
+  try {
+    const { isDirectory: isDirectory2 } = await stat(path);
+    return isDirectory2;
+  } catch {
+    return false;
+  }
+}
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/read_dir.ts
+async function readDir(path) {
+  const { Deno: Deno4 } = globalThis;
+  path ||= ".";
+  if (Deno4) {
+    const array = [];
+    for await (const item of Deno4.readDir(path)) {
+      array.push(item);
+    }
+    return array;
+  }
+  const fs = await import("node:fs");
+  return new Promise((resolve5, reject) => {
+    fs.readdir(path, (err, files) => err ? reject(err) : resolve5(files.map((name) => ({
+      name
+    }))));
+  });
+}
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_generic_suggestions.ts
+var sep = getOs() === "windows" ? "\\" : "/";
+var GenericSuggestions = class extends GenericInput {
+  suggestionsIndex = -1;
+  suggestionsOffset = 0;
+  suggestions = [];
+  #envPermissions = {};
+  #hasReadPermissions;
+  getDefaultSettings(options) {
+    const settings = super.getDefaultSettings(options);
+    return {
+      ...settings,
+      listPointer: options.listPointer ?? brightBlue(Figures.POINTER),
+      maxRows: options.maxRows ?? 8,
+      keys: {
+        complete: [
+          "tab"
+        ],
+        next: [
+          "up"
+        ],
+        previous: [
+          "down"
+        ],
+        nextPage: [
+          "pageup"
+        ],
+        previousPage: [
+          "pagedown"
+        ],
+        ...settings.keys ?? {}
+      }
+    };
+  }
+  get localStorage() {
+    if (this.settings.id && "localStorage" in window) {
+      try {
+        return window.localStorage;
+      } catch (_) {
+      }
+    }
+    return null;
+  }
+  loadSuggestions() {
+    if (this.settings.id) {
+      const json = this.localStorage?.getItem(this.settings.id);
+      const suggestions = json ? JSON.parse(json) : [];
+      if (!Array.isArray(suggestions)) {
+        return [];
+      }
+      return suggestions;
+    }
+    return [];
+  }
+  saveSuggestions(...suggestions) {
+    if (this.settings.id) {
+      this.localStorage?.setItem(this.settings.id, JSON.stringify([
+        ...suggestions,
+        ...this.loadSuggestions()
+      ].filter(uniqueSuggestions)));
+    }
+  }
+  async render() {
+    if (this.settings.files && this.#hasReadPermissions === void 0) {
+      const status = await globalThis.Deno?.permissions.request({
+        name: "read"
+      });
+      this.#hasReadPermissions = !status || status.state === "granted";
+    }
+    if (this.#isFileModeEnabled()) {
+      await this.#expandInputValue(this.inputValue);
+    }
+    await this.match();
+    return super.render();
+  }
+  async match() {
+    this.suggestions = await this.getSuggestions();
+    this.suggestionsIndex = Math.max(this.getCurrentInputValue().trim().length === 0 ? -1 : 0, Math.min(this.suggestions.length - 1, this.suggestionsIndex));
+    this.suggestionsOffset = Math.max(0, Math.min(this.suggestions.length - this.getListHeight(), this.suggestionsOffset));
+  }
+  input() {
+    return super.input() + dim(this.getSuggestion());
+  }
+  getSuggestion() {
+    return this.suggestions[this.suggestionsIndex]?.toString().substr(this.getCurrentInputValue().length) ?? "";
+  }
+  async getUserSuggestions(input) {
+    return typeof this.settings.suggestions === "function" ? await this.settings.suggestions(input) : this.settings.suggestions ?? [];
+  }
+  #isFileModeEnabled() {
+    return !!this.settings.files && this.#hasReadPermissions === true;
+  }
+  async getFileSuggestions(input) {
+    if (!this.#isFileModeEnabled()) {
+      return [];
+    }
+    const path = await stat(input).then((file) => file.isDirectory ? input : dirname3(input)).catch(() => dirname3(input));
+    try {
+      return await listDir(path, this.settings.files);
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound || error instanceof Deno.errors.PermissionDenied) {
+        this.setErrorMessage(error.message);
+        return [];
+      }
+      throw error;
+    }
+  }
+  async getSuggestions() {
+    const input = this.getCurrentInputValue();
+    const suggestions = [
+      ...this.loadSuggestions(),
+      ...await this.getUserSuggestions(input),
+      ...await this.getFileSuggestions(input)
+    ].filter(uniqueSuggestions);
+    if (!input.length) {
+      return suggestions;
+    }
+    return suggestions.filter((value) => stripAnsiCode(value.toString()).toLowerCase().startsWith(input.toLowerCase())).sort((a, b) => levenshteinDistance((a || a).toString(), input) - levenshteinDistance((b || b).toString(), input));
+  }
+  body() {
+    return this.getList() + this.getInfo();
+  }
+  getInfo() {
+    if (!this.settings.info) {
+      return "";
+    }
+    const selected = this.suggestionsIndex + 1;
+    const matched = this.suggestions.length;
+    const actions = [];
+    if (this.suggestions.length) {
+      if (this.settings.list) {
+        actions.push([
+          "Next",
+          getFiguresByKeys(this.settings.keys?.next ?? [])
+        ], [
+          "Previous",
+          getFiguresByKeys(this.settings.keys?.previous ?? [])
+        ], [
+          "Next Page",
+          getFiguresByKeys(this.settings.keys?.nextPage ?? [])
+        ], [
+          "Previous Page",
+          getFiguresByKeys(this.settings.keys?.previousPage ?? [])
+        ]);
+      } else {
+        actions.push([
+          "Next",
+          getFiguresByKeys(this.settings.keys?.next ?? [])
+        ], [
+          "Previous",
+          getFiguresByKeys(this.settings.keys?.previous ?? [])
+        ]);
+      }
+      actions.push([
+        "Complete",
+        getFiguresByKeys(this.settings.keys?.complete ?? [])
+      ]);
+    }
+    actions.push([
+      "Submit",
+      getFiguresByKeys(this.settings.keys?.submit ?? [])
+    ]);
+    let info = this.settings.indent;
+    if (this.suggestions.length) {
+      info += brightBlue(Figures.INFO) + bold(` ${selected}/${matched} `);
+    }
+    info += actions.map((cur) => `${cur[0]}: ${bold(cur[1].join(" "))}`).join(", ");
+    return info;
+  }
+  getList() {
+    if (!this.suggestions.length || !this.settings.list) {
+      return "";
+    }
+    const list = [];
+    const height = this.getListHeight();
+    for (let i = this.suggestionsOffset; i < this.suggestionsOffset + height; i++) {
+      list.push(this.getListItem(this.suggestions[i], this.suggestionsIndex === i));
+    }
+    if (list.length && this.settings.info) {
+      list.push("");
+    }
+    return list.join("\n");
+  }
+  /**
+   * Render option.
+   * @param value        Option.
+   * @param isSelected  Set to true if option is selected.
+   */
+  getListItem(value, isSelected) {
+    let line = this.settings.indent ?? "";
+    line += isSelected ? `${this.settings.listPointer} ` : "  ";
+    if (isSelected) {
+      line += underline(this.highlight(value));
+    } else {
+      line += this.highlight(value);
+    }
+    return line;
+  }
+  /** Get suggestions row height. */
+  getListHeight(suggestions = this.suggestions) {
+    return Math.min(suggestions.length, this.settings.maxRows || suggestions.length);
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case this.isKey(this.settings.keys, "next", event):
+        if (this.settings.list) {
+          this.selectPreviousSuggestion();
+        } else {
+          this.selectNextSuggestion();
+        }
+        break;
+      case this.isKey(this.settings.keys, "previous", event):
+        if (this.settings.list) {
+          this.selectNextSuggestion();
+        } else {
+          this.selectPreviousSuggestion();
+        }
+        break;
+      case this.isKey(this.settings.keys, "nextPage", event):
+        if (this.settings.list) {
+          this.selectPreviousSuggestionsPage();
+        } else {
+          this.selectNextSuggestionsPage();
+        }
+        break;
+      case this.isKey(this.settings.keys, "previousPage", event):
+        if (this.settings.list) {
+          this.selectNextSuggestionsPage();
+        } else {
+          this.selectPreviousSuggestionsPage();
+        }
+        break;
+      case this.isKey(this.settings.keys, "complete", event):
+        await this.#completeValue();
+        break;
+      case this.isKey(this.settings.keys, "moveCursorRight", event):
+        if (this.inputIndex < this.inputValue.length) {
+          this.moveCursorRight();
+        } else {
+          await this.#completeValue();
+        }
+        break;
+      default:
+        await super.handleEvent(event);
+    }
+  }
+  /** Delete char right. */
+  deleteCharRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      super.deleteCharRight();
+      if (!this.getCurrentInputValue().length) {
+        this.suggestionsIndex = -1;
+        this.suggestionsOffset = 0;
       }
     }
   }
-  return Result2.ok();
+  async #completeValue() {
+    const inputValue = await this.complete();
+    this.setInputValue(inputValue);
+  }
+  setInputValue(inputValue) {
+    this.inputValue = inputValue;
+    this.inputIndex = this.inputValue.length;
+    this.suggestionsIndex = 0;
+    this.suggestionsOffset = 0;
+  }
+  async complete() {
+    let input = this.getCurrentInputValue();
+    const suggestion = this.suggestions[this.suggestionsIndex]?.toString();
+    if (this.settings.complete) {
+      input = await this.settings.complete(input, suggestion);
+    } else if (this.#isFileModeEnabled() && input.at(-1) !== sep && await isDirectory(input) && (this.getCurrentInputValue().at(-1) !== "." || this.getCurrentInputValue().endsWith(".."))) {
+      input += sep;
+    } else if (suggestion) {
+      input = suggestion;
+    }
+    return this.#isFileModeEnabled() ? normalize3(input) : input;
+  }
+  /** Select previous suggestion. */
+  selectPreviousSuggestion() {
+    if (this.suggestions.length) {
+      if (this.suggestionsIndex > -1) {
+        this.suggestionsIndex--;
+        if (this.suggestionsIndex < this.suggestionsOffset) {
+          this.suggestionsOffset--;
+        }
+      }
+    }
+  }
+  /** Select next suggestion. */
+  selectNextSuggestion() {
+    if (this.suggestions.length) {
+      if (this.suggestionsIndex < this.suggestions.length - 1) {
+        this.suggestionsIndex++;
+        if (this.suggestionsIndex >= this.suggestionsOffset + this.getListHeight()) {
+          this.suggestionsOffset++;
+        }
+      }
+    }
+  }
+  /** Select previous suggestions page. */
+  selectPreviousSuggestionsPage() {
+    if (this.suggestions.length) {
+      const height = this.getListHeight();
+      if (this.suggestionsOffset >= height) {
+        this.suggestionsIndex -= height;
+        this.suggestionsOffset -= height;
+      } else if (this.suggestionsOffset > 0) {
+        this.suggestionsIndex -= this.suggestionsOffset;
+        this.suggestionsOffset = 0;
+      }
+    }
+  }
+  /** Select next suggestions page. */
+  selectNextSuggestionsPage() {
+    if (this.suggestions.length) {
+      const height = this.getListHeight();
+      if (this.suggestionsOffset + height + height < this.suggestions.length) {
+        this.suggestionsIndex += height;
+        this.suggestionsOffset += height;
+      } else if (this.suggestionsOffset + height < this.suggestions.length) {
+        const offset = this.suggestions.length - height;
+        this.suggestionsIndex += offset - this.suggestionsOffset;
+        this.suggestionsOffset = offset;
+      }
+    }
+  }
+  async #expandInputValue(path) {
+    if (!path.startsWith("~")) {
+      return;
+    }
+    const envVar = getHomeDirEnvVar();
+    const hasEnvPermissions = await this.#hasEnvPermissions(envVar);
+    if (!hasEnvPermissions) {
+      return;
+    }
+    const homeDir = getHomeDir();
+    if (homeDir) {
+      path = path.replace("~", homeDir);
+      this.setInputValue(path);
+    }
+  }
+  async #hasEnvPermissions(variable) {
+    if (this.#envPermissions[variable]) {
+      return this.#envPermissions[variable];
+    }
+    const desc = {
+      name: "env",
+      variable
+    };
+    const currentStatus = await Deno.permissions.query(desc);
+    this.#envPermissions[variable] = currentStatus.state === "granted";
+    if (!this.#envPermissions[variable]) {
+      this.clear();
+      const newStatus = await Deno.permissions.request(desc);
+      this.#envPermissions[variable] = newStatus.state === "granted";
+    }
+    return this.#envPermissions[variable];
+  }
+};
+function uniqueSuggestions(value, index, self) {
+  return typeof value !== "undefined" && value !== "" && self.indexOf(value) === index;
+}
+async function listDir(path, mode) {
+  const fileNames = [];
+  for (const file of await readDir(path)) {
+    if (mode === true && (file.name.startsWith(".") || file.name.endsWith("~"))) {
+      continue;
+    }
+    const filePath = join3(path, file.name);
+    if (mode instanceof RegExp && !mode.test(filePath)) {
+      continue;
+    }
+    fileNames.push(filePath);
+  }
+  return fileNames.sort(function(a, b) {
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+  });
+}
+function getHomeDirEnvVar() {
+  return Deno.build.os === "windows" ? "USERPROFILE" : "HOME";
+}
+function getHomeDir() {
+  return Deno.env.get(getHomeDirEnvVar());
 }
 
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/input.ts
+var Input = class extends GenericSuggestions {
+  settings;
+  /** Execute the prompt with provided options. */
+  static prompt(options) {
+    return new this(options).prompt();
+  }
+  /**
+   * Inject prompt value. If called, the prompt doesn't prompt for an input and
+   * returns immediately the injected value. Can be used for unit tests or pre
+   * selections.
+   *
+   * @param value Input value.
+   */
+  static inject(value) {
+    GenericPrompt.inject(value);
+  }
+  constructor(options) {
+    super();
+    if (typeof options === "string") {
+      options = {
+        message: options
+      };
+    }
+    this.settings = this.getDefaultSettings(options);
+  }
+  getDefaultSettings(options) {
+    return {
+      ...super.getDefaultSettings(options),
+      minLength: options.minLength ?? 0,
+      maxLength: options.maxLength ?? Infinity
+    };
+  }
+  success(value) {
+    this.saveSuggestions(value);
+    return super.success(value);
+  }
+  /** Get input value. */
+  getValue() {
+    return this.settings.files && this.inputValue ? normalize3(this.inputValue) : this.inputValue;
+  }
+  /**
+   * Validate input value.
+   * @param value User input value.
+   * @return True on success, false or error message on error.
+   */
+  validate(value) {
+    if (typeof value !== "string") {
+      return false;
+    }
+    if (value.length < this.settings.minLength) {
+      return `Value must be longer than ${this.settings.minLength} but has a length of ${value.length}.`;
+    }
+    if (value.length > this.settings.maxLength) {
+      return `Value can't be longer than ${this.settings.maxLength} but has a length of ${value.length}.`;
+    }
+    return true;
+  }
+  /**
+   * Map input value to output value.
+   * @param value Input value.
+   * @return Output value.
+   */
+  transform(value) {
+    return value.trim();
+  }
+  /**
+   * Format output value.
+   * @param value Output value.
+   */
+  format(value) {
+    return value;
+  }
+};
+
 // deno:https://jsr.io/@std/yaml/1.0.9/_chars.ts
+var BOM = 65279;
 var TAB = 9;
 var LINE_FEED = 10;
 var CARRIAGE_RETURN = 13;
@@ -6922,7 +8565,7 @@ function sanitizeInput(input) {
   input += "\0";
   return input;
 }
-function parse3(content, options = {}) {
+function parse4(content, options = {}) {
   content = sanitizeInput(content);
   const state = new LoaderState(content, {
     ...options,
@@ -6934,6 +8577,563 @@ function parse3(content, options = {}) {
     throw new SyntaxError("Found more than 1 document in the stream: expected a single document");
   }
   return document ?? null;
+}
+
+// deno:https://jsr.io/@std/yaml/1.0.9/_dumper_state.ts
+var STYLE_PLAIN = 1;
+var STYLE_SINGLE = 2;
+var STYLE_LITERAL = 3;
+var STYLE_FOLDED = 4;
+var STYLE_DOUBLE = 5;
+var LEADING_SPACE_REGEXP = /^\n* /;
+var ESCAPE_SEQUENCES = /* @__PURE__ */ new Map([
+  [
+    0,
+    "\\0"
+  ],
+  [
+    7,
+    "\\a"
+  ],
+  [
+    8,
+    "\\b"
+  ],
+  [
+    9,
+    "\\t"
+  ],
+  [
+    10,
+    "\\n"
+  ],
+  [
+    11,
+    "\\v"
+  ],
+  [
+    12,
+    "\\f"
+  ],
+  [
+    13,
+    "\\r"
+  ],
+  [
+    27,
+    "\\e"
+  ],
+  [
+    34,
+    '\\"'
+  ],
+  [
+    92,
+    "\\\\"
+  ],
+  [
+    133,
+    "\\N"
+  ],
+  [
+    160,
+    "\\_"
+  ],
+  [
+    8232,
+    "\\L"
+  ],
+  [
+    8233,
+    "\\P"
+  ]
+]);
+var DEPRECATED_BOOLEANS_SYNTAX = [
+  "y",
+  "Y",
+  "yes",
+  "Yes",
+  "YES",
+  "on",
+  "On",
+  "ON",
+  "n",
+  "N",
+  "no",
+  "No",
+  "NO",
+  "off",
+  "Off",
+  "OFF"
+];
+function charCodeToHexString(charCode) {
+  const hexString = charCode.toString(16).toUpperCase();
+  if (charCode <= 255) return `\\x${hexString.padStart(2, "0")}`;
+  if (charCode <= 65535) return `\\u${hexString.padStart(4, "0")}`;
+  if (charCode <= 4294967295) return `\\U${hexString.padStart(8, "0")}`;
+  throw new Error("Code point within a string may not be greater than 0xFFFFFFFF");
+}
+function createStyleMap(map2) {
+  const result = /* @__PURE__ */ new Map();
+  for (let tag of Object.keys(map2)) {
+    const style = String(map2[tag]);
+    if (tag.slice(0, 2) === "!!") {
+      tag = `tag:yaml.org,2002:${tag.slice(2)}`;
+    }
+    result.set(tag, style);
+  }
+  return result;
+}
+function indentString(string2, spaces) {
+  const indent = " ".repeat(spaces);
+  return string2.split("\n").map((line) => line.length ? indent + line : line).join("\n");
+}
+function generateNextLine(indent, level) {
+  return `
+${" ".repeat(indent * level)}`;
+}
+function isPrintable(c) {
+  return 32 <= c && c <= 126 || 161 <= c && c <= 55295 && c !== 8232 && c !== 8233 || 57344 <= c && c <= 65533 && c !== BOM || 65536 <= c && c <= 1114111;
+}
+function isPlainSafe(c) {
+  return isPrintable(c) && c !== BOM && c !== COMMA && c !== LEFT_SQUARE_BRACKET && c !== RIGHT_SQUARE_BRACKET && c !== LEFT_CURLY_BRACKET && c !== RIGHT_CURLY_BRACKET && c !== COLON && c !== SHARP;
+}
+function isPlainSafeFirst(c) {
+  return isPlainSafe(c) && !isWhiteSpace(c) && c !== MINUS && c !== QUESTION && c !== AMPERSAND && c !== ASTERISK && c !== EXCLAMATION && c !== VERTICAL_LINE && c !== GREATER_THAN && c !== SINGLE_QUOTE && c !== DOUBLE_QUOTE && c !== PERCENT && c !== COMMERCIAL_AT && c !== GRAVE_ACCENT;
+}
+function needIndentIndicator(string2) {
+  return LEADING_SPACE_REGEXP.test(string2);
+}
+function chooseScalarStyle(string2, singleLineOnly, indentPerLevel, lineWidth, implicitTypes, quoteStyle) {
+  const shouldTrackWidth = lineWidth !== -1;
+  let hasLineBreak = false;
+  let hasFoldableLine = false;
+  let previousLineBreak = -1;
+  let plain = isPlainSafeFirst(string2.charCodeAt(0)) && !isWhiteSpace(string2.charCodeAt(string2.length - 1));
+  let char;
+  let i;
+  if (singleLineOnly) {
+    for (i = 0; i < string2.length; i++) {
+      char = string2.charCodeAt(i);
+      if (!isPrintable(char)) {
+        return STYLE_DOUBLE;
+      }
+      plain = plain && isPlainSafe(char);
+    }
+  } else {
+    for (i = 0; i < string2.length; i++) {
+      char = string2.charCodeAt(i);
+      if (char === LINE_FEED) {
+        hasLineBreak = true;
+        if (shouldTrackWidth) {
+          hasFoldableLine = hasFoldableLine || // Foldable line = too long, and not more-indented.
+          i - previousLineBreak - 1 > lineWidth && string2[previousLineBreak + 1] !== " ";
+          previousLineBreak = i;
+        }
+      } else if (!isPrintable(char)) {
+        return STYLE_DOUBLE;
+      }
+      plain = plain && isPlainSafe(char);
+    }
+    hasFoldableLine = hasFoldableLine || shouldTrackWidth && i - previousLineBreak - 1 > lineWidth && string2[previousLineBreak + 1] !== " ";
+  }
+  if (!hasLineBreak && !hasFoldableLine) {
+    return plain && !implicitTypes.some((type) => type.resolve(string2)) ? STYLE_PLAIN : quoteStyle === "'" ? STYLE_SINGLE : STYLE_DOUBLE;
+  }
+  if (indentPerLevel > 9 && needIndentIndicator(string2)) {
+    return STYLE_DOUBLE;
+  }
+  return hasFoldableLine ? STYLE_FOLDED : STYLE_LITERAL;
+}
+function foldLine(line, width) {
+  if (line === "" || line[0] === " ") return line;
+  const breakRegExp = / [^ ]/g;
+  let start = 0;
+  let end;
+  let curr = 0;
+  let next = 0;
+  const lines = [];
+  for (const match of line.matchAll(breakRegExp)) {
+    next = match.index;
+    if (next - start > width) {
+      end = curr > start ? curr : next;
+      lines.push(line.slice(start, end));
+      start = end + 1;
+    }
+    curr = next;
+  }
+  if (line.length - start > width && curr > start) {
+    lines.push(line.slice(start, curr));
+    lines.push(line.slice(curr + 1));
+  } else {
+    lines.push(line.slice(start));
+  }
+  return lines.join("\n");
+}
+function trimTrailingNewline(string2) {
+  return string2.at(-1) === "\n" ? string2.slice(0, -1) : string2;
+}
+function foldString(string2, width) {
+  const lineRe = /(\n+)([^\n]*)/g;
+  let result = (() => {
+    let nextLF = string2.indexOf("\n");
+    nextLF = nextLF !== -1 ? nextLF : string2.length;
+    lineRe.lastIndex = nextLF;
+    return foldLine(string2.slice(0, nextLF), width);
+  })();
+  let prevMoreIndented = string2[0] === "\n" || string2[0] === " ";
+  let moreIndented;
+  let match;
+  while (match = lineRe.exec(string2)) {
+    const prefix = match[1];
+    const line = match[2] || "";
+    moreIndented = line[0] === " ";
+    result += prefix + (!prevMoreIndented && !moreIndented && line !== "" ? "\n" : "") + foldLine(line, width);
+    prevMoreIndented = moreIndented;
+  }
+  return result;
+}
+function escapeString(string2) {
+  let result = "";
+  let char;
+  let nextChar;
+  let escapeSeq;
+  for (let i = 0; i < string2.length; i++) {
+    char = string2.charCodeAt(i);
+    if (char >= 55296 && char <= 56319) {
+      nextChar = string2.charCodeAt(i + 1);
+      if (nextChar >= 56320 && nextChar <= 57343) {
+        result += charCodeToHexString((char - 55296) * 1024 + nextChar - 56320 + 65536);
+        i++;
+        continue;
+      }
+    }
+    escapeSeq = ESCAPE_SEQUENCES.get(char);
+    result += !escapeSeq && isPrintable(char) ? string2[i] : escapeSeq || charCodeToHexString(char);
+  }
+  return result;
+}
+function blockHeader(string2, indentPerLevel) {
+  const indentIndicator = needIndentIndicator(string2) ? String(indentPerLevel) : "";
+  const clip = string2[string2.length - 1] === "\n";
+  const keep = clip && (string2[string2.length - 2] === "\n" || string2 === "\n");
+  const chomp = keep ? "+" : clip ? "" : "-";
+  return `${indentIndicator}${chomp}
+`;
+}
+function inspectNode(object, objects, duplicateObjects) {
+  if (!isObject(object)) return;
+  if (objects.has(object)) {
+    duplicateObjects.add(object);
+    return;
+  }
+  objects.add(object);
+  const entries = Array.isArray(object) ? object : Object.values(object);
+  for (const value of entries) {
+    inspectNode(value, objects, duplicateObjects);
+  }
+}
+var DumperState = class {
+  indent;
+  arrayIndent;
+  skipInvalid;
+  flowLevel;
+  sortKeys;
+  lineWidth;
+  useAnchors;
+  compatMode;
+  condenseFlow;
+  implicitTypes;
+  explicitTypes;
+  duplicates = [];
+  usedDuplicates = /* @__PURE__ */ new Set();
+  styleMap = /* @__PURE__ */ new Map();
+  quoteStyle;
+  constructor({ schema = DEFAULT_SCHEMA, indent = 2, arrayIndent = true, skipInvalid = false, flowLevel = -1, styles = void 0, sortKeys = false, lineWidth = 80, useAnchors = true, compatMode = true, condenseFlow = false, quoteStyle = "'" }) {
+    this.indent = Math.max(1, indent);
+    this.arrayIndent = arrayIndent;
+    this.skipInvalid = skipInvalid;
+    this.flowLevel = flowLevel;
+    if (styles) this.styleMap = createStyleMap(styles);
+    this.sortKeys = sortKeys;
+    this.lineWidth = lineWidth;
+    this.useAnchors = useAnchors;
+    this.compatMode = compatMode;
+    this.condenseFlow = condenseFlow;
+    this.implicitTypes = schema.implicitTypes;
+    this.explicitTypes = schema.explicitTypes;
+    this.quoteStyle = quoteStyle;
+  }
+  // Note: line breaking/folding is implemented for only the folded style.
+  // NB. We drop the last trailing newline (if any) of a returned block scalar
+  //  since the dumper adds its own newline. This always works:
+  //    • No ending newline => unaffected; already using strip "-" chomping.
+  //    • Ending newline    => removed then restored.
+  //  Importantly, this keeps the "+" chomp indicator from gaining an extra line.
+  stringifyScalar(string2, { level, isKey }) {
+    if (string2.length === 0) {
+      return "''";
+    }
+    if (this.compatMode && DEPRECATED_BOOLEANS_SYNTAX.includes(string2)) {
+      return `'${string2}'`;
+    }
+    const indent = this.indent * Math.max(1, level);
+    const lineWidth = this.lineWidth === -1 ? -1 : Math.max(Math.min(this.lineWidth, 40), this.lineWidth - indent);
+    const singleLineOnly = isKey || // No block styles in flow mode.
+    this.flowLevel > -1 && level >= this.flowLevel;
+    const scalarStyle = chooseScalarStyle(string2, singleLineOnly, this.indent, lineWidth, this.implicitTypes, this.quoteStyle);
+    switch (scalarStyle) {
+      case STYLE_PLAIN:
+        return string2;
+      case STYLE_SINGLE:
+        return `'${string2.replace(/'/g, "''")}'`;
+      case STYLE_LITERAL:
+        return `|${blockHeader(string2, this.indent)}${trimTrailingNewline(indentString(string2, indent))}`;
+      case STYLE_FOLDED:
+        return `>${blockHeader(string2, this.indent)}${trimTrailingNewline(indentString(foldString(string2, lineWidth), indent))}`;
+      case STYLE_DOUBLE:
+        return `"${escapeString(string2)}"`;
+      default:
+        throw new TypeError("Invalid scalar style should be unreachable: please file a bug report against Deno at https://github.com/denoland/std/issues");
+    }
+  }
+  stringifyFlowSequence(array, { level }) {
+    const results = [];
+    for (const value of array) {
+      const string2 = this.stringifyNode(value, {
+        level,
+        block: false,
+        compact: false,
+        isKey: false
+      });
+      if (string2 === null) continue;
+      results.push(string2);
+    }
+    const separator = this.condenseFlow ? "," : ", ";
+    return `[${results.join(separator)}]`;
+  }
+  stringifyBlockSequence(array, { level, compact }) {
+    const whitespace = generateNextLine(this.indent, level);
+    const prefix = compact ? "" : whitespace;
+    const results = [];
+    for (const value of array) {
+      const string2 = this.stringifyNode(value, {
+        level: level + 1,
+        block: true,
+        compact: true,
+        isKey: false
+      });
+      if (string2 === null) continue;
+      const linePrefix = LINE_FEED === string2.charCodeAt(0) ? "-" : "- ";
+      results.push(`${linePrefix}${string2}`);
+    }
+    return results.length ? prefix + results.join(whitespace) : "[]";
+  }
+  stringifyFlowMapping(object, { level }) {
+    const quote = this.condenseFlow ? '"' : "";
+    const separator = this.condenseFlow ? ":" : ": ";
+    const results = [];
+    for (const [key, value] of Object.entries(object)) {
+      const keyString = this.stringifyNode(key, {
+        level,
+        block: false,
+        compact: false,
+        isKey: false
+      });
+      if (keyString === null) continue;
+      const valueString = this.stringifyNode(value, {
+        level,
+        block: false,
+        compact: false,
+        isKey: false
+      });
+      if (valueString === null) continue;
+      const keyPrefix = keyString.length > 1024 ? "? " : "";
+      results.push(quote + keyPrefix + keyString + quote + separator + valueString);
+    }
+    return `{${results.join(", ")}}`;
+  }
+  stringifyBlockMapping(object, { tag, level, compact }) {
+    const keys = Object.keys(object);
+    if (this.sortKeys === true) {
+      keys.sort();
+    } else if (typeof this.sortKeys === "function") {
+      keys.sort(this.sortKeys);
+    } else if (this.sortKeys) {
+      throw new TypeError(`"sortKeys" must be a boolean or a function: received ${typeof this.sortKeys}`);
+    }
+    const separator = generateNextLine(this.indent, level);
+    const results = [];
+    for (const key of keys) {
+      const value = object[key];
+      const keyString = this.stringifyNode(key, {
+        level: level + 1,
+        block: true,
+        compact: true,
+        isKey: true
+      });
+      if (keyString === null) continue;
+      const explicitPair = tag !== null && tag !== "?" || keyString.length > 1024;
+      const valueString = this.stringifyNode(value, {
+        level: level + 1,
+        block: true,
+        compact: explicitPair,
+        isKey: false
+      });
+      if (valueString === null) continue;
+      let pairBuffer = "";
+      if (explicitPair) {
+        pairBuffer += keyString.charCodeAt(0) === LINE_FEED ? "?" : "? ";
+      }
+      pairBuffer += keyString;
+      if (explicitPair) pairBuffer += separator;
+      pairBuffer += valueString.charCodeAt(0) === LINE_FEED ? ":" : ": ";
+      pairBuffer += valueString;
+      results.push(pairBuffer);
+    }
+    const prefix = compact ? "" : separator;
+    return results.length ? prefix + results.join(separator) : "{}";
+  }
+  getTypeRepresentation(type, value) {
+    if (!type.represent) return value;
+    const style = this.styleMap.get(type.tag) ?? type.defaultStyle;
+    if (typeof type.represent === "function") {
+      return type.represent(value, style);
+    }
+    const represent = type.represent[style];
+    if (!represent) {
+      throw new TypeError(`!<${type.tag}> tag resolver accepts not "${style}" style`);
+    }
+    return represent(value, style);
+  }
+  detectType(value) {
+    for (const type of this.implicitTypes) {
+      if (type.predicate?.(value)) {
+        value = this.getTypeRepresentation(type, value);
+        return {
+          tag: "?",
+          value
+        };
+      }
+    }
+    for (const type of this.explicitTypes) {
+      if (type.predicate?.(value)) {
+        value = this.getTypeRepresentation(type, value);
+        return {
+          tag: type.tag,
+          value
+        };
+      }
+    }
+    return {
+      tag: null,
+      value
+    };
+  }
+  // Serializes `object` and writes it to global `result`.
+  // Returns true on success, or false on invalid object.
+  stringifyNode(value, { level, block, compact, isKey }) {
+    const result = this.detectType(value);
+    const tag = result.tag;
+    value = result.value;
+    if (block) {
+      block = this.flowLevel < 0 || this.flowLevel > level;
+    }
+    if (typeof value === "string" || value instanceof String) {
+      value = value instanceof String ? value.valueOf() : value;
+      if (tag !== "?") {
+        value = this.stringifyScalar(value, {
+          level,
+          isKey
+        });
+      }
+    } else if (isObject(value)) {
+      const duplicateIndex = this.duplicates.indexOf(value);
+      const duplicate = duplicateIndex !== -1;
+      if (duplicate) {
+        if (this.usedDuplicates.has(value)) return `*ref_${duplicateIndex}`;
+        this.usedDuplicates.add(value);
+      }
+      if (tag !== null && tag !== "?" || duplicate || this.indent !== 2 && level > 0) {
+        compact = false;
+      }
+      if (Array.isArray(value)) {
+        const arrayLevel = !this.arrayIndent && level > 0 ? level - 1 : level;
+        if (block && value.length !== 0) {
+          value = this.stringifyBlockSequence(value, {
+            level: arrayLevel,
+            compact
+          });
+          if (duplicate) {
+            value = `&ref_${duplicateIndex}${value}`;
+          }
+        } else {
+          value = this.stringifyFlowSequence(value, {
+            level: arrayLevel
+          });
+          if (duplicate) {
+            value = `&ref_${duplicateIndex} ${value}`;
+          }
+        }
+      } else {
+        if (block && Object.keys(value).length !== 0) {
+          value = this.stringifyBlockMapping(value, {
+            tag,
+            level,
+            compact
+          });
+          if (duplicate) {
+            value = `&ref_${duplicateIndex}${value}`;
+          }
+        } else {
+          value = this.stringifyFlowMapping(value, {
+            level
+          });
+          if (duplicate) {
+            value = `&ref_${duplicateIndex} ${value}`;
+          }
+        }
+      }
+    } else {
+      if (this.skipInvalid) return null;
+      throw new TypeError(`Cannot stringify ${typeof value}`);
+    }
+    if (tag !== null && tag !== "?") {
+      value = `!<${tag}> ${value}`;
+    }
+    return value;
+  }
+  stringify(value) {
+    if (this.useAnchors) {
+      const values = /* @__PURE__ */ new Set();
+      const duplicateObjects = /* @__PURE__ */ new Set();
+      inspectNode(value, values, duplicateObjects);
+      this.duplicates = [
+        ...duplicateObjects
+      ];
+      this.usedDuplicates = /* @__PURE__ */ new Set();
+    }
+    const string2 = this.stringifyNode(value, {
+      level: 0,
+      block: true,
+      compact: true,
+      isKey: false
+    });
+    if (string2 !== null) {
+      return `${string2}
+`;
+    }
+    return "";
+  }
+};
+
+// deno:https://jsr.io/@std/yaml/1.0.9/stringify.ts
+function stringify(data2, options = {}) {
+  const state = new DumperState({
+    ...options,
+    schema: SCHEMA_MAP.get(options.schema)
+  });
+  return state.stringify(data2);
 }
 
 // libs/errors.ts
@@ -6951,17 +9151,327 @@ function parseConfigFile(path) {
 }
 async function parseConfig(path) {
   const contents = await Deno.readTextFile(path);
-  return parse3(contents);
+  return parse4(contents);
+}
+function writeConfigFile(config, path) {
+  return Result2.fromAsync(() => writeConfig(config, path)).mapError((error) => new ErrorWithCause(`Unable to write config file`, error));
+}
+async function writeConfig(config, path) {
+  const yamlContent = stringify(config);
+  await Deno.writeTextFile(path, yamlContent);
 }
 
 // libs/file.ts
 async function isDir(path) {
-  const stat = await Result2.fromAsyncCatching(() => Deno.stat(path));
-  if (!stat.ok) {
-    return Result2.error(new ErrorWithCause(`directory is not exist: ${path}`, stat.error));
+  const stat2 = await Result2.fromAsyncCatching(() => Deno.stat(path));
+  if (!stat2.ok) {
+    return Result2.error(new ErrorWithCause(`directory is not exist: ${path}`, stat2.error));
   }
-  if (!stat.value.isDirectory) {
+  if (!stat2.value.isDirectory) {
     return Result2.error(new Error(`not a directory: ${path}`));
+  }
+  return Result2.ok();
+}
+
+// deno:https://jsr.io/@std/internal/1.0.10/_os.ts
+function checkWindows() {
+  const global = globalThis;
+  const os = global.Deno?.build?.os;
+  return typeof os === "string" ? os === "windows" : global.navigator?.platform?.startsWith("Win") ?? global.process?.platform?.startsWith("win") ?? false;
+}
+
+// deno:https://jsr.io/@std/internal/1.0.10/os.ts
+var isWindows2 = checkWindows();
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/assert_path.ts
+function assertPath2(path) {
+  if (typeof path !== "string") {
+    throw new TypeError(`Path must be a string, received "${JSON.stringify(path)}"`);
+  }
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/from_file_url.ts
+function assertArg5(url) {
+  url = url instanceof URL ? url : new URL(url);
+  if (url.protocol !== "file:") {
+    throw new TypeError(`URL must be a file URL: received "${url.protocol}"`);
+  }
+  return url;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/posix/from_file_url.ts
+function fromFileUrl3(url) {
+  url = assertArg5(url);
+  return decodeURIComponent(url.pathname.replace(/%(?![0-9A-Fa-f]{2})/g, "%25"));
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/constants.ts
+var CHAR_UPPERCASE_A2 = 65;
+var CHAR_LOWERCASE_A2 = 97;
+var CHAR_UPPERCASE_Z2 = 90;
+var CHAR_LOWERCASE_Z2 = 122;
+var CHAR_DOT2 = 46;
+var CHAR_FORWARD_SLASH2 = 47;
+var CHAR_BACKWARD_SLASH2 = 92;
+var CHAR_COLON2 = 58;
+
+// deno:https://jsr.io/@std/path/1.1.1/posix/_util.ts
+function isPosixPathSeparator3(code2) {
+  return code2 === CHAR_FORWARD_SLASH2;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/windows/_util.ts
+function isPathSeparator2(code2) {
+  return code2 === CHAR_FORWARD_SLASH2 || code2 === CHAR_BACKWARD_SLASH2;
+}
+function isWindowsDeviceRoot2(code2) {
+  return code2 >= CHAR_LOWERCASE_A2 && code2 <= CHAR_LOWERCASE_Z2 || code2 >= CHAR_UPPERCASE_A2 && code2 <= CHAR_UPPERCASE_Z2;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/windows/from_file_url.ts
+function fromFileUrl4(url) {
+  url = assertArg5(url);
+  let path = decodeURIComponent(url.pathname.replace(/\//g, "\\").replace(/%(?![0-9A-Fa-f]{2})/g, "%25")).replace(/^\\*([A-Za-z]:)(\\|$)/, "$1\\");
+  if (url.hostname !== "") {
+    path = `\\\\${url.hostname}${path}`;
+  }
+  return path;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/normalize.ts
+function assertArg8(path) {
+  assertPath2(path);
+  if (path.length === 0) return ".";
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/normalize_string.ts
+function normalizeString2(path, allowAboveRoot, separator, isPathSeparator3) {
+  let res = "";
+  let lastSegmentLength = 0;
+  let lastSlash = -1;
+  let dots = 0;
+  let code2;
+  for (let i = 0; i <= path.length; ++i) {
+    if (i < path.length) code2 = path.charCodeAt(i);
+    else if (isPathSeparator3(code2)) break;
+    else code2 = CHAR_FORWARD_SLASH2;
+    if (isPathSeparator3(code2)) {
+      if (lastSlash === i - 1 || dots === 1) {
+      } else if (lastSlash !== i - 1 && dots === 2) {
+        if (res.length < 2 || lastSegmentLength !== 2 || res.charCodeAt(res.length - 1) !== CHAR_DOT2 || res.charCodeAt(res.length - 2) !== CHAR_DOT2) {
+          if (res.length > 2) {
+            const lastSlashIndex = res.lastIndexOf(separator);
+            if (lastSlashIndex === -1) {
+              res = "";
+              lastSegmentLength = 0;
+            } else {
+              res = res.slice(0, lastSlashIndex);
+              lastSegmentLength = res.length - 1 - res.lastIndexOf(separator);
+            }
+            lastSlash = i;
+            dots = 0;
+            continue;
+          } else if (res.length === 2 || res.length === 1) {
+            res = "";
+            lastSegmentLength = 0;
+            lastSlash = i;
+            dots = 0;
+            continue;
+          }
+        }
+        if (allowAboveRoot) {
+          if (res.length > 0) res += `${separator}..`;
+          else res = "..";
+          lastSegmentLength = 2;
+        }
+      } else {
+        if (res.length > 0) res += separator + path.slice(lastSlash + 1, i);
+        else res = path.slice(lastSlash + 1, i);
+        lastSegmentLength = i - lastSlash - 1;
+      }
+      lastSlash = i;
+      dots = 0;
+    } else if (code2 === CHAR_DOT2 && dots !== -1) {
+      ++dots;
+    } else {
+      dots = -1;
+    }
+  }
+  return res;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/posix/normalize.ts
+function normalize4(path) {
+  if (path instanceof URL) {
+    path = fromFileUrl3(path);
+  }
+  assertArg8(path);
+  const isAbsolute5 = isPosixPathSeparator3(path.charCodeAt(0));
+  const trailingSeparator = isPosixPathSeparator3(path.charCodeAt(path.length - 1));
+  path = normalizeString2(path, !isAbsolute5, "/", isPosixPathSeparator3);
+  if (path.length === 0 && !isAbsolute5) path = ".";
+  if (path.length > 0 && trailingSeparator) path += "/";
+  if (isAbsolute5) return `/${path}`;
+  return path;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/posix/join.ts
+function join4(path, ...paths) {
+  if (path === void 0) return ".";
+  if (path instanceof URL) {
+    path = fromFileUrl3(path);
+  }
+  paths = path ? [
+    path,
+    ...paths
+  ] : paths;
+  paths.forEach((path2) => assertPath2(path2));
+  const joined = paths.filter((path2) => path2.length > 0).join("/");
+  return joined === "" ? "." : normalize4(joined);
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/windows/normalize.ts
+function normalize5(path) {
+  if (path instanceof URL) {
+    path = fromFileUrl4(path);
+  }
+  assertArg8(path);
+  const len = path.length;
+  let rootEnd = 0;
+  let device;
+  let isAbsolute5 = false;
+  const code2 = path.charCodeAt(0);
+  if (len > 1) {
+    if (isPathSeparator2(code2)) {
+      isAbsolute5 = true;
+      if (isPathSeparator2(path.charCodeAt(1))) {
+        let j = 2;
+        let last = j;
+        for (; j < len; ++j) {
+          if (isPathSeparator2(path.charCodeAt(j))) break;
+        }
+        if (j < len && j !== last) {
+          const firstPart = path.slice(last, j);
+          last = j;
+          for (; j < len; ++j) {
+            if (!isPathSeparator2(path.charCodeAt(j))) break;
+          }
+          if (j < len && j !== last) {
+            last = j;
+            for (; j < len; ++j) {
+              if (isPathSeparator2(path.charCodeAt(j))) break;
+            }
+            if (j === len) {
+              return `\\\\${firstPart}\\${path.slice(last)}\\`;
+            } else if (j !== last) {
+              device = `\\\\${firstPart}\\${path.slice(last, j)}`;
+              rootEnd = j;
+            }
+          }
+        }
+      } else {
+        rootEnd = 1;
+      }
+    } else if (isWindowsDeviceRoot2(code2)) {
+      if (path.charCodeAt(1) === CHAR_COLON2) {
+        device = path.slice(0, 2);
+        rootEnd = 2;
+        if (len > 2) {
+          if (isPathSeparator2(path.charCodeAt(2))) {
+            isAbsolute5 = true;
+            rootEnd = 3;
+          }
+        }
+      }
+    }
+  } else if (isPathSeparator2(code2)) {
+    return "\\";
+  }
+  let tail;
+  if (rootEnd < len) {
+    tail = normalizeString2(path.slice(rootEnd), !isAbsolute5, "\\", isPathSeparator2);
+  } else {
+    tail = "";
+  }
+  if (tail.length === 0 && !isAbsolute5) tail = ".";
+  if (tail.length > 0 && isPathSeparator2(path.charCodeAt(len - 1))) {
+    tail += "\\";
+  }
+  if (device === void 0) {
+    if (isAbsolute5) {
+      if (tail.length > 0) return `\\${tail}`;
+      else return "\\";
+    }
+    return tail;
+  } else if (isAbsolute5) {
+    if (tail.length > 0) return `${device}\\${tail}`;
+    else return `${device}\\`;
+  }
+  return device + tail;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/windows/join.ts
+function join5(path, ...paths) {
+  if (path instanceof URL) {
+    path = fromFileUrl4(path);
+  }
+  paths = path ? [
+    path,
+    ...paths
+  ] : paths;
+  paths.forEach((path2) => assertPath2(path2));
+  paths = paths.filter((path2) => path2.length > 0);
+  if (paths.length === 0) return ".";
+  let needsReplace = true;
+  let slashCount = 0;
+  const firstPart = paths[0];
+  if (isPathSeparator2(firstPart.charCodeAt(0))) {
+    ++slashCount;
+    const firstLen = firstPart.length;
+    if (firstLen > 1) {
+      if (isPathSeparator2(firstPart.charCodeAt(1))) {
+        ++slashCount;
+        if (firstLen > 2) {
+          if (isPathSeparator2(firstPart.charCodeAt(2))) ++slashCount;
+          else {
+            needsReplace = false;
+          }
+        }
+      }
+    }
+  }
+  let joined = paths.join("\\");
+  if (needsReplace) {
+    for (; slashCount < joined.length; ++slashCount) {
+      if (!isPathSeparator2(joined.charCodeAt(slashCount))) break;
+    }
+    if (slashCount >= 2) joined = `\\${joined.slice(slashCount)}`;
+  }
+  return normalize5(joined);
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/join.ts
+function join6(path, ...paths) {
+  return isWindows2 ? join5(path, ...paths) : join4(path, ...paths);
+}
+
+// libs/concurrent.ts
+async function processConcurrently(items, processor, concurrency = 2) {
+  if (items.length === 0) {
+    return Result2.ok();
+  }
+  const batches = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    batches.push(items.slice(i, i + concurrency));
+  }
+  for (const batch of batches) {
+    const promises = batch.map((item) => processor(item));
+    const results = await Promise.all(promises);
+    for (const result of results) {
+      if (!result.ok) {
+        return result;
+      }
+    }
   }
   return Result2.ok();
 }
@@ -6977,11 +9487,11 @@ async function gitSubmoduleRemove(path, _projectRoot) {
     return Result2.error(rm.error);
   }
   const gitModulePath = `.git/modules/${path}`;
-  const stat = await Result2.fromAsyncCatching(() => Deno.stat(gitModulePath));
-  if (!stat.ok) {
+  const stat2 = await Result2.fromAsyncCatching(() => Deno.stat(gitModulePath));
+  if (!stat2.ok) {
     return Result2.ok(void 0);
   }
-  if (stat.value.isDirectory) {
+  if (stat2.value.isDirectory) {
     const remove = await Result2.fromAsyncCatching(() => Deno.remove(gitModulePath, {
       recursive: true
     }));
@@ -7206,7 +9716,7 @@ async function syncCommand(option) {
   const activeWorkspaces = config.workspaces.filter((item) => item.active);
   const inactiveWorkspaces = config.workspaces.filter((item) => !item.active);
   const removeResult = await processConcurrently(inactiveWorkspaces, async (workspace) => {
-    const workspacePath = join3(workspaceRoot, workspace.path);
+    const workspacePath = join6(workspaceRoot, workspace.path);
     const dir = await isDir(workspacePath);
     if (!dir.ok) {
       return Result2.ok();
@@ -7224,7 +9734,7 @@ async function syncCommand(option) {
     return removeResult;
   }
   const checkoutResult = await processConcurrently(activeWorkspaces, async (workspace) => {
-    const workspacePath = join3(workspaceRoot, workspace.path);
+    const workspacePath = join6(workspaceRoot, workspace.path);
     const dir = await isDir(workspacePath);
     if (dir.ok) {
       console.log(blue(`\u2139\uFE0F  Workspace directory already exists, skipping checkout: ${workspace.path}`));
@@ -7256,11 +9766,11 @@ async function syncCommand(option) {
   return Result2.ok();
 }
 async function validateWorkspaceDir(path) {
-  const stat = await Result2.fromAsyncCatching(() => Deno.stat(path));
-  if (!stat.ok) {
-    return Result2.error(new ErrorWithCause(`Workspace directory is not a directory`, stat.error));
+  const stat2 = await Result2.fromAsyncCatching(() => Deno.stat(path));
+  if (!stat2.ok) {
+    return Result2.error(new ErrorWithCause(`Workspace directory is not a directory`, stat2.error));
   }
-  if (!stat.value.isDirectory) {
+  if (!stat2.value.isDirectory) {
     return Result2.error(new Error(`Workspace directory is not a directory`));
   }
   return Result2.ok();
@@ -7308,6 +9818,234 @@ async function setupGoWorkspace(add, remove, goWorkRoot) {
   return Result2.ok();
 }
 
+// cmds/disable.ts
+async function disableCommand(option) {
+  const configFile = option.config ?? "workspace.yml";
+  const workspaceRoot = option.workspaceRoot ?? ".";
+  const debug = option.debug ?? false;
+  const autoSync = option.yes ?? false;
+  const validated = await isDir(workspaceRoot);
+  if (!validated.ok) {
+    console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+    return Result2.error(validated.error);
+  }
+  const parseConfig2 = await parseConfigFile(configFile);
+  if (!parseConfig2.ok) {
+    console.log(red("\u274C Failed to parse config file: "), configFile, `(${parseConfig2.error.message})`);
+    return Result2.error(parseConfig2.error);
+  }
+  const config = parseConfig2.value;
+  const disableResult = await selectAndDisableWorkspace(config, configFile, debug);
+  if (!disableResult.ok) {
+    return Result2.error(disableResult.error);
+  }
+  const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug);
+  if (!syncResult.ok) {
+    return Result2.error(syncResult.error);
+  }
+  return Result2.ok();
+}
+async function selectAndDisableWorkspace(config, configFile, debug) {
+  const activeWorkspaces = config.workspaces.filter((item) => item.active);
+  if (activeWorkspaces.length === 0) {
+    console.log(yellow("\u26A0\uFE0F  No active workspaces found"));
+    return Result2.ok();
+  }
+  if (debug) {
+    console.log(blue(`\u{1F4CA} Found ${activeWorkspaces.length} active workspaces`));
+  }
+  const suggestions = activeWorkspaces.map((workspace) => `${workspace.path} (${workspace.url})`);
+  const selectedWorkspaceResult = await promptWorkspaceSelection(suggestions);
+  if (!selectedWorkspaceResult.ok) {
+    if (selectedWorkspaceResult.error.message.includes("cancelled")) {
+      console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+      return Result2.ok();
+    }
+    return Result2.error(selectedWorkspaceResult.error);
+  }
+  const selectedWorkspace = selectedWorkspaceResult.value;
+  if (!selectedWorkspace || selectedWorkspace.trim() === "") {
+    console.log(yellow("\u26A0\uFE0F  No workspace selected"));
+    return Result2.ok();
+  }
+  const selectedPath = selectedWorkspace.split(" (")[0];
+  const workspaceIndex = config.workspaces.findIndex((workspace) => workspace.path === selectedPath);
+  if (workspaceIndex === -1) {
+    return Result2.error(new Error(`Workspace not found: ${selectedPath}`));
+  }
+  config.workspaces[workspaceIndex].active = false;
+  const writeResult = await writeConfigFile(config, configFile);
+  if (!writeResult.ok) {
+    console.log(red("\u274C Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+    return Result2.error(writeResult.error);
+  }
+  console.log(green(`\u2705 Successfully disabled workspace: ${selectedPath}`));
+  return Result2.ok();
+}
+async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug) {
+  if (!autoSync) {
+    const syncResult2 = await promptSyncConfirmation();
+    if (!syncResult2.ok) {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+      return Result2.ok();
+    }
+    const shouldSync = syncResult2.value;
+    if (shouldSync.toLowerCase() !== "y" && shouldSync.toLowerCase() !== "yes") {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+      return Result2.ok();
+    }
+  }
+  const syncResult = await syncCommand({
+    config: configFile,
+    workspaceRoot,
+    debug,
+    concurrency: 2
+  });
+  if (!syncResult.ok) {
+    console.log(red("\u274C Sync failed:"), syncResult.error.message);
+    return Result2.error(syncResult.error);
+  }
+  return Result2.ok();
+}
+function promptWorkspaceSelection(suggestions) {
+  return Result2.wrap(() => Input.prompt({
+    message: "Select workspace to disable:",
+    suggestions,
+    list: true,
+    info: true,
+    maxRows: 10
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for workspace selection", error);
+  })();
+}
+function promptSyncConfirmation() {
+  return Result2.wrap(() => Input.prompt({
+    message: "Do you want to sync now? (y/N):",
+    suggestions: [
+      "N",
+      "y"
+    ],
+    default: "N"
+  }), (error) => new ErrorWithCause("Failed to prompt for sync confirmation", error))();
+}
+
+// cmds/enable.ts
+async function enableCommand(option) {
+  const configFile = option.config ?? "workspace.yml";
+  const workspaceRoot = option.workspaceRoot ?? ".";
+  const debug = option.debug ?? false;
+  const autoSync = option.yes ?? false;
+  const validated = await isDir(workspaceRoot);
+  if (!validated.ok) {
+    console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+    return Result2.error(validated.error);
+  }
+  const parseConfig2 = await parseConfigFile(configFile);
+  if (!parseConfig2.ok) {
+    console.log(red("\u274C Failed to parse config file: "), configFile, `(${parseConfig2.error.message})`);
+    return Result2.error(parseConfig2.error);
+  }
+  const config = parseConfig2.value;
+  const enableResult = await selectAndEnableWorkspace(config, configFile, debug);
+  if (!enableResult.ok) {
+    return Result2.error(enableResult.error);
+  }
+  const syncResult = await handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug);
+  if (!syncResult.ok) {
+    return Result2.error(syncResult.error);
+  }
+  return Result2.ok();
+}
+async function selectAndEnableWorkspace(config, configFile, debug) {
+  const disabledWorkspaces = config.workspaces.filter((item) => !item.active);
+  if (disabledWorkspaces.length === 0) {
+    console.log(yellow("\u26A0\uFE0F  No disabled workspaces found"));
+    return Result2.ok();
+  }
+  if (debug) {
+    console.log(blue(`\u{1F4CA} Found ${disabledWorkspaces.length} disabled workspaces`));
+  }
+  const suggestions = disabledWorkspaces.map((workspace) => `${workspace.path} (${workspace.url})`);
+  const selectedWorkspaceResult = await promptWorkspaceSelection2(suggestions);
+  if (!selectedWorkspaceResult.ok) {
+    if (selectedWorkspaceResult.error.message.includes("cancelled")) {
+      console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+      return Result2.ok();
+    }
+    return Result2.error(selectedWorkspaceResult.error);
+  }
+  const selectedWorkspace = selectedWorkspaceResult.value;
+  if (!selectedWorkspace || selectedWorkspace.trim() === "") {
+    console.log(yellow("\u26A0\uFE0F  No workspace selected"));
+    return Result2.ok();
+  }
+  const selectedPath = selectedWorkspace.split(" (")[0];
+  const workspaceIndex = config.workspaces.findIndex((workspace) => workspace.path === selectedPath);
+  if (workspaceIndex === -1) {
+    return Result2.error(new Error(`Workspace not found: ${selectedPath}`));
+  }
+  config.workspaces[workspaceIndex].active = true;
+  const writeResult = await writeConfigFile(config, configFile);
+  if (!writeResult.ok) {
+    console.log(red("\u274C Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+    return Result2.error(writeResult.error);
+  }
+  console.log(green(`\u2705 Successfully enabled workspace: ${selectedPath}`));
+  return Result2.ok();
+}
+async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug) {
+  if (!autoSync) {
+    const syncResult2 = await promptSyncConfirmation2();
+    if (!syncResult2.ok) {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+      return Result2.ok();
+    }
+    const shouldSync = syncResult2.value;
+    if (shouldSync.toLowerCase() !== "y" && shouldSync.toLowerCase() !== "yes") {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+      return Result2.ok();
+    }
+  }
+  const syncResult = await syncCommand({
+    config: configFile,
+    workspaceRoot,
+    debug,
+    concurrency: 2
+  });
+  if (!syncResult.ok) {
+    console.log(red("\u274C Sync failed:"), syncResult.error.message);
+    return Result2.error(syncResult.error);
+  }
+  return Result2.ok();
+}
+function promptWorkspaceSelection2(suggestions) {
+  return Result2.wrap(() => Input.prompt({
+    message: "Select workspace to enable:",
+    suggestions,
+    list: true,
+    info: true,
+    maxRows: 10
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for workspace selection", error);
+  })();
+}
+function promptSyncConfirmation2() {
+  return Result2.wrap(() => Input.prompt({
+    message: "Do you want to sync now? (y/N):",
+    suggestions: [
+      "N",
+      "y"
+    ],
+    default: "N"
+  }), (error) => new ErrorWithCause("Failed to prompt for sync confirmation", error))();
+}
+
 // cmds/update.ts
 async function updateCommand(option) {
   const configFile = option.config ??= "workspace.yml";
@@ -7330,7 +10068,7 @@ async function updateCommand(option) {
     console.log(blue(`\u{1F4CA} Found ${activeWorkspaces.length} active workspaces to update`));
   }
   const updateResult = await processConcurrently(activeWorkspaces, async (workspace) => {
-    const workspacePath = join3(workspaceRoot, workspace.path);
+    const workspacePath = join6(workspaceRoot, workspace.path);
     const dir = await isDir(workspacePath);
     if (!dir.ok) {
       console.log(yellow(`\u26A0\uFE0F  Workspace directory does not exist, skipping: ${workspace.path}`));
@@ -7402,11 +10140,11 @@ async function updateCommand(option) {
   return Result2.ok();
 }
 async function validateWorkspaceDir2(path) {
-  const stat = await Result2.fromAsyncCatching(() => Deno.stat(path));
-  if (!stat.ok) {
-    return Result2.error(new ErrorWithCause(`Workspace directory is not a directory`, stat.error));
+  const stat2 = await Result2.fromAsyncCatching(() => Deno.stat(path));
+  if (!stat2.ok) {
+    return Result2.error(new ErrorWithCause(`Workspace directory is not a directory`, stat2.error));
   }
-  if (!stat.value.isDirectory) {
+  if (!stat2.value.isDirectory) {
     return Result2.error(new Error(`Workspace directory is not a directory`));
   }
   return Result2.ok();
@@ -7452,6 +10190,42 @@ cli.command("update", "Update all submodules by checking out to tracking branche
   });
   if (!result.ok) {
     console.log(red("\u274C Update failed:"), result.error.message);
+    Deno.exit(1);
+  }
+});
+cli.command("enable", "Enable a disabled workspace repository").option("-c, --config <config:string>", "Workspace config file", {
+  default: "workspace.yml"
+}).option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+  default: "."
+}).option("-d, --debug", "Enable debug mode", {
+  default: false
+}).option("-y, --yes", "Skip sync confirmation prompt").action(async (options) => {
+  const result = await enableCommand({
+    config: options.config,
+    workspaceRoot: options.workspaceRoot,
+    debug: options.debug,
+    yes: options.yes
+  });
+  if (!result.ok) {
+    console.log(red("\u274C Enable failed:"), result.error.message);
+    Deno.exit(1);
+  }
+});
+cli.command("disable", "Disable an active workspace repository").option("-c, --config <config:string>", "Workspace config file", {
+  default: "workspace.yml"
+}).option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+  default: "."
+}).option("-d, --debug", "Enable debug mode", {
+  default: false
+}).option("-y, --yes", "Skip sync confirmation prompt").action(async (options) => {
+  const result = await disableCommand({
+    config: options.config,
+    workspaceRoot: options.workspaceRoot,
+    debug: options.debug,
+    yes: options.yes
+  });
+  if (!result.ok) {
+    console.log(red("\u274C Disable failed:"), result.error.message);
     Deno.exit(1);
   }
 });
