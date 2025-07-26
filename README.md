@@ -60,8 +60,6 @@ Sync workspace with remote repositories:
 # Using global installation
 workspace-manager sync [options]
 
-# Or using local development setup
-deno run --allow-all main.ts sync [options]
 ```
 
 **Options:**
@@ -79,8 +77,6 @@ Update all submodules by checking out to tracking branches and pulling latest ch
 # Using global installation
 workspace-manager update [options]
 
-# Or using local development setup
-deno run --allow-all main.ts update [options]
 ```
 
 **Options:**
@@ -97,8 +93,6 @@ Show current workspace status:
 # Using global installation
 workspace-manager status
 
-# Or using local development setup
-deno run --allow-all main.ts status
 ```
 
 *Note: Status command is not yet implemented.*
@@ -153,7 +147,9 @@ The following improvements are planned based on code review:
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
 - [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
-- [ ] **Add "serve" command** `workspace-manager serve` to launch web UI for workspace management
+- [ ] **Add "enable" command** to re-enable disabled repositories in workspace configuration
+- [ ] **Add "disable" command** to disable active repositories in workspace configuration
+- [ ] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
 
 ### Medium Priority
 
@@ -211,3 +207,4 @@ The project uses the `typescript-result` library for functional error handling, 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
