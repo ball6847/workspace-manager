@@ -19,7 +19,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc1/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc4/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
@@ -27,6 +27,8 @@ After installation, you can use the tool from anywhere:
 ```bash
 workspace-manager sync
 workspace-manager update
+workspace-manager enable
+workspace-manager disable
 ```
 
 ### Uninstall
@@ -60,8 +62,6 @@ Sync workspace with remote repositories:
 # Using global installation
 workspace-manager sync [options]
 
-# Or using local development setup
-deno run --allow-all main.ts sync [options]
 ```
 
 **Options:**
@@ -79,8 +79,6 @@ Update all submodules by checking out to tracking branches and pulling latest ch
 # Using global installation
 workspace-manager update [options]
 
-# Or using local development setup
-deno run --allow-all main.ts update [options]
 ```
 
 **Options:**
@@ -88,6 +86,50 @@ deno run --allow-all main.ts update [options]
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
 - `-j, --concurrency <number>` - Number of concurrent operations (default: 2)
+
+### Enable Command
+
+Enable a disabled workspace repository by setting its `active` property to `true`:
+
+```bash
+# Using global installation
+workspace-manager enable [options]
+
+```
+
+This command will:
+1. Show a list of disabled workspaces (where `active: false`)
+2. Allow you to select which workspace to enable
+3. Update the workspace configuration file
+4. Optionally sync the workspace immediately
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+- `-y, --yes` - Automatically sync after enabling without prompting
+
+### Disable Command
+
+Disable an active workspace repository by setting its `active` property to `false`:
+
+```bash
+# Using global installation
+workspace-manager disable [options]
+
+```
+
+This command will:
+1. Show a list of active workspaces (where `active: true`)
+2. Allow you to select which workspace to disable
+3. Update the workspace configuration file
+4. Optionally sync the workspace immediately to remove it from the filesystem
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+- `-y, --yes` - Automatically sync after disabling without prompting
 
 ### Status Command
 
@@ -97,8 +139,6 @@ Show current workspace status:
 # Using global installation
 workspace-manager status
 
-# Or using local development setup
-deno run --allow-all main.ts status
 ```
 
 *Note: Status command is not yet implemented.*
@@ -153,7 +193,9 @@ The following improvements are planned based on code review:
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
 - [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
-- [ ] **Add "serve" command** `workspace-manager serve` to launch web UI for workspace management
+- [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
+- [x] **Add "disable" command** to disable active repositories in workspace configuration
+- [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
 
 ### Medium Priority
 
@@ -211,3 +253,4 @@ The project uses the `typescript-result` library for functional error handling, 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+

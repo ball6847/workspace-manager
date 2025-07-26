@@ -1,4 +1,4 @@
-import { parse } from "@std/yaml";
+import { parse, stringify } from "@std/yaml";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 
@@ -30,4 +30,23 @@ export function parseConfigFile(path: string): Promise<Result<WorkspaceConfig, E
 async function parseConfig(path: string) {
 	const contents = await Deno.readTextFile(path);
 	return parse(contents) as WorkspaceConfig;
+}
+
+/**
+ * Write workspace config to file
+ *
+ * @param config Workspace configuration to write
+ * @param path Path to workspace config file
+ * @returns Result indicating success or failure
+ */
+export function writeConfigFile(config: WorkspaceConfig, path: string): Promise<Result<void, Error>> {
+	return Result.fromAsync(() => writeConfig(config, path))
+		.mapError(
+			(error) => new ErrorWithCause(`Unable to write config file`, error as Error),
+		);
+}
+
+async function writeConfig(config: WorkspaceConfig, path: string) {
+	const yamlContent = stringify(config);
+	await Deno.writeTextFile(path, yamlContent);
 }

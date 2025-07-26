@@ -1,0 +1,81 @@
+workspaces:
+  - url: git@example.com:org1/repo1.git
+    path: projects/repo1
+    branch: fake-branch1
+    isGolang: true
+    active: false
+  - url: git@example.com:org2/repo2.git
+    path: modules/repo2
+    branch: develop
+    isGolang: true
+    active: true
+  - url: git@fake-domain.net:team-a/k8s-config.git
+    path: deployments/k8s-config
+    branch: stable
+    isGolang: false
+    active: false
+  - url: git@gitlab.internal:backend-team/traveller-api.git
+    path: services/traveller-api
+    branch: main
+    isGolang: true
+    active: false
+  - url: git@bitbucket.org:user-group/user-api-gateway.git
+    path: gateways/user-api
+    branch: release/v1.0
+    isGolang: true
+    active: false
+  - url: git@github.com:enterprise/manager-api.git
+    path: api/manager
+    branch: staging
+    isGolang: true
+    active: false
+  - url: git@source.internal:core/auth.git
+    path: microservices/auth
+    branch: production
+    isGolang: true
+    active: false
+  - url: git@codebase.example.com:platform/user-service.git
+    path: platform/user-service
+    branch: release/2.0
+    isGolang: true
+    active: false
+  - url: git@git.mydomain.com:searchgroup/search-api.git
+    path: search/search-api
+    branch: test
+    isGolang: true
+    active: false
+  - url: git@github.com:inventory-team/inventory-api.git
+    path: inventory/api
+    branch: hotfix/typo
+    isGolang: true
+    active: false
+  - url: git@gitlab.com:promotions/promo-service.git
+    path: promo/service
+    branch: experimental
+    isGolang: true
+    active: true
+  - url: git@bitbucket.org:reservations/res-api.git
+    path: reservations/api
+    branch: release/v2
+    isGolang: true
+    active: false
+  - url: git@code.example.com:property/property-api.git
+    path: property/api
+    branch: integration
+    isGolang: true
+    active: false
+  - url: git@github.internal:property2/property-api.git
+    path: property2/api
+    branch: qa
+    isGolang: true
+    active: false
+  - url: git@gitlab.example.com:consumers/login-consumer.git
+    path: consumers/login
+    branch: preprod
+    isGolang: true
+    active: false
+  - url: git@bitbucket.internal:consumers/forgot-password.git
+    path: consumers/forgot-password
+    branch: next
+    isGolang: true
+    active: false

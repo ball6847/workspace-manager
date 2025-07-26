@@ -4,7 +4,8 @@
         "fmt": "deno fmt",
         "fmt:check": "deno fmt --check",
         "lint": "deno lint",
-        "build": "deno bundle --platform=deno main.ts -o build/cli.js"
+        "build": "deno bundle --platform=deno main.ts -o build/cli.js",
+        "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager ./build/cli.js"
     },
     "imports": {
         "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",

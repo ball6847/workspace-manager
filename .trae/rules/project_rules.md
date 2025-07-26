@@ -1,10 +1,12 @@
 Technical Constraints
 - Deno 2.4 with TypeScript - see https://docs.deno.com
 - Command line application framework using Cliffy - see https://cliffy.io
-- TypeScript error handling using `typescript-result` - see https://www.typescript-result.dev
+- TypeScript error handling using `typescript-result` instead of try-catch - see https://www.typescript-result.dev
 - Must follow SOLID principles - https://en.wikipedia.org/wiki/SOLID
 - Use `type` instead of `interface`
 - Use async-await for asynchronous operations
+- Use early-return pattern for control flow
+- Use `type` keyword when importing types from other files
 
 Directory Structure
 - main.ts - main entry point of the application
