@@ -196,11 +196,12 @@ The following improvements are planned based on code review:
 - [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
 - [x] **Add "disable" command** to disable active repositories in workspace configuration
 - [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
+- [ ] **Add "save" command** `workspace-manager save` to iterate through all workspace submodules and update workspace.yml with their current tracking branches - the opposite of sync/update, trusting the environment state over configuration
 
 ### Medium Priority
 
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
-- [ ] **Fix path handling** using proper path joining methods instead of string concatenation
+- [x] **Fix path handling** using proper path joining methods instead of string concatenation
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
 - [x] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
 - [x] **Batch processing for "sync" command** - multiple modules at a time
@@ -253,4 +254,3 @@ The project uses the `typescript-result` library for functional error handling, 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
