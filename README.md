@@ -29,6 +29,9 @@ workspace-manager sync
 workspace-manager update
 workspace-manager enable
 workspace-manager disable
+workspace-manager add
+workspace-manager save
+workspace-manager status
 ```
 
 ### Uninstall
