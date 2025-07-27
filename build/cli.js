@@ -4742,6 +4742,102 @@ var ResultFactory = class _ResultFactory {
 };
 var Result2 = ResultFactory;
 
+// deno:https://jsr.io/@std/assert/1.0.13/equal.ts
+var Temporal = globalThis.Temporal ?? new Proxy({}, {
+  get: () => {
+  }
+});
+var stringComparablePrototypes = new Set([
+  Intl.Locale,
+  RegExp,
+  Temporal.Duration,
+  Temporal.Instant,
+  Temporal.PlainDate,
+  Temporal.PlainDateTime,
+  Temporal.PlainTime,
+  Temporal.PlainYearMonth,
+  Temporal.PlainMonthDay,
+  Temporal.ZonedDateTime,
+  URL,
+  URLSearchParams
+].filter((x) => x != null).map((x) => x.prototype));
+var TypedArray = Object.getPrototypeOf(Uint8Array);
+
+// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_os.ts
+function getOs() {
+  const { Deno: Deno4, process: process2 } = globalThis;
+  if (Deno4) {
+    return Deno4.build.os;
+  } else if (process2) {
+    return process2.platform;
+  } else {
+    throw new Error("unsupported runtime");
+  }
+}
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_figures.ts
+var main = {
+  ARROW_UP: "\u2191",
+  ARROW_DOWN: "\u2193",
+  ARROW_LEFT: "\u2190",
+  ARROW_RIGHT: "\u2192",
+  ARROW_UP_LEFT: "\u2196",
+  ARROW_UP_RIGHT: "\u2197",
+  ARROW_DOWN_RIGHT: "\u2198",
+  ARROW_DOWN_LEFT: "\u2199",
+  RADIO_ON: "\u25C9",
+  RADIO_OFF: "\u25EF",
+  TICK: "\u2714",
+  CROSS: "\u2718",
+  ELLIPSIS: "\u2026",
+  POINTER_SMALL: "\u203A",
+  POINTER_SMALL_LEFT: "\u2039",
+  LINE: "\u2500",
+  POINTER: "\u276F",
+  POINTER_LEFT: "\u276E",
+  INFO: "\u2139",
+  TAB_LEFT: "\u21E4",
+  TAB_RIGHT: "\u21E5",
+  ESCAPE: "\u238B",
+  BACKSPACE: "\u232B",
+  PAGE_UP: "\u21DE",
+  PAGE_DOWN: "\u21DF",
+  ENTER: "\u21B5",
+  SEARCH: "\u{1F50E}",
+  FOLDER: "\u{1F4C1}",
+  FOLDER_OPEN: "\u{1F4C2}"
+};
+var win = {
+  ...main,
+  RADIO_ON: "(*)",
+  RADIO_OFF: "( )",
+  TICK: "\u221A",
+  CROSS: "\xD7",
+  POINTER_SMALL: "\xBB"
+};
+var Figures = getOs() === "windows" ? win : main;
+var keyMap = {
+  up: "ARROW_UP",
+  down: "ARROW_DOWN",
+  left: "ARROW_LEFT",
+  right: "ARROW_RIGHT",
+  pageup: "PAGE_UP",
+  pagedown: "PAGE_DOWN",
+  tab: "TAB_RIGHT",
+  enter: "ENTER",
+  return: "ENTER"
+};
+function getFiguresByKeys(keys) {
+  const figures = [];
+  for (const key of keys) {
+    const figure = Figures[keyMap[key]] ?? key;
+    if (!figures.includes(figure)) {
+      figures.push(figure);
+    }
+  }
+  return figures;
+}
+
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/read_sync.ts
 var { Deno: Deno3, process, Buffer: Buffer2 } = globalThis;
 var { readSync: readSyncNode } = process ? await import("node:fs") : {
@@ -4896,18 +4992,6 @@ function encodeBase64(data2) {
   const [output, i] = detach(data2, calcSizeBase64(data2.length));
   encode(output, i, 0, alphabet2, padding2);
   return new TextDecoder().decode(output);
-}
-
-// deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_os.ts
-function getOs() {
-  const { Deno: Deno4, process: process2 } = globalThis;
-  if (Deno4) {
-    return Deno4.build.os;
-  } else if (process2) {
-    return process2.platform;
-  } else {
-    throw new Error("unsupported runtime");
-  }
 }
 
 // deno:https://jsr.io/@cliffy/ansi/1.0.0-rc.8/ansi_escapes.ts
@@ -5345,69 +5429,6 @@ function charLengthAt(str2, i) {
   return pos >= kUTF16SurrogateThreshold ? 2 : 1;
 }
 
-// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_figures.ts
-var main = {
-  ARROW_UP: "\u2191",
-  ARROW_DOWN: "\u2193",
-  ARROW_LEFT: "\u2190",
-  ARROW_RIGHT: "\u2192",
-  ARROW_UP_LEFT: "\u2196",
-  ARROW_UP_RIGHT: "\u2197",
-  ARROW_DOWN_RIGHT: "\u2198",
-  ARROW_DOWN_LEFT: "\u2199",
-  RADIO_ON: "\u25C9",
-  RADIO_OFF: "\u25EF",
-  TICK: "\u2714",
-  CROSS: "\u2718",
-  ELLIPSIS: "\u2026",
-  POINTER_SMALL: "\u203A",
-  POINTER_SMALL_LEFT: "\u2039",
-  LINE: "\u2500",
-  POINTER: "\u276F",
-  POINTER_LEFT: "\u276E",
-  INFO: "\u2139",
-  TAB_LEFT: "\u21E4",
-  TAB_RIGHT: "\u21E5",
-  ESCAPE: "\u238B",
-  BACKSPACE: "\u232B",
-  PAGE_UP: "\u21DE",
-  PAGE_DOWN: "\u21DF",
-  ENTER: "\u21B5",
-  SEARCH: "\u{1F50E}",
-  FOLDER: "\u{1F4C1}",
-  FOLDER_OPEN: "\u{1F4C2}"
-};
-var win = {
-  ...main,
-  RADIO_ON: "(*)",
-  RADIO_OFF: "( )",
-  TICK: "\u221A",
-  CROSS: "\xD7",
-  POINTER_SMALL: "\xBB"
-};
-var Figures = getOs() === "windows" ? win : main;
-var keyMap = {
-  up: "ARROW_UP",
-  down: "ARROW_DOWN",
-  left: "ARROW_LEFT",
-  right: "ARROW_RIGHT",
-  pageup: "PAGE_UP",
-  pagedown: "PAGE_DOWN",
-  tab: "TAB_RIGHT",
-  enter: "ENTER",
-  return: "ENTER"
-};
-function getFiguresByKeys(keys) {
-  const figures = [];
-  for (const key of keys) {
-    const figure = Figures[keyMap[key]] ?? key;
-    if (!figures.includes(figure)) {
-      figures.push(figure);
-    }
-  }
-  return figures;
-}
-
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/get_columns.ts
 function getColumns() {
   try {
@@ -5712,6 +5733,107 @@ var GenericPrompt = class _GenericPrompt {
   isKey(keys, name, event) {
     const keyNames = keys?.[name];
     return typeof keyNames !== "undefined" && (typeof event.name !== "undefined" && keyNames.indexOf(event.name) !== -1 || typeof event.sequence !== "undefined" && keyNames.indexOf(event.sequence) !== -1);
+  }
+};
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_generic_input.ts
+var GenericInput = class extends GenericPrompt {
+  inputValue = "";
+  inputIndex = 0;
+  getDefaultSettings(options) {
+    const settings = super.getDefaultSettings(options);
+    return {
+      ...settings,
+      keys: {
+        moveCursorLeft: [
+          "left"
+        ],
+        moveCursorRight: [
+          "right"
+        ],
+        deleteCharLeft: [
+          "backspace"
+        ],
+        deleteCharRight: [
+          "delete"
+        ],
+        ...settings.keys ?? {}
+      }
+    };
+  }
+  getCurrentInputValue() {
+    return this.inputValue;
+  }
+  message() {
+    const message = super.message() + " " + this.settings.pointer + " ";
+    this.cursor.x = stripAnsiCode(message).length + this.inputIndex + 1;
+    return message + this.input();
+  }
+  input() {
+    return underline(this.inputValue);
+  }
+  highlight(value, color1 = dim, color2 = brightBlue) {
+    value = value.toString();
+    const inputLowerCase = this.getCurrentInputValue().toLowerCase();
+    const valueLowerCase = value.toLowerCase();
+    const index = valueLowerCase.indexOf(inputLowerCase);
+    const matched = value.slice(index, index + inputLowerCase.length);
+    return index >= 0 ? color1(value.slice(0, index)) + color2(matched) + color1(value.slice(index + inputLowerCase.length)) : value;
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case this.isKey(this.settings.keys, "moveCursorLeft", event):
+        this.moveCursorLeft();
+        break;
+      case this.isKey(this.settings.keys, "moveCursorRight", event):
+        this.moveCursorRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharRight", event):
+        this.deleteCharRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharLeft", event):
+        this.deleteChar();
+        break;
+      case (event.char && !event.meta && !event.ctrl):
+        this.addChar(event.char);
+        break;
+      default:
+        await super.handleEvent(event);
+    }
+  }
+  /** Add character to current input. */
+  addChar(char) {
+    this.inputValue = this.inputValue.slice(0, this.inputIndex) + char + this.inputValue.slice(this.inputIndex);
+    this.inputIndex++;
+  }
+  /** Move prompt cursor left. */
+  moveCursorLeft() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+    }
+  }
+  /** Move prompt cursor right. */
+  moveCursorRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputIndex++;
+    }
+  }
+  /** Delete char left. */
+  deleteChar() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+      this.deleteCharRight();
+    }
+  }
+  /** Delete char right. */
+  deleteCharRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputValue = this.inputValue.slice(0, this.inputIndex) + this.inputValue.slice(this.inputIndex + 1);
+    }
   }
 };
 
@@ -6065,107 +6187,6 @@ function join3(...paths) {
 function normalize3(path) {
   return isWindows ? normalize2(path) : normalize(path);
 }
-
-// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/_generic_input.ts
-var GenericInput = class extends GenericPrompt {
-  inputValue = "";
-  inputIndex = 0;
-  getDefaultSettings(options) {
-    const settings = super.getDefaultSettings(options);
-    return {
-      ...settings,
-      keys: {
-        moveCursorLeft: [
-          "left"
-        ],
-        moveCursorRight: [
-          "right"
-        ],
-        deleteCharLeft: [
-          "backspace"
-        ],
-        deleteCharRight: [
-          "delete"
-        ],
-        ...settings.keys ?? {}
-      }
-    };
-  }
-  getCurrentInputValue() {
-    return this.inputValue;
-  }
-  message() {
-    const message = super.message() + " " + this.settings.pointer + " ";
-    this.cursor.x = stripAnsiCode(message).length + this.inputIndex + 1;
-    return message + this.input();
-  }
-  input() {
-    return underline(this.inputValue);
-  }
-  highlight(value, color1 = dim, color2 = brightBlue) {
-    value = value.toString();
-    const inputLowerCase = this.getCurrentInputValue().toLowerCase();
-    const valueLowerCase = value.toLowerCase();
-    const index = valueLowerCase.indexOf(inputLowerCase);
-    const matched = value.slice(index, index + inputLowerCase.length);
-    return index >= 0 ? color1(value.slice(0, index)) + color2(matched) + color1(value.slice(index + inputLowerCase.length)) : value;
-  }
-  /**
-   * Handle user input event.
-   * @param event Key event.
-   */
-  async handleEvent(event) {
-    switch (true) {
-      case this.isKey(this.settings.keys, "moveCursorLeft", event):
-        this.moveCursorLeft();
-        break;
-      case this.isKey(this.settings.keys, "moveCursorRight", event):
-        this.moveCursorRight();
-        break;
-      case this.isKey(this.settings.keys, "deleteCharRight", event):
-        this.deleteCharRight();
-        break;
-      case this.isKey(this.settings.keys, "deleteCharLeft", event):
-        this.deleteChar();
-        break;
-      case (event.char && !event.meta && !event.ctrl):
-        this.addChar(event.char);
-        break;
-      default:
-        await super.handleEvent(event);
-    }
-  }
-  /** Add character to current input. */
-  addChar(char) {
-    this.inputValue = this.inputValue.slice(0, this.inputIndex) + char + this.inputValue.slice(this.inputIndex);
-    this.inputIndex++;
-  }
-  /** Move prompt cursor left. */
-  moveCursorLeft() {
-    if (this.inputIndex > 0) {
-      this.inputIndex--;
-    }
-  }
-  /** Move prompt cursor right. */
-  moveCursorRight() {
-    if (this.inputIndex < this.inputValue.length) {
-      this.inputIndex++;
-    }
-  }
-  /** Delete char left. */
-  deleteChar() {
-    if (this.inputIndex > 0) {
-      this.inputIndex--;
-      this.deleteCharRight();
-    }
-  }
-  /** Delete char right. */
-  deleteCharRight() {
-    if (this.inputIndex < this.inputValue.length) {
-      this.inputValue = this.inputValue.slice(0, this.inputIndex) + this.inputValue.slice(this.inputIndex + 1);
-    }
-  }
-};
 
 // deno:https://jsr.io/@cliffy/internal/1.0.0-rc.8/runtime/stat.ts
 async function stat(input) {
@@ -6600,6 +6621,104 @@ function getHomeDirEnvVar() {
 function getHomeDir() {
   return Deno.env.get(getHomeDirEnvVar());
 }
+
+// deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/confirm.ts
+var Confirm = class extends GenericSuggestions {
+  settings;
+  /** Execute the prompt with provided options. */
+  static prompt(options) {
+    return new this(options).prompt();
+  }
+  /**
+   * Inject prompt value. If called, the prompt doesn't prompt for an input and
+   * returns immediately the injected value. Can be used for unit tests or pre
+   * selections.
+   *
+   * @param value Input value.
+   */
+  static inject(value) {
+    GenericPrompt.inject(value);
+  }
+  constructor(options) {
+    super();
+    if (typeof options === "string") {
+      options = {
+        message: options
+      };
+    }
+    this.settings = this.getDefaultSettings(options);
+  }
+  getDefaultSettings(options) {
+    return {
+      ...super.getDefaultSettings(options),
+      active: options.active || "Yes",
+      inactive: options.inactive || "No",
+      files: false,
+      complete: void 0,
+      suggestions: [
+        options.active || "Yes",
+        options.inactive || "No"
+      ],
+      list: false,
+      info: false
+    };
+  }
+  defaults() {
+    let defaultMessage = "";
+    if (this.settings.default === true) {
+      defaultMessage += this.settings.active[0].toUpperCase() + "/" + this.settings.inactive[0].toLowerCase();
+    } else if (this.settings.default === false) {
+      defaultMessage += this.settings.active[0].toLowerCase() + "/" + this.settings.inactive[0].toUpperCase();
+    } else {
+      defaultMessage += this.settings.active[0].toLowerCase() + "/" + this.settings.inactive[0].toLowerCase();
+    }
+    return defaultMessage ? dim(` (${defaultMessage})`) : "";
+  }
+  success(value) {
+    this.saveSuggestions(this.format(value));
+    return super.success(value);
+  }
+  /** Get input input. */
+  getValue() {
+    return this.inputValue;
+  }
+  /**
+   * Validate input value.
+   * @param value User input value.
+   * @return True on success, false or error message on error.
+   */
+  validate(value) {
+    return typeof value === "string" && [
+      this.settings.active[0].toLowerCase(),
+      this.settings.active.toLowerCase(),
+      this.settings.inactive[0].toLowerCase(),
+      this.settings.inactive.toLowerCase()
+    ].indexOf(value.toLowerCase()) !== -1;
+  }
+  /**
+   * Map input value to output value.
+   * @param value Input value.
+   * @return Output value.
+   */
+  transform(value) {
+    switch (value.toLowerCase()) {
+      case this.settings.active[0].toLowerCase():
+      case this.settings.active.toLowerCase():
+        return true;
+      case this.settings.inactive[0].toLowerCase():
+      case this.settings.inactive.toLowerCase():
+        return false;
+    }
+    return;
+  }
+  /**
+   * Format output value.
+   * @param value Output value.
+   */
+  format(value) {
+    return value ? this.settings.active : this.settings.inactive;
+  }
+};
 
 // deno:https://jsr.io/@cliffy/prompt/1.0.0-rc.8/input.ts
 var Input = class extends GenericSuggestions {
@@ -9919,6 +10038,277 @@ async function setupGoWorkspace(add, remove, goWorkRoot) {
   return Result2.ok();
 }
 
+// cmds/add.ts
+async function addCommand(option) {
+  const configFile = option.config ?? "workspace.yml";
+  const workspaceRoot = option.workspaceRoot ?? ".";
+  const debug = option.debug ?? false;
+  const validated = await isDir(workspaceRoot);
+  if (!validated.ok) {
+    console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+    return Result2.error(validated.error);
+  }
+  const parseConfig2 = await parseConfigFile(configFile);
+  if (!parseConfig2.ok) {
+    console.log(red("\u274C Failed to parse config file: "), configFile, `(${parseConfig2.error.message})`);
+    return Result2.error(parseConfig2.error);
+  }
+  const config = parseConfig2.value;
+  const isNonInteractive = option.yes === true;
+  if (isNonInteractive) {
+    if (!option.repo) {
+      console.log(red("\u274C Repository URL is required in non-interactive mode (-y)"));
+      return Result2.error(new Error("Repository URL is required in non-interactive mode"));
+    }
+    const addResult = await addSingleWorkspace(config, configFile, option, debug);
+    if (!addResult.ok) {
+      return Result2.error(addResult.error);
+    }
+    if (option.sync) {
+      const syncResult = await performSync(configFile, workspaceRoot, debug);
+      if (!syncResult.ok) {
+        return Result2.error(syncResult.error);
+      }
+    }
+  } else {
+    const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.repo);
+    if (!interactiveResult.ok) {
+      return Result2.error(interactiveResult.error);
+    }
+  }
+  return Result2.ok();
+}
+async function addSingleWorkspace(config, configFile, option, debug) {
+  const repo = option.repo;
+  const defaultPath = extractRepoName(repo);
+  const workspacePath = option.path ?? defaultPath;
+  const branch = option.branch ?? "main";
+  const isGolang = option.go ?? false;
+  if (debug) {
+    console.log(blue(`\u{1F4DD} Adding workspace: ${workspacePath} from ${repo}`));
+  }
+  const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === repo);
+  if (existingWorkspace) {
+    console.log(yellow(`\u26A0\uFE0F  Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`));
+    return Result2.ok();
+  }
+  const newWorkspace = {
+    url: repo,
+    path: workspacePath,
+    branch,
+    isGolang,
+    active: true
+  };
+  config.workspaces.push(newWorkspace);
+  const writeResult = await writeConfigFile(config, configFile);
+  if (!writeResult.ok) {
+    console.log(red("\u274C Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+    return Result2.error(writeResult.error);
+  }
+  console.log(green(`\u2705 Successfully added workspace: ${workspacePath}`));
+  return Result2.ok();
+}
+async function runInteractiveMode(config, configFile, workspaceRoot, debug, defaultRepo) {
+  let hasAddedWorkspaces = false;
+  while (true) {
+    console.log(blue("\n\u{1F4E6} Adding a new workspace repository"));
+    const repoResult = await promptForRepo(defaultRepo);
+    if (!repoResult.ok) {
+      if (repoResult.error.message.includes("cancelled")) {
+        console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+        break;
+      }
+      return Result2.error(repoResult.error);
+    }
+    const repo = repoResult.value;
+    if (!repo || repo.trim() === "") {
+      console.log(yellow("\u26A0\uFE0F  No repository URL provided"));
+      continue;
+    }
+    const defaultPath = extractRepoName(repo);
+    const pathResult = await promptForPath(defaultPath);
+    if (!pathResult.ok) {
+      if (pathResult.error.message.includes("cancelled")) {
+        console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+        break;
+      }
+      return Result2.error(pathResult.error);
+    }
+    const workspacePath = pathResult.value || defaultPath;
+    const branchResult = await promptForBranch();
+    if (!branchResult.ok) {
+      if (branchResult.error.message.includes("cancelled")) {
+        console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+        break;
+      }
+      return Result2.error(branchResult.error);
+    }
+    const branch = branchResult.value || "main";
+    const goResult = await promptForGo();
+    if (!goResult.ok) {
+      if (goResult.error.message.includes("cancelled")) {
+        console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+        break;
+      }
+      return Result2.error(goResult.error);
+    }
+    const isGolang = goResult.value;
+    const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === repo);
+    if (existingWorkspace) {
+      console.log(yellow(`\u26A0\uFE0F  Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`));
+      continue;
+    }
+    const newWorkspace = {
+      url: repo,
+      path: workspacePath,
+      branch,
+      isGolang,
+      active: true
+    };
+    config.workspaces.push(newWorkspace);
+    hasAddedWorkspaces = true;
+    const writeResult = await writeConfigFile(config, configFile);
+    if (!writeResult.ok) {
+      console.log(red("\u274C Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+      return Result2.error(writeResult.error);
+    }
+    console.log(green(`\u2705 Successfully added workspace: ${workspacePath}`));
+    const continueResult = await promptForContinue();
+    if (!continueResult.ok) {
+      if (continueResult.error.message.includes("cancelled")) {
+        console.log(yellow("\u26A0\uFE0F  Operation cancelled"));
+        break;
+      }
+      return Result2.error(continueResult.error);
+    }
+    if (!continueResult.value) {
+      break;
+    }
+  }
+  if (hasAddedWorkspaces) {
+    const syncResult = await promptForSync();
+    if (!syncResult.ok) {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+      return Result2.ok();
+    }
+    if (syncResult.value) {
+      const performSyncResult = await performSync(configFile, workspaceRoot, debug);
+      if (!performSyncResult.ok) {
+        return Result2.error(performSyncResult.error);
+      }
+    } else {
+      console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
+    }
+  }
+  return Result2.ok();
+}
+function extractRepoName(repoUrl) {
+  const patterns = [
+    /\/([^/]+)\.git$/,
+    /\/([^/]+)$/,
+    /:([^/]+)\.git$/,
+    /:([^/]+)$/
+  ];
+  for (const pattern of patterns) {
+    const match = repoUrl.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+  return repoUrl.split("/").pop()?.replace(".git", "") || "repository";
+}
+async function performSync(configFile, workspaceRoot, debug) {
+  const syncResult = await syncCommand({
+    config: configFile,
+    workspaceRoot,
+    debug,
+    concurrency: 2
+  });
+  if (!syncResult.ok) {
+    console.log(red("\u274C Sync failed:"), syncResult.error.message);
+    return Result2.error(syncResult.error);
+  }
+  return Result2.ok();
+}
+function promptForRepo(defaultRepo) {
+  return Result2.wrap(() => Input.prompt({
+    message: "Repository URL:",
+    default: defaultRepo,
+    validate: (value) => {
+      if (!value || value.trim() === "") {
+        return "Repository URL is required";
+      }
+      return true;
+    }
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for repository URL", error);
+  })();
+}
+function promptForPath(defaultPath) {
+  return Result2.wrap(() => Input.prompt({
+    message: "Local path:",
+    default: defaultPath
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for path", error);
+  })();
+}
+function promptForBranch() {
+  return Result2.wrap(() => Input.prompt({
+    message: "Branch:",
+    default: "main",
+    suggestions: [
+      "main",
+      "master",
+      "develop",
+      "staging"
+    ]
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for branch", error);
+  })();
+}
+function promptForGo() {
+  return Result2.wrap(() => Confirm.prompt({
+    message: "Is this a Go module?",
+    default: false
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for Go workspace setting", error);
+  })();
+}
+function promptForContinue() {
+  return Result2.wrap(() => Confirm.prompt({
+    message: "Do you want to add another workspace?",
+    default: false
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for continue", error);
+  })();
+}
+function promptForSync() {
+  return Result2.wrap(() => Confirm.prompt({
+    message: "Do you want to sync now?",
+    default: true
+  }), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      return new ErrorWithCause("Operation cancelled", error);
+    }
+    return new ErrorWithCause("Failed to prompt for sync confirmation", error);
+  })();
+}
+
 // cmds/disable.ts
 async function disableCommand(option) {
   const configFile = option.config ?? "workspace.yml";
@@ -10328,7 +10718,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc6";
+var VERSION = "0.0.1-rc7";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"
@@ -10420,6 +10810,37 @@ cli.command("save", "Save current workspace state by updating workspace.yml with
   });
   if (!result.ok) {
     console.log(red("\u274C Save failed:"), result.error.message);
+    Deno.exit(1);
+  }
+});
+cli.command("add [repo] [path]", "Add a new repository to the workspace configuration").option("-c, --config <config:string>", "Workspace config file", {
+  default: "workspace.yml"
+}).option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+  default: "."
+}).option("-d, --debug", "Enable debug mode", {
+  default: false
+}).option("-b, --branch <branch:string>", "Git branch to checkout", {
+  default: "main"
+}).option("--go", "Mark as Go module for go.work integration", {
+  default: false
+}).option("--sync", "Sync workspace after adding repository", {
+  default: false
+}).option("-y, --yes", "Skip interactive prompts and use non-interactive mode", {
+  default: false
+}).action(async (options, repo, path) => {
+  const result = await addCommand({
+    repo,
+    path,
+    branch: options.branch,
+    go: options.go,
+    sync: options.sync,
+    yes: options.yes,
+    config: options.config,
+    workspaceRoot: options.workspaceRoot,
+    debug: options.debug
+  });
+  if (!result.ok) {
+    console.log(red("\u274C Add failed:"), result.error.message);
     Deno.exit(1);
   }
 });
