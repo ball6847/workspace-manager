@@ -19,13 +19,12 @@ export async function isDir(path: string): Promise<Result<void, Error>> {
  */
 export async function isDirectoryEmpty(dirPath: string): Promise<Result<boolean, Error>> {
 	return await Result.fromAsyncCatching(async () => {
-		const entries = [];
 		for await (const entry of Deno.readDir(dirPath)) {
 			// Skip hidden files like .git
 			if (!entry.name.startsWith(".")) {
-				entries.push(entry);
+				return false; // Found a non-hidden file, directory is not empty
 			}
 		}
-		return entries.length === 0;
+		return true; // No non-hidden files found, directory is empty
 	}).mapError((error) => new ErrorWithCause(`Failed to check if directory is empty`, error));
 }
