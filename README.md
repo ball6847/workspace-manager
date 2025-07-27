@@ -131,6 +131,27 @@ This command will:
 - `-d, --debug` - Enable debug mode
 - `-y, --yes` - Automatically sync after disabling without prompting
 
+### Save Command
+
+Save current workspace state by updating workspace.yml with current tracking branches. This is the opposite of sync/update - it trusts the environment state over configuration:
+
+```bash
+# Using global installation
+workspace-manager save [options]
+
+```
+
+This command will:
+1. Iterate through all active workspace submodules
+2. Get their current branch information
+3. Update the workspace.yml configuration file with the current branches
+4. Report which workspaces were updated
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+
 ### Status Command
 
 Show current workspace status:
@@ -196,7 +217,7 @@ The following improvements are planned based on code review:
 - [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
 - [x] **Add "disable" command** to disable active repositories in workspace configuration
 - [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
-- [ ] **Add "save" command** `workspace-manager save` to iterate through all workspace submodules and update workspace.yml with their current tracking branches - the opposite of sync/update, trusting the environment state over configuration
+- [x] **Add "save" command** `workspace-manager save` to iterate through all active workspace submodules and update workspace.yml with their current tracking branches - the opposite of sync/update, trusting the environment state over configuration
 
 ### Medium Priority
 
