@@ -19,7 +19,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc6/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc7/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
@@ -164,6 +164,52 @@ workspace-manager status
 
 *Note: Status command is not yet implemented.*
 
+### Add Command
+
+Add a new repository to the workspace configuration:
+
+```bash
+# Interactive mode - prompts for all inputs
+workspace-manager add
+
+# Non-interactive mode with all arguments
+workspace-manager add [repo] [path] [options]
+```
+
+This command will:
+1. **Interactive mode**: Prompt for repository URL, path, branch, and Go module setting
+2. **Non-interactive mode**: Use provided arguments and defaults
+3. Add the new workspace to the configuration file
+4. Optionally sync the workspace immediately
+5. In interactive mode, allow adding multiple repositories in sequence
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+- `-b, --branch <branch>` - Git branch to checkout (default: main)
+- `--go` - Mark as Go module for go.work integration (default: false)
+- `--sync` - Sync workspace after adding repository (default: false)
+- `-y, --yes` - Skip interactive prompts and use non-interactive mode (default: false)
+
+**Examples:**
+```bash
+# Interactive mode
+workspace-manager add
+
+# Interactive mode with repo as default (allows customizing other fields)
+workspace-manager add git@github.com:user/repo.git
+
+# Non-interactive mode with all defaults
+workspace-manager add git@github.com:user/repo.git -y
+
+# Non-interactive mode with custom options
+workspace-manager add git@github.com:user/go-service.git services/go-service --branch develop --go -y
+
+# Add and sync immediately in non-interactive mode
+workspace-manager add git@github.com:user/repo.git --sync -y
+```
+
 ## Configuration
 
 Create a `workspace.yml` file in your project root:
@@ -213,7 +259,7 @@ The following improvements are planned based on code review:
 - [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
-- [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
+- [x] **Add "add" command** `workspace-manager add [repo] [path] [--branch main] [--go] [--sync]` to simplify adding new repos
 - [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
 - [x] **Add "disable" command** to disable active repositories in workspace configuration
 - [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
