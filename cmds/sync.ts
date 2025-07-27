@@ -203,30 +203,33 @@ async function validateWorkspaceDir(path: string) {
  * @param url - URL of the repository to add as submodule
  * @param path - Path where the submodule should be added
  * @param branch - Branch to checkout
- * @param projectRoot - Root directory of the project
+ * @param workspaceRoot - Root directory of the workspace
  */
-async function gitSubmoduleAdd(url: string, path: string, branch: string, projectRoot: string) {
+async function gitSubmoduleAdd(url: string, submodulePath: string, branch: string, workspaceRoot: string) {
 	// Add submodule with specified branch
-	const addResult = await gitSubmoduleAddWithBranch(url, path, branch, projectRoot);
+	const addResult = await gitSubmoduleAddWithBranch(url, submodulePath, branch, workspaceRoot);
 	if (!addResult.ok) {
 		return Result.error(addResult.error);
 	}
 
 	// Check out the submodule to the specified branch
-	const submodulePath = `${projectRoot}/${path}`;
-	const checkoutResult = await gitCheckoutBranch(branch, submodulePath);
+	const fullSubmodulePath = path.join(workspaceRoot, submodulePath);
+	const checkoutResult = await gitCheckoutBranch(branch, fullSubmodulePath);
 	if (!checkoutResult.ok) {
 		return Result.error(
-			new ErrorWithCause(`Failed to checkout submodule at ${path} to branch ${branch}`, checkoutResult.error),
+			new ErrorWithCause(
+				`Failed to checkout submodule at ${submodulePath} to branch ${branch}`,
+				checkoutResult.error,
+			),
 		);
 	}
 
 	// Pull the latest changes from the specified branch
-	const pullResult = await gitPullOriginBranch(branch, submodulePath);
+	const pullResult = await gitPullOriginBranch(branch, fullSubmodulePath);
 	if (!pullResult.ok) {
 		return Result.error(
 			new ErrorWithCause(
-				`Failed to pull latest changes for submodule at ${path} from branch ${branch}`,
+				`Failed to pull latest changes for submodule at ${submodulePath} from branch ${branch}`,
 				pullResult.error,
 			),
 		);

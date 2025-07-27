@@ -1,22 +1,21 @@
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 
-export async function gitSubmoduleRemove(path: string, _projectRoot: string) {
+export async function gitSubmoduleRemove(path: string, cwd: string) {
 	// De-initialize the submodule
-	// TODO: check if we need to join with projectRoot
-	const deInit = await gitDeInit(path);
+	const deInit = await gitDeInit(path, cwd);
 	if (!deInit.ok) {
 		return Result.error(deInit.error);
 	}
 
 	// Remove the submodule from git
-	const rm = await gitRm(path);
+	const rm = await gitRm(path, cwd);
 	if (!rm.ok) {
 		return Result.error(rm.error);
 	}
 
 	// Remove the submodule's git directory if it exists
-	const gitModulePath = `.git/modules/${path}`;
+	const gitModulePath = `${cwd}/.git/modules/${path}`;
 	const stat = await Result.fromAsyncCatching(() => Deno.stat(gitModulePath));
 	if (!stat.ok) {
 		// Directory doesn't exist, no need to remove
@@ -34,19 +33,21 @@ export async function gitSubmoduleRemove(path: string, _projectRoot: string) {
 	return Result.ok();
 }
 
-export function gitDeInit(path: string) {
+export function gitDeInit(path: string, cwd: string) {
 	return Result.fromAsyncCatching(() =>
 		new Deno.Command("git", {
 			args: ["submodule", "deinit", "-f", path],
+			cwd,
 			stderr: "null",
 		}).output()
 	);
 }
 
-export function gitRm(path: string) {
+export function gitRm(path: string, cwd: string) {
 	return Result.fromAsyncCatching(() =>
 		new Deno.Command("git", {
 			args: ["rm", "-f", path],
+			cwd,
 			stderr: "null",
 		}).output()
 	);
@@ -57,13 +58,13 @@ export function gitRm(path: string) {
  * @param url - URL of the repository to add as submodule
  * @param path - Path where the submodule should be added
  * @param branch - Branch to checkout
- * @param projectRoot - Root directory of the project
+ * @param workspaceRoot - Root directory of the workspace
  */
-export async function gitSubmoduleAddWithBranch(url: string, path: string, branch: string, projectRoot: string) {
+export async function gitSubmoduleAddWithBranch(url: string, path: string, branch: string, workspaceRoot: string) {
 	return await Result.fromAsyncCatching(() =>
 		new Deno.Command("git", {
 			args: ["submodule", "add", "--force", "-b", branch, url, path],
-			cwd: projectRoot,
+			cwd: workspaceRoot,
 			stderr: "null",
 		}).output()
 	).mapError((error) => new ErrorWithCause(`Failed to add submodule at ${path} with branch ${branch}`, error));
