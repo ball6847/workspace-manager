@@ -8,7 +8,7 @@ import { saveCommand } from "./cmds/save.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc7";
+const VERSION = "0.0.1-rc8";
 
 // Create CLI application
 const cli = new Command()
@@ -76,12 +76,16 @@ cli.command("enable", "Enable a disabled workspace repository")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 4,
+	})
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
 		const result = await enableCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
+			concurrency: options.concurrency,
 			yes: options.yes,
 		});
 		if (!result.ok) {
@@ -99,12 +103,16 @@ cli.command("disable", "Disable an active workspace repository")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 4,
+	})
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
 		const result = await disableCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
+			concurrency: options.concurrency,
 			yes: options.yes,
 		});
 		if (!result.ok) {
@@ -143,6 +151,9 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 4,
+	})
 	.option("-b, --branch <branch:string>", "Git branch to checkout", {
 		default: "main",
 	})
@@ -160,6 +171,7 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
+			concurrency: options.concurrency,
 		});
 		if (!result.ok) {
 			console.log(red("❌ Add failed:"), result.error.message);

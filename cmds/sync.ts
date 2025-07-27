@@ -33,7 +33,7 @@ export type SyncCommandOption = {
 	debug?: boolean;
 
 	/**
-	 * Number of concurrent operations, default is 2
+	 * Number of concurrent operations, default is 4
 	 */
 	concurrency?: number;
 };
@@ -51,7 +51,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 	const configFile = option.config ??= "workspace.yml";
 	const workspaceRoot = option.workspaceRoot ??= ".";
 	const debug = option.debug ?? false;
-	const concurrency = option.concurrency ?? 2;
+	const concurrency = option.concurrency ?? 4;
 
 	// validate workspace directory and parse config file
 	const validated = await validateWorkspaceDir(workspaceRoot);

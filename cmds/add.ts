@@ -43,6 +43,10 @@ export type AddCommandOption = {
 	 * If true, print debug information
 	 */
 	debug?: boolean;
+	/**
+	 * Number of concurrent operations
+	 */
+	concurrency?: number;
 };
 
 /**
@@ -89,14 +93,14 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 
 		// Handle sync if requested
 		if (option.sync) {
-			const syncResult = await performSync(configFile, workspaceRoot, debug);
+			const syncResult = await performSync(configFile, workspaceRoot, debug, option.concurrency ?? 4);
 			if (!syncResult.ok) {
 				return Result.error(syncResult.error);
 			}
 		}
 	} else {
 		// Interactive mode: prompt for input (may use provided repo as default)
-		const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.repo);
+		const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
 		if (!interactiveResult.ok) {
 			return Result.error(interactiveResult.error);
 		}
@@ -167,6 +171,8 @@ async function addSingleWorkspace(
  * @param configFile Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
+ * @param concurrency Number of concurrent operations
+ * @param defaultRepo Optional default repository URL
  * @returns Result indicating success or failure
  */
 async function runInteractiveMode(
@@ -174,6 +180,7 @@ async function runInteractiveMode(
 	configFile: string,
 	workspaceRoot: string,
 	debug: boolean,
+	concurrency: number,
 	defaultRepo?: string,
 ): Promise<Result<void, Error>> {
 	let hasAddedWorkspaces = false;
@@ -286,7 +293,7 @@ async function runInteractiveMode(
 		}
 
 		if (syncResult.value) {
-			const performSyncResult = await performSync(configFile, workspaceRoot, debug);
+			const performSyncResult = await performSync(configFile, workspaceRoot, debug, concurrency);
 			if (!performSyncResult.ok) {
 				return Result.error(performSyncResult.error);
 			}
@@ -330,18 +337,20 @@ function extractRepoName(repoUrl: string): string {
  * @param configFile Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
+ * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
 async function performSync(
 	configFile: string,
 	workspaceRoot: string,
 	debug: boolean,
+	concurrency: number,
 ): Promise<Result<void, Error>> {
 	const syncResult = await syncCommand({
 		config: configFile,
 		workspaceRoot,
 		debug,
-		concurrency: 2,
+		concurrency,
 	});
 
 	if (!syncResult.ok) {

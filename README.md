@@ -19,7 +19,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc7/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc8/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
@@ -68,8 +68,8 @@ workspace-manager sync [options]
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 2)
-- `-y, --yes` - Accept all changes (not yet implemented)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
+- `-y, --yes` - Accept all changes (⚠️ not yet implemented)
 
 ### Update Command
 
@@ -85,7 +85,7 @@ workspace-manager update [options]
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 2)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 
 ### Enable Command
 
@@ -107,6 +107,7 @@ This command will:
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 - `-y, --yes` - Automatically sync after enabling without prompting
 
 ### Disable Command
@@ -129,6 +130,7 @@ This command will:
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 - `-y, --yes` - Automatically sync after disabling without prompting
 
 ### Save Command
@@ -187,6 +189,7 @@ This command will:
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
+- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 - `-b, --branch <branch>` - Git branch to checkout (default: main)
 - `--go` - Mark as Go module for go.work integration (default: false)
 - `--sync` - Sync workspace after adding repository (default: false)
@@ -250,39 +253,25 @@ deno task check
 
 ## TODO
 
-The following improvements are planned based on code review:
+**Note:** All core functionality is implemented and working. The following are planned enhancements:
 
 ### High Priority
 
 - [ ] **Add schema validation** using Zod (already imported) for the workspace configuration
 - [ ] **Implement the `--yes` option** to handle automatic confirmations when removing dirty directories
-- [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
-- [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
-- [x] **Add "add" command** `workspace-manager add [repo] [path] [--branch main] [--go] [--sync]` to simplify adding new repos
-- [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
-- [x] **Add "disable" command** to disable active repositories in workspace configuration
-- [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
-- [x] **Add "save" command** `workspace-manager save` to iterate through all active workspace submodules and update workspace.yml with their current tracking branches - the opposite of sync/update, trusting the environment state over configuration
 
 ### Medium Priority
 
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
-- [x] **Fix path handling** using proper path joining methods instead of string concatenation
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
-- [x] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
-- [x] **Batch processing for "sync" command** - multiple modules at a time
-- [x] **Batch processing for "update" command** - multiple modules at a time
 
 ### Low Priority
 
 - [ ] **Consider adding transaction-like behavior** to rollback changes if any step fails during sync
-- [x] **Complete Go workspace path resolution** - fix TODO comments about prepending `goWorkRoot` to paths
 - [ ] **Implement status command** to show current workspace state
 - [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
-- [x] **Add emoji to output** to make it more eye-catching
 - [ ] **Add spinner for long-running actions** to improve user experience
-- [x] **Add install instruction using `deno install from jsdelivr`** for easier distribution
 - [ ] **Auto-generate .env file from template** to maintain a single .env file and distribute it across submodules
 
 ## Important Notes

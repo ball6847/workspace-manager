@@ -20,6 +20,10 @@ export type DisableCommandOption = {
 	 */
 	debug?: boolean;
 	/**
+	 * Number of concurrent operations
+	 */
+	concurrency?: number;
+	/**
 	 * If true, automatically sync after disabling
 	 */
 	yes?: boolean;
@@ -60,7 +64,7 @@ export async function disableCommand(option: DisableCommandOption): Promise<Resu
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug);
+	const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug, option.concurrency ?? 4);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
@@ -147,6 +151,7 @@ async function selectAndDisableWorkspace(
  * @param configFile Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
+ * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
 async function handleSyncConfirmation(
@@ -154,6 +159,7 @@ async function handleSyncConfirmation(
 	configFile: string,
 	workspaceRoot: string,
 	debug: boolean,
+	concurrency: number,
 ): Promise<Result<void, Error>> {
 	// Prompt for sync if not auto-sync
 	if (!autoSync) {
@@ -177,7 +183,7 @@ async function handleSyncConfirmation(
 		config: configFile,
 		workspaceRoot,
 		debug,
-		concurrency: 2,
+		concurrency,
 	});
 
 	if (!syncResult.ok) {

@@ -9585,7 +9585,7 @@ function join6(path, ...paths) {
 }
 
 // libs/concurrent.ts
-async function processConcurrently(items, processor, concurrency = 2) {
+async function processConcurrently(items, processor, concurrency = 4) {
   if (items.length === 0) {
     return Result2.ok();
   }
@@ -9859,7 +9859,7 @@ async function syncCommand(option) {
   const configFile = option.config ??= "workspace.yml";
   const workspaceRoot = option.workspaceRoot ??= ".";
   const debug = option.debug ?? false;
-  const concurrency = option.concurrency ?? 2;
+  const concurrency = option.concurrency ?? 4;
   const validated = await validateWorkspaceDir(workspaceRoot);
   if (!validated.ok) {
     console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
@@ -10065,13 +10065,13 @@ async function addCommand(option) {
       return Result2.error(addResult.error);
     }
     if (option.sync) {
-      const syncResult = await performSync(configFile, workspaceRoot, debug);
+      const syncResult = await performSync(configFile, workspaceRoot, debug, option.concurrency ?? 4);
       if (!syncResult.ok) {
         return Result2.error(syncResult.error);
       }
     }
   } else {
-    const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.repo);
+    const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
     if (!interactiveResult.ok) {
       return Result2.error(interactiveResult.error);
     }
@@ -10108,7 +10108,7 @@ async function addSingleWorkspace(config, configFile, option, debug) {
   console.log(green(`\u2705 Successfully added workspace: ${workspacePath}`));
   return Result2.ok();
 }
-async function runInteractiveMode(config, configFile, workspaceRoot, debug, defaultRepo) {
+async function runInteractiveMode(config, configFile, workspaceRoot, debug, concurrency, defaultRepo) {
   let hasAddedWorkspaces = false;
   while (true) {
     console.log(blue("\n\u{1F4E6} Adding a new workspace repository"));
@@ -10192,7 +10192,7 @@ async function runInteractiveMode(config, configFile, workspaceRoot, debug, defa
       return Result2.ok();
     }
     if (syncResult.value) {
-      const performSyncResult = await performSync(configFile, workspaceRoot, debug);
+      const performSyncResult = await performSync(configFile, workspaceRoot, debug, concurrency);
       if (!performSyncResult.ok) {
         return Result2.error(performSyncResult.error);
       }
@@ -10217,12 +10217,12 @@ function extractRepoName(repoUrl) {
   }
   return repoUrl.split("/").pop()?.replace(".git", "") || "repository";
 }
-async function performSync(configFile, workspaceRoot, debug) {
+async function performSync(configFile, workspaceRoot, debug, concurrency) {
   const syncResult = await syncCommand({
     config: configFile,
     workspaceRoot,
     debug,
-    concurrency: 2
+    concurrency
   });
   if (!syncResult.ok) {
     console.log(red("\u274C Sync failed:"), syncResult.error.message);
@@ -10330,7 +10330,7 @@ async function disableCommand(option) {
   if (!disableResult.ok) {
     return Result2.error(disableResult.error);
   }
-  const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug);
+  const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug, option.concurrency ?? 4);
   if (!syncResult.ok) {
     return Result2.error(syncResult.error);
   }
@@ -10373,7 +10373,7 @@ async function selectAndDisableWorkspace(config, configFile, debug) {
   console.log(green(`\u2705 Successfully disabled workspace: ${selectedPath}`));
   return Result2.ok();
 }
-async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug) {
+async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug, concurrency) {
   if (!autoSync) {
     const syncResult2 = await promptSyncConfirmation();
     if (!syncResult2.ok) {
@@ -10390,7 +10390,7 @@ async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug
     config: configFile,
     workspaceRoot,
     debug,
-    concurrency: 2
+    concurrency
   });
   if (!syncResult.ok) {
     console.log(red("\u274C Sync failed:"), syncResult.error.message);
@@ -10444,7 +10444,7 @@ async function enableCommand(option) {
   if (!enableResult.ok) {
     return Result2.error(enableResult.error);
   }
-  const syncResult = await handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug);
+  const syncResult = await handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug, option.concurrency ?? 4);
   if (!syncResult.ok) {
     return Result2.error(syncResult.error);
   }
@@ -10487,7 +10487,7 @@ async function selectAndEnableWorkspace(config, configFile, debug) {
   console.log(green(`\u2705 Successfully enabled workspace: ${selectedPath}`));
   return Result2.ok();
 }
-async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug) {
+async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debug, concurrency) {
   if (!autoSync) {
     const syncResult2 = await promptSyncConfirmation2();
     if (!syncResult2.ok) {
@@ -10504,7 +10504,7 @@ async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debu
     config: configFile,
     workspaceRoot,
     debug,
-    concurrency: 2
+    concurrency
   });
   if (!syncResult.ok) {
     console.log(red("\u274C Sync failed:"), syncResult.error.message);
@@ -10618,7 +10618,7 @@ async function updateCommand(option) {
   const configFile = option.config ??= "workspace.yml";
   const workspaceRoot = option.workspaceRoot ??= ".";
   const debug = option.debug ?? false;
-  const concurrency = option.concurrency ?? 2;
+  const concurrency = option.concurrency ?? 4;
   const validated = await validateWorkspaceDir2(workspaceRoot);
   if (!validated.ok) {
     console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
@@ -10718,7 +10718,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc7";
+var VERSION = "0.0.1-rc8";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"
@@ -10766,11 +10766,14 @@ cli.command("enable", "Enable a disabled workspace repository").option("-c, --co
   default: "."
 }).option("-d, --debug", "Enable debug mode", {
   default: false
+}).option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+  default: 4
 }).option("-y, --yes", "Skip sync confirmation prompt").action(async (options) => {
   const result = await enableCommand({
     config: options.config,
     workspaceRoot: options.workspaceRoot,
     debug: options.debug,
+    concurrency: options.concurrency,
     yes: options.yes
   });
   if (!result.ok) {
@@ -10784,11 +10787,14 @@ cli.command("disable", "Disable an active workspace repository").option("-c, --c
   default: "."
 }).option("-d, --debug", "Enable debug mode", {
   default: false
+}).option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+  default: 4
 }).option("-y, --yes", "Skip sync confirmation prompt").action(async (options) => {
   const result = await disableCommand({
     config: options.config,
     workspaceRoot: options.workspaceRoot,
     debug: options.debug,
+    concurrency: options.concurrency,
     yes: options.yes
   });
   if (!result.ok) {
@@ -10819,6 +10825,8 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
   default: "."
 }).option("-d, --debug", "Enable debug mode", {
   default: false
+}).option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+  default: 4
 }).option("-b, --branch <branch:string>", "Git branch to checkout", {
   default: "main"
 }).option("--go", "Mark as Go module for go.work integration", {
@@ -10837,7 +10845,8 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
     yes: options.yes,
     config: options.config,
     workspaceRoot: options.workspaceRoot,
-    debug: options.debug
+    debug: options.debug,
+    concurrency: options.concurrency
   });
   if (!result.ok) {
     console.log(red("\u274C Add failed:"), result.error.message);

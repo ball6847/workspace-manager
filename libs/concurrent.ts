@@ -4,13 +4,13 @@ import { Result } from "typescript-result";
  * Process items concurrently with a specified concurrency limit
  * @param items - Array of items to process
  * @param processor - Function to process each item
- * @param concurrency - Maximum number of concurrent operations (default: 2)
+ * @param concurrency - Maximum number of concurrent operations (default: 4)
  * @returns Result indicating success or failure
  */
 export async function processConcurrently<T, E extends Error>(
 	items: T[],
 	processor: (item: T) => Promise<Result<void, E>>,
-	concurrency: number = 2,
+	concurrency: number = 4,
 ): Promise<Result<void, E>> {
 	if (items.length === 0) {
 		return Result.ok();
@@ -42,13 +42,13 @@ export async function processConcurrently<T, E extends Error>(
  * Process items concurrently with a specified concurrency limit, allowing some failures
  * @param items - Array of items to process
  * @param processor - Function to process each item
- * @param concurrency - Maximum number of concurrent operations (default: 2)
+ * @param concurrency - Maximum number of concurrent operations (default: 4)
  * @returns Array of results for each item
  */
 export async function processConcurrentlyWithResults<T, R, E extends Error>(
 	items: T[],
 	processor: (item: T) => Promise<Result<R, E>>,
-	concurrency: number = 2,
+	concurrency: number = 4,
 ): Promise<Result<R, E>[]> {
 	if (items.length === 0) {
 		return [];
