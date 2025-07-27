@@ -1,6 +1,7 @@
 import { Command } from "@cliffy/command";
 import { red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import { addCommand } from "./cmds/add.ts";
 import { disableCommand } from "./cmds/disable.ts";
 import { enableCommand } from "./cmds/enable.ts";
 import { saveCommand } from "./cmds/save.ts";
@@ -129,6 +130,39 @@ cli.command("save", "Save current workspace state by updating workspace.yml with
 		});
 		if (!result.ok) {
 			console.log(red("❌ Save failed:"), result.error.message);
+			Deno.exit(1);
+		}
+	});
+
+// Add command
+cli.command("add [repo] [path]", "Add a new repository to the workspace configuration")
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-b, --branch <branch:string>", "Git branch to checkout", {
+		default: "main",
+	})
+	.option("--go", "Mark as Go module for go.work integration", { default: false })
+	.option("--sync", "Sync workspace after adding repository", { default: false })
+	.option("-y, --yes", "Skip interactive prompts and use non-interactive mode", { default: false })
+	.action(async (options, repo, path) => {
+		const result = await addCommand({
+			repo,
+			path,
+			branch: options.branch,
+			go: options.go,
+			sync: options.sync,
+			yes: options.yes,
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Add failed:"), result.error.message);
 			Deno.exit(1);
 		}
 	});
