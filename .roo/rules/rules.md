@@ -9,11 +9,25 @@ Technical Constraints
 - Use `type` keyword when importing types from other files
 
 Directory Structure
-- main.ts - main entry point of the application
-- libs/ - directory for reusable libraries, eg. config parser
-- cmds/ - directory for command line commands, one command per file
-- __test__ - output directory for testing sync command
-- workspace.yml - workspace config file for testing
+- `main.ts` - main entry point of the CLI application
+- `libs/` - reusable utility libraries
+  - `config.ts` - workspace configuration file parser
+  - `git.ts` - git operations (submodules, branches, status)
+  - `file.ts` - file system utilities (directory checks, validation)
+  - `go.ts` - Go workspace management utilities
+  - `concurrent.ts` - concurrent processing utilities
+  - `errors.ts` - custom error types and error handling
+- `cmds/` - CLI command implementations (one command per file)
+  - `sync.ts` - synchronize workspace with remote repositories
+  - `enable.ts` - enable workspace items
+  - `disable.ts` - disable workspace items
+  - `update.ts` - update workspace items
+- `build/` - compiled output directory
+  - `cli.js` - compiled CLI executable
+- `example/` - example configuration files
+  - `workspace.yml` - sample workspace configuration
+- `deno.json` - Deno project configuration
+- `deno.lock` - Deno dependency lock file
 
 Error Handling - Example
 

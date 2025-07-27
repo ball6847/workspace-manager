@@ -162,3 +162,35 @@ export async function gitPullOriginBranch(branch: string, cwd: string) {
 		}).output()
 	).mapError((error) => new ErrorWithCause(`Failed to pull latest changes from origin/${branch}`, error));
 }
+
+/**
+ * Get the current branch name
+ * @param cwd - Working directory for the git command
+ * @returns Result with current branch name
+ */
+export async function gitGetCurrentBranch(cwd: string): Promise<Result<string, Error>> {
+	return await Result.fromAsyncCatching(async () => {
+		const result = await new Deno.Command("git", {
+			args: ["rev-parse", "--abbrev-ref", "HEAD"],
+			cwd,
+			stderr: "null",
+		}).output();
+		return new TextDecoder().decode(result.stdout).trim();
+	}).mapError((error) => new ErrorWithCause(`Failed to get current branch`, error));
+}
+
+/**
+ * Check if directory is a valid git repository
+ * @param cwd - Directory to check
+ * @returns Result with boolean indicating if directory is a git repository
+ */
+export async function gitIsRepository(cwd: string): Promise<Result<boolean, Error>> {
+	return await Result.fromAsyncCatching(async () => {
+		const result = await new Deno.Command("git", {
+			args: ["rev-parse", "--git-dir"],
+			cwd,
+			stderr: "null",
+		}).output();
+		return result.success;
+	}).mapError((error) => new ErrorWithCause(`Failed to check if directory is a git repository`, error));
+}
