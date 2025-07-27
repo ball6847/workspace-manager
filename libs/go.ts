@@ -25,15 +25,15 @@ export async function isGoAvailable() {
  *
  * Note that, go will automatically detect go.work from parent directory
  *
- * @param path
+ * @param cwd - Working directory where the go.work file should be created
  */
-export async function goWorkInit(path: string) {
+export async function goWorkInit(cwd: string) {
 	const result = await Result.fromAsyncCatching(async () => {
 		const command = new Deno.Command("go", {
 			args: ["work", "init"],
 			stdout: "piped",
 			stderr: "piped",
-			cwd: path,
+			cwd,
 		});
 		return await command.output();
 	});

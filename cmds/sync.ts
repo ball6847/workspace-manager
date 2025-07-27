@@ -119,7 +119,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 			// If directory exists, validate and heal it
 			if (dir.ok) {
 				console.log(blue(`🔍 Validating existing workspace: ${workspace.path}`));
-				const healResult = await validateAndHealWorkspace(workspace, workspacePath, workspaceRoot);
+				const healResult = await validateAndHealWorkspace(workspace, workspacePath);
 				if (!healResult.ok) {
 					return Result.error(healResult.error);
 				}
@@ -244,13 +244,11 @@ async function gitSubmoduleAdd(url: string, submodulePath: string, branch: strin
  *
  * @param workspace - Workspace configuration object
  * @param workspacePath - Full path to the workspace directory
- * @param workspaceRoot - Root directory of the project
  * @returns Result indicating if workspace is valid/healed or needs full checkout
  */
 async function validateAndHealWorkspace(
 	workspace: { path: string; url: string; branch: string },
 	workspacePath: string,
-	workspaceRoot: string,
 ): Promise<Result<boolean, Error>> {
 	// Check if directory is empty
 	const isEmpty = await isDirectoryEmpty(workspacePath);
