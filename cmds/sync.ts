@@ -4,8 +4,17 @@ import { Result } from "typescript-result";
 import { processConcurrently } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
-import { gitCheckoutBranch, gitPullOriginBranch, gitSubmoduleAddWithBranch, gitSubmoduleRemove } from "../libs/git.ts";
+import { isDir, isDirectoryEmpty } from "../libs/file.ts";
+import {
+	gitCheckoutBranch,
+	gitFetch,
+	gitGetCurrentBranch,
+	gitIsRepository,
+	gitIsWorkingDirectoryClean,
+	gitPullOriginBranch,
+	gitSubmoduleAddWithBranch,
+	gitSubmoduleRemove,
+} from "../libs/git.ts";
 import { goWorkInit, goWorkRemove, goWorkUse, isGoAvailable } from "../libs/go.ts";
 
 export type SyncCommandOption = {
@@ -106,9 +115,30 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
 			const dir = await isDir(workspacePath);
+
+			// If directory exists, validate and heal it
 			if (dir.ok) {
-				console.log(blue(`ℹ️  Workspace directory already exists, skipping checkout: ${workspace.path}`));
-				return Result.ok();
+				console.log(blue(`🔍 Validating existing workspace: ${workspace.path}`));
+				const healResult = await validateAndHealWorkspace(workspace, workspacePath);
+				if (!healResult.ok) {
+					return Result.error(healResult.error);
+				}
+
+				// If validation/healing was successful, we're done
+				if (healResult.value) {
+					return Result.ok();
+				}
+
+				// If healing returned false, we need to remove and re-checkout
+				console.log(yellow(`🗑️  Removing corrupted workspace for fresh checkout: ${workspace.path}`));
+				const removeResult = await gitSubmoduleRemove(workspace.path, workspaceRoot);
+				if (!removeResult.ok) {
+					console.log(
+						red(`❌ Failed to remove corrupted workspace: ${workspace.path}`),
+						`(${removeResult.error.message})`,
+					);
+					return Result.error(removeResult.error);
+				}
 			}
 
 			console.log(
@@ -173,36 +203,134 @@ async function validateWorkspaceDir(path: string) {
  * @param url - URL of the repository to add as submodule
  * @param path - Path where the submodule should be added
  * @param branch - Branch to checkout
- * @param projectRoot - Root directory of the project
+ * @param workspaceRoot - Root directory of the workspace
  */
-async function gitSubmoduleAdd(url: string, path: string, branch: string, projectRoot: string) {
+async function gitSubmoduleAdd(url: string, submodulePath: string, branch: string, workspaceRoot: string) {
 	// Add submodule with specified branch
-	const addResult = await gitSubmoduleAddWithBranch(url, path, branch, projectRoot);
+	const addResult = await gitSubmoduleAddWithBranch(url, submodulePath, branch, workspaceRoot);
 	if (!addResult.ok) {
 		return Result.error(addResult.error);
 	}
 
 	// Check out the submodule to the specified branch
-	const submodulePath = `${projectRoot}/${path}`;
-	const checkoutResult = await gitCheckoutBranch(branch, submodulePath);
+	const fullSubmodulePath = path.join(workspaceRoot, submodulePath);
+	const checkoutResult = await gitCheckoutBranch(branch, fullSubmodulePath);
 	if (!checkoutResult.ok) {
 		return Result.error(
-			new ErrorWithCause(`Failed to checkout submodule at ${path} to branch ${branch}`, checkoutResult.error),
+			new ErrorWithCause(
+				`Failed to checkout submodule at ${submodulePath} to branch ${branch}`,
+				checkoutResult.error,
+			),
 		);
 	}
 
 	// Pull the latest changes from the specified branch
-	const pullResult = await gitPullOriginBranch(branch, submodulePath);
+	const pullResult = await gitPullOriginBranch(branch, fullSubmodulePath);
 	if (!pullResult.ok) {
 		return Result.error(
 			new ErrorWithCause(
-				`Failed to pull latest changes for submodule at ${path} from branch ${branch}`,
+				`Failed to pull latest changes for submodule at ${submodulePath} from branch ${branch}`,
 				pullResult.error,
 			),
 		);
 	}
 
 	return Result.ok();
+}
+
+/**
+ * Validates and heals a workspace directory to ensure it's properly set up.
+ * This function performs safe auto-healing operations without risking data loss.
+ *
+ * @param workspace - Workspace configuration object
+ * @param workspacePath - Full path to the workspace directory
+ * @returns Result indicating if workspace is valid/healed or needs full checkout
+ */
+async function validateAndHealWorkspace(
+	workspace: { path: string; url: string; branch: string },
+	workspacePath: string,
+): Promise<Result<boolean, Error>> {
+	// Check if directory is empty
+	const isEmpty = await isDirectoryEmpty(workspacePath);
+	if (!isEmpty.ok) {
+		return Result.error(isEmpty.error);
+	}
+
+	// If directory is empty, we need full checkout
+	if (isEmpty.value) {
+		console.log(yellow(`📁 Directory is empty, will perform full checkout: ${workspace.path}`));
+		return Result.ok(false);
+	}
+
+	// Check if it's a valid git repository
+	const isRepo = await gitIsRepository(workspacePath);
+	if (!isRepo.ok) {
+		return Result.error(isRepo.error);
+	}
+
+	// If not a git repository, we need full checkout
+	if (!isRepo.value) {
+		console.log(yellow(`📁 Directory is not a git repository, will perform full checkout: ${workspace.path}`));
+		return Result.ok(false);
+	}
+
+	// Check current branch
+	const currentBranch = await gitGetCurrentBranch(workspacePath);
+	if (!currentBranch.ok) {
+		return Result.error(currentBranch.error);
+	}
+
+	// If on wrong branch, try to switch (only if working directory is clean)
+	if (currentBranch.value !== workspace.branch) {
+		const isClean = await gitIsWorkingDirectoryClean(workspacePath);
+		if (!isClean.ok) {
+			return Result.error(isClean.error);
+		}
+
+		if (!isClean.value) {
+			console.log(
+				red(
+					`⚠️  Workspace has uncommitted changes on branch ${currentBranch.value}, cannot auto-heal: ${workspace.path}`,
+				),
+			);
+			console.log(yellow(`   Please manually resolve conflicts or stash changes before running sync again.`));
+			return Result.error(new Error(`Workspace has uncommitted changes, manual intervention required`));
+		}
+
+		console.log(
+			yellow(
+				`🔄 Switching from branch ${currentBranch.value} to ${workspace.branch}: ${workspace.path}`,
+			),
+		);
+
+		// Fetch latest changes first
+		const fetchResult = await gitFetch(workspacePath);
+		if (!fetchResult.ok) {
+			console.log(
+				yellow(`⚠️  Failed to fetch latest changes, continuing with checkout: ${fetchResult.error.message}`),
+			);
+		}
+
+		// Checkout to the correct branch
+		const checkoutResult = await gitCheckoutBranch(workspace.branch, workspacePath);
+		if (!checkoutResult.ok) {
+			console.log(
+				red(`❌ Failed to checkout to branch ${workspace.branch}: ${checkoutResult.error.message}`),
+			);
+			return Result.error(checkoutResult.error);
+		}
+	}
+
+	// Pull latest changes from the correct branch
+	console.log(blue(`🔄 Pulling latest changes for workspace: ${workspace.path}`));
+	const pullResult = await gitPullOriginBranch(workspace.branch, workspacePath);
+	if (!pullResult.ok) {
+		console.log(yellow(`⚠️  Failed to pull latest changes: ${pullResult.error.message}`));
+		// Don't fail the entire operation if pull fails, workspace might still be usable
+	}
+
+	console.log(green(`✅ Workspace validated and healed: ${workspace.path}`));
+	return Result.ok(true);
 }
 
 /**
