@@ -19,7 +19,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc5/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc6/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
@@ -131,6 +131,27 @@ This command will:
 - `-d, --debug` - Enable debug mode
 - `-y, --yes` - Automatically sync after disabling without prompting
 
+### Save Command
+
+Save current workspace state by updating workspace.yml with current tracking branches. This is the opposite of sync/update - it trusts the environment state over configuration:
+
+```bash
+# Using global installation
+workspace-manager save [options]
+
+```
+
+This command will:
+1. Iterate through all active workspace submodules
+2. Get their current branch information
+3. Update the workspace.yml configuration file with the current branches
+4. Report which workspaces were updated
+
+**Options:**
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+
 ### Status Command
 
 Show current workspace status:
@@ -196,11 +217,12 @@ The following improvements are planned based on code review:
 - [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
 - [x] **Add "disable" command** to disable active repositories in workspace configuration
 - [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
+- [x] **Add "save" command** `workspace-manager save` to iterate through all active workspace submodules and update workspace.yml with their current tracking branches - the opposite of sync/update, trusting the environment state over configuration
 
 ### Medium Priority
 
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
-- [ ] **Fix path handling** using proper path joining methods instead of string concatenation
+- [x] **Fix path handling** using proper path joining methods instead of string concatenation
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
 - [x] **Handle dirty workspace** - use stash if possible to preserve uncommitted changes
 - [x] **Batch processing for "sync" command** - multiple modules at a time
@@ -253,4 +275,3 @@ The project uses the `typescript-result` library for functional error handling, 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

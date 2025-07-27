@@ -3,10 +3,11 @@ import { red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { disableCommand } from "./cmds/disable.ts";
 import { enableCommand } from "./cmds/enable.ts";
+import { saveCommand } from "./cmds/save.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc5";
+const VERSION = "0.0.1-rc6";
 
 // Create CLI application
 const cli = new Command()
@@ -107,6 +108,27 @@ cli.command("disable", "Disable an active workspace repository")
 		});
 		if (!result.ok) {
 			console.log(red("❌ Disable failed:"), result.error.message);
+			Deno.exit(1);
+		}
+	});
+
+// Save command
+cli.command("save", "Save current workspace state by updating workspace.yml with current tracking branches")
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.action(async (options) => {
+		const result = await saveCommand({
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Save failed:"), result.error.message);
 			Deno.exit(1);
 		}
 	});
