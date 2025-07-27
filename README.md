@@ -213,7 +213,7 @@ The following improvements are planned based on code review:
 - [x] **Standardize error handling** - either use Result pattern consistently or handle errors uniformly
 - [x] **Add "update" command** to pull all submodules from tracking branches
 - [ ] **Confirm before removing** - list what will be removed and let user confirm it
-- [ ] **Add "add" command** `workspace-manager add <repo> [path] [--branch main] [--go]` to simplify adding new repos
+- [ ] **Add "add" command** `workspace-manager add [repo] [path] [--branch main] [--go] [--sync]` to simplify adding new repos
 - [x] **Add "enable" command** to re-enable disabled repositories in workspace configuration
 - [x] **Add "disable" command** to disable active repositories in workspace configuration
 - [x] **Prompt for sync after enable/disable** - ask user if they want to sync after modifying workspace.yml, default to No unless `-y` is passed
