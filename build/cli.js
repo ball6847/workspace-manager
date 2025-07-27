@@ -9172,6 +9172,16 @@ async function isDir(path) {
   }
   return Result2.ok();
 }
+async function isDirectoryEmpty(dirPath) {
+  return await Result2.fromAsyncCatching(async () => {
+    for await (const entry of Deno.readDir(dirPath)) {
+      if (!entry.name.startsWith(".")) {
+        return false;
+      }
+    }
+    return true;
+  }).mapError((error) => new ErrorWithCause(`Failed to check if directory is empty`, error));
+}
 
 // deno:https://jsr.io/@std/internal/1.0.10/_os.ts
 function checkWindows() {
@@ -9477,16 +9487,16 @@ async function processConcurrently(items, processor, concurrency = 2) {
 }
 
 // libs/git.ts
-async function gitSubmoduleRemove(path, _projectRoot) {
-  const deInit = await gitDeInit(path);
+async function gitSubmoduleRemove(path, cwd) {
+  const deInit = await gitDeInit(path, cwd);
   if (!deInit.ok) {
     return Result2.error(deInit.error);
   }
-  const rm = await gitRm(path);
+  const rm = await gitRm(path, cwd);
   if (!rm.ok) {
     return Result2.error(rm.error);
   }
-  const gitModulePath = `.git/modules/${path}`;
+  const gitModulePath = `${cwd}/.git/modules/${path}`;
   const stat2 = await Result2.fromAsyncCatching(() => Deno.stat(gitModulePath));
   if (!stat2.ok) {
     return Result2.ok(void 0);
@@ -9501,7 +9511,7 @@ async function gitSubmoduleRemove(path, _projectRoot) {
   }
   return Result2.ok();
 }
-function gitDeInit(path) {
+function gitDeInit(path, cwd) {
   return Result2.fromAsyncCatching(() => new Deno.Command("git", {
     args: [
       "submodule",
@@ -9509,20 +9519,22 @@ function gitDeInit(path) {
       "-f",
       path
     ],
+    cwd,
     stderr: "null"
   }).output());
 }
-function gitRm(path) {
+function gitRm(path, cwd) {
   return Result2.fromAsyncCatching(() => new Deno.Command("git", {
     args: [
       "rm",
       "-f",
       path
     ],
+    cwd,
     stderr: "null"
   }).output());
 }
-async function gitSubmoduleAddWithBranch(url, path, branch, projectRoot) {
+async function gitSubmoduleAddWithBranch(url, path, branch, workspaceRoot) {
   return await Result2.fromAsyncCatching(() => new Deno.Command("git", {
     args: [
       "submodule",
@@ -9533,7 +9545,7 @@ async function gitSubmoduleAddWithBranch(url, path, branch, projectRoot) {
       url,
       path
     ],
-    cwd: projectRoot,
+    cwd: workspaceRoot,
     stderr: "null"
   }).output()).mapError((error) => new ErrorWithCause(`Failed to add submodule at ${path} with branch ${branch}`, error));
 }
@@ -9606,6 +9618,33 @@ async function gitPullOriginBranch(branch, cwd) {
     stderr: "null"
   }).output()).mapError((error) => new ErrorWithCause(`Failed to pull latest changes from origin/${branch}`, error));
 }
+async function gitGetCurrentBranch(cwd) {
+  return await Result2.fromAsyncCatching(async () => {
+    const result = await new Deno.Command("git", {
+      args: [
+        "rev-parse",
+        "--abbrev-ref",
+        "HEAD"
+      ],
+      cwd,
+      stderr: "null"
+    }).output();
+    return new TextDecoder().decode(result.stdout).trim();
+  }).mapError((error) => new ErrorWithCause(`Failed to get current branch`, error));
+}
+async function gitIsRepository(cwd) {
+  return await Result2.fromAsyncCatching(async () => {
+    const result = await new Deno.Command("git", {
+      args: [
+        "rev-parse",
+        "--git-dir"
+      ],
+      cwd,
+      stderr: "null"
+    }).output();
+    return result.success;
+  }).mapError((error) => new ErrorWithCause(`Failed to check if directory is a git repository`, error));
+}
 
 // libs/go.ts
 async function isGoAvailable() {
@@ -9624,7 +9663,7 @@ async function isGoAvailable() {
   }
   return Result2.ok(true);
 }
-async function goWorkInit(path) {
+async function goWorkInit(cwd) {
   const result = await Result2.fromAsyncCatching(async () => {
     const command = new Deno.Command("go", {
       args: [
@@ -9633,7 +9672,7 @@ async function goWorkInit(path) {
       ],
       stdout: "piped",
       stderr: "piped",
-      cwd: path
+      cwd
     });
     return await command.output();
   });
@@ -9737,8 +9776,20 @@ async function syncCommand(option) {
     const workspacePath = join6(workspaceRoot, workspace.path);
     const dir = await isDir(workspacePath);
     if (dir.ok) {
-      console.log(blue(`\u2139\uFE0F  Workspace directory already exists, skipping checkout: ${workspace.path}`));
-      return Result2.ok();
+      console.log(blue(`\u{1F50D} Validating existing workspace: ${workspace.path}`));
+      const healResult = await validateAndHealWorkspace(workspace, workspacePath);
+      if (!healResult.ok) {
+        return Result2.error(healResult.error);
+      }
+      if (healResult.value) {
+        return Result2.ok();
+      }
+      console.log(yellow(`\u{1F5D1}\uFE0F  Removing corrupted workspace for fresh checkout: ${workspace.path}`));
+      const removeResult2 = await gitSubmoduleRemove(workspace.path, workspaceRoot);
+      if (!removeResult2.ok) {
+        console.log(red(`\u274C Failed to remove corrupted workspace: ${workspace.path}`), `(${removeResult2.error.message})`);
+        return Result2.error(removeResult2.error);
+      }
     }
     console.log(yellow(`\u{1F4E5} Checking out workspace: ${workspace.path} from ${workspace.url} on branch ${workspace.branch}`));
     const updateResult = await gitSubmoduleAdd(workspace.url, workspace.path, workspace.branch, workspaceRoot);
@@ -9775,21 +9826,71 @@ async function validateWorkspaceDir(path) {
   }
   return Result2.ok();
 }
-async function gitSubmoduleAdd(url, path, branch, projectRoot) {
-  const addResult = await gitSubmoduleAddWithBranch(url, path, branch, projectRoot);
+async function gitSubmoduleAdd(url, submodulePath, branch, workspaceRoot) {
+  const addResult = await gitSubmoduleAddWithBranch(url, submodulePath, branch, workspaceRoot);
   if (!addResult.ok) {
     return Result2.error(addResult.error);
   }
-  const submodulePath = `${projectRoot}/${path}`;
-  const checkoutResult = await gitCheckoutBranch(branch, submodulePath);
+  const fullSubmodulePath = join6(workspaceRoot, submodulePath);
+  const checkoutResult = await gitCheckoutBranch(branch, fullSubmodulePath);
   if (!checkoutResult.ok) {
-    return Result2.error(new ErrorWithCause(`Failed to checkout submodule at ${path} to branch ${branch}`, checkoutResult.error));
+    return Result2.error(new ErrorWithCause(`Failed to checkout submodule at ${submodulePath} to branch ${branch}`, checkoutResult.error));
   }
-  const pullResult = await gitPullOriginBranch(branch, submodulePath);
+  const pullResult = await gitPullOriginBranch(branch, fullSubmodulePath);
   if (!pullResult.ok) {
-    return Result2.error(new ErrorWithCause(`Failed to pull latest changes for submodule at ${path} from branch ${branch}`, pullResult.error));
+    return Result2.error(new ErrorWithCause(`Failed to pull latest changes for submodule at ${submodulePath} from branch ${branch}`, pullResult.error));
   }
   return Result2.ok();
+}
+async function validateAndHealWorkspace(workspace, workspacePath) {
+  const isEmpty = await isDirectoryEmpty(workspacePath);
+  if (!isEmpty.ok) {
+    return Result2.error(isEmpty.error);
+  }
+  if (isEmpty.value) {
+    console.log(yellow(`\u{1F4C1} Directory is empty, will perform full checkout: ${workspace.path}`));
+    return Result2.ok(false);
+  }
+  const isRepo = await gitIsRepository(workspacePath);
+  if (!isRepo.ok) {
+    return Result2.error(isRepo.error);
+  }
+  if (!isRepo.value) {
+    console.log(yellow(`\u{1F4C1} Directory is not a git repository, will perform full checkout: ${workspace.path}`));
+    return Result2.ok(false);
+  }
+  const currentBranch = await gitGetCurrentBranch(workspacePath);
+  if (!currentBranch.ok) {
+    return Result2.error(currentBranch.error);
+  }
+  if (currentBranch.value !== workspace.branch) {
+    const isClean = await gitIsWorkingDirectoryClean(workspacePath);
+    if (!isClean.ok) {
+      return Result2.error(isClean.error);
+    }
+    if (!isClean.value) {
+      console.log(red(`\u26A0\uFE0F  Workspace has uncommitted changes on branch ${currentBranch.value}, cannot auto-heal: ${workspace.path}`));
+      console.log(yellow(`   Please manually resolve conflicts or stash changes before running sync again.`));
+      return Result2.error(new Error(`Workspace has uncommitted changes, manual intervention required`));
+    }
+    console.log(yellow(`\u{1F504} Switching from branch ${currentBranch.value} to ${workspace.branch}: ${workspace.path}`));
+    const fetchResult = await gitFetch(workspacePath);
+    if (!fetchResult.ok) {
+      console.log(yellow(`\u26A0\uFE0F  Failed to fetch latest changes, continuing with checkout: ${fetchResult.error.message}`));
+    }
+    const checkoutResult = await gitCheckoutBranch(workspace.branch, workspacePath);
+    if (!checkoutResult.ok) {
+      console.log(red(`\u274C Failed to checkout to branch ${workspace.branch}: ${checkoutResult.error.message}`));
+      return Result2.error(checkoutResult.error);
+    }
+  }
+  console.log(blue(`\u{1F504} Pulling latest changes for workspace: ${workspace.path}`));
+  const pullResult = await gitPullOriginBranch(workspace.branch, workspacePath);
+  if (!pullResult.ok) {
+    console.log(yellow(`\u26A0\uFE0F  Failed to pull latest changes: ${pullResult.error.message}`));
+  }
+  console.log(green(`\u2705 Workspace validated and healed: ${workspace.path}`));
+  return Result2.ok(true);
 }
 async function setupGoWorkspace(add, remove, goWorkRoot) {
   const goAvailable = await isGoAvailable();
@@ -10151,7 +10252,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc4";
+var VERSION = "0.0.1-rc5";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"
