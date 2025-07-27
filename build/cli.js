@@ -10147,6 +10147,82 @@ function promptSyncConfirmation2() {
   }), (error) => new ErrorWithCause("Failed to prompt for sync confirmation", error))();
 }
 
+// cmds/save.ts
+async function saveCommand(option) {
+  const configFile = option.config ?? "workspace.yml";
+  const workspaceRoot = option.workspaceRoot ?? ".";
+  const debug = option.debug ?? false;
+  const validated = await isDir(workspaceRoot);
+  if (!validated.ok) {
+    console.log(red("\u274C Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
+    return Result2.error(validated.error);
+  }
+  const parseConfig2 = await parseConfigFile(configFile);
+  if (!parseConfig2.ok) {
+    console.log(red("\u274C Failed to parse config file: "), configFile, `(${parseConfig2.error.message})`);
+    return Result2.error(parseConfig2.error);
+  }
+  const config = parseConfig2.value;
+  if (debug) {
+    console.log(blue("\u{1F50D} Scanning active workspaces for current branches..."));
+  }
+  const activeWorkspaces = config.workspaces.filter((item) => item.active);
+  if (activeWorkspaces.length === 0) {
+    console.log(yellow("\u26A0\uFE0F  No active workspaces found"));
+    return Result2.ok();
+  }
+  let updatedCount = 0;
+  let errorCount = 0;
+  for (const workspace of activeWorkspaces) {
+    const workspacePath = join6(workspaceRoot, workspace.path);
+    const dirExists = await isDir(workspacePath);
+    if (!dirExists.ok) {
+      console.log(yellow(`\u26A0\uFE0F  Workspace directory not found: ${workspace.path}`));
+      errorCount++;
+      continue;
+    }
+    const isRepo = await gitIsRepository(workspacePath);
+    if (!isRepo.ok || !isRepo.value) {
+      console.log(yellow(`\u26A0\uFE0F  Not a git repository: ${workspace.path}`));
+      errorCount++;
+      continue;
+    }
+    const currentBranch = await gitGetCurrentBranch(workspacePath);
+    if (!currentBranch.ok) {
+      console.log(red(`\u274C Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`));
+      errorCount++;
+      continue;
+    }
+    const newBranch = currentBranch.value;
+    if (workspace.branch !== newBranch) {
+      if (debug) {
+        console.log(blue(`\u{1F4DD} Updating ${workspace.path}: ${workspace.branch} \u2192 ${newBranch}`));
+      }
+      workspace.branch = newBranch;
+      updatedCount++;
+    } else {
+      if (debug) {
+        console.log(blue(`\u2713 ${workspace.path}: ${workspace.branch} (no change)`));
+      }
+    }
+  }
+  if (updatedCount > 0) {
+    const writeResult = await writeConfigFile(config, configFile);
+    if (!writeResult.ok) {
+      console.log(red("\u274C Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+      return Result2.error(writeResult.error);
+    }
+    console.log(green(`\u2705 Successfully updated ${updatedCount} workspace(s) in ${configFile}`));
+  } else {
+    console.log(green("\u2705 All workspaces are already up to date"));
+  }
+  if (errorCount > 0) {
+    console.log(yellow(`\u26A0\uFE0F  ${errorCount} workspace(s) had errors and were skipped`));
+  }
+  console.log(green("\u{1F389} Save operation completed successfully!"));
+  return Result2.ok();
+}
+
 // cmds/update.ts
 async function updateCommand(option) {
   const configFile = option.config ??= "workspace.yml";
@@ -10252,7 +10328,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc5";
+var VERSION = "0.0.1-rc6";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"
@@ -10327,6 +10403,23 @@ cli.command("disable", "Disable an active workspace repository").option("-c, --c
   });
   if (!result.ok) {
     console.log(red("\u274C Disable failed:"), result.error.message);
+    Deno.exit(1);
+  }
+});
+cli.command("save", "Save current workspace state by updating workspace.yml with current tracking branches").option("-c, --config <config:string>", "Workspace config file", {
+  default: "workspace.yml"
+}).option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+  default: "."
+}).option("-d, --debug", "Enable debug mode", {
+  default: false
+}).action(async (options) => {
+  const result = await saveCommand({
+    config: options.config,
+    workspaceRoot: options.workspaceRoot,
+    debug: options.debug
+  });
+  if (!result.ok) {
+    console.log(red("\u274C Save failed:"), result.error.message);
     Deno.exit(1);
   }
 });
