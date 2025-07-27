@@ -8,7 +8,7 @@ import { saveCommand } from "./cmds/save.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc6";
+const VERSION = "0.0.1-rc7";
 
 // Create CLI application
 const cli = new Command()
