@@ -6,6 +6,7 @@
     "jsr:@cliffy/flags@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/internal@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/keycode@1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@cliffy/keycode@^1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/prompt@^1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/table@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@std/assert@~1.0.6": "1.0.13",
@@ -17,6 +18,7 @@
     "jsr:@std/io@~0.224.9": "0.224.9",
     "jsr:@std/path@^1.1.1": "1.1.1",
     "jsr:@std/path@~1.0.6": "1.0.9",
+    "jsr:@std/text@^1.0.15": "1.0.15",
     "jsr:@std/text@~1.0.7": "1.0.15",
     "jsr:@std/yaml@^1.0.8": "1.0.9",
     "npm:@types/node@*": "22.15.15",
@@ -40,13 +42,13 @@
         "jsr:@cliffy/internal",
         "jsr:@cliffy/table",
         "jsr:@std/fmt@~1.0.2",
-        "jsr:@std/text"
+        "jsr:@std/text@~1.0.7"
       ]
     },
     "@cliffy/flags@1.0.0-rc.8": {
       "integrity": "0f1043ce6ef037ba1cb5fe6b1bcecb25dc2f29371a1c17f278ab0f45e4b6f46c",
       "dependencies": [
-        "jsr:@std/text"
+        "jsr:@std/text@~1.0.7"
       ]
     },
     "@cliffy/internal@1.0.0-rc.8": {
@@ -60,12 +62,12 @@
       "dependencies": [
         "jsr:@cliffy/ansi",
         "jsr:@cliffy/internal",
-        "jsr:@cliffy/keycode",
+        "jsr:@cliffy/keycode@1.0.0-rc.8",
         "jsr:@std/assert",
         "jsr:@std/fmt@~1.0.2",
         "jsr:@std/io",
         "jsr:@std/path@~1.0.6",
-        "jsr:@std/text"
+        "jsr:@std/text@~1.0.7"
       ]
     },
     "@cliffy/table@1.0.0-rc.8": {
@@ -129,13 +131,35 @@
       "integrity": "sha512-idA2YXwpCdqUSKRCACDE6ItZD9TZzy3OZMtpfLoh6oPR47lipysRrJfjzMqFxQ3uJuUPyUeWe1r9vLH33xO/Qw=="
     }
   },
+  "remote": {
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_figures.ts": "e2b854fafc66267782269cc94d216e7be583bf4051908191e799fd262af4bdc7",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_input.ts": "85ecf6bf73fb6599cde81bd0918d2fbe15df49e0cd14031af78f358e3721595d",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_list.ts": "78584b73ce09bf3688683ec257294b43d6cc36d7cae27e72abdfea69ea0a8441",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_prompt.ts": "4f467ad142b321a97fbbd5b711132f7a6b47f24b287fa544f8703901f30d3a46",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_suggestions.ts": "fb91b7b27c8953707b2b073474d45a0165f263a681bff9cb3bd0caabfac70f9b",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_utils.ts": "498ae639d7666599d612b615ee85de9103b3c3a913d5196f6b265072674258c7",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/checkbox.ts": "739f6addc76a5c182714792b05dd64fdd78dbcad1a06680f031afb614956a1e1",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/confirm.ts": "777cfd46d3da047974c69085e582b457142af4589b18faab721f3ec6acd3fb4d",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/input.ts": "3fde30fe9bcf35521f5621461595e00e3c5a3f5c8be7b08a88e02e3d2f750020",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/list.ts": "7f1b1cc76837ec443b96ce122481e374cc2e1fccb9182dd5071df269f82340ec",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/mod.ts": "f8789193742daf3aba93b543a2ea099383284d60fcccc03567102e28c0d61927",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/number.ts": "35f5619b6eeb6a74af3f91046ac913f7dd65a90a766f8418b63d1cbf5642b5af",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/prompt.ts": "8795be9234ce3bc20f7db4f37140cc7d115fe501d221dd97d7b93817931ffafa",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/secret.ts": "70b05f7a609a9148cb10dc7df742a384aa2e23b0a5add559dc793bd419d101d6",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/select.ts": "1df3c4c9e30f068b43bbc7892514b6dd3b25a2ef96806f26c0eabd18de6ec865",
+    "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/toggle.ts": "9e9a1cc555c7354c49ad0d213833148f7234a27221932e5146a41e267f41080c"
+  },
   "workspace": {
     "dependencies": [
+      "jsr:@cliffy/ansi@1.0.0-rc.8",
       "jsr:@cliffy/command@^1.0.0-rc.8",
+      "jsr:@cliffy/internal@1.0.0-rc.8",
+      "jsr:@cliffy/keycode@^1.0.0-rc.8",
       "jsr:@cliffy/prompt@^1.0.0-rc.8",
       "jsr:@std/dotenv@~0.225.5",
       "jsr:@std/fmt@^1.0.8",
       "jsr:@std/path@^1.1.1",
+      "jsr:@std/text@^1.0.15",
       "jsr:@std/yaml@^1.0.8",
       "npm:typescript-result@^3.5.1",
       "npm:zod@^3.25.67"

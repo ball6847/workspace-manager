@@ -9334,6 +9334,22 @@ function fromFileUrl3(url) {
   return decodeURIComponent(url.pathname.replace(/%(?![0-9A-Fa-f]{2})/g, "%25"));
 }
 
+// deno:https://jsr.io/@std/path/1.1.1/_common/strip_trailing_separators.ts
+function stripTrailingSeparators2(segment, isSep) {
+  if (segment.length <= 1) {
+    return segment;
+  }
+  let end = segment.length;
+  for (let i = segment.length - 1; i > 0; i--) {
+    if (isSep(segment.charCodeAt(i))) {
+      end = i;
+    } else {
+      break;
+    }
+  }
+  return segment.slice(0, end);
+}
+
 // deno:https://jsr.io/@std/path/1.1.1/_common/constants.ts
 var CHAR_UPPERCASE_A2 = 65;
 var CHAR_LOWERCASE_A2 = 97;
@@ -9350,6 +9366,9 @@ function isPosixPathSeparator3(code2) {
 }
 
 // deno:https://jsr.io/@std/path/1.1.1/windows/_util.ts
+function isPosixPathSeparator4(code2) {
+  return code2 === CHAR_FORWARD_SLASH2;
+}
 function isPathSeparator2(code2) {
   return code2 === CHAR_FORWARD_SLASH2 || code2 === CHAR_BACKWARD_SLASH2;
 }
@@ -9365,6 +9384,109 @@ function fromFileUrl4(url) {
     path = `\\\\${url.hostname}${path}`;
   }
   return path;
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/_common/dirname.ts
+function assertArg6(path) {
+  assertPath2(path);
+  if (path.length === 0) return ".";
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/posix/dirname.ts
+function dirname4(path) {
+  if (path instanceof URL) {
+    path = fromFileUrl3(path);
+  }
+  assertArg6(path);
+  let end = -1;
+  let matchedNonSeparator = false;
+  for (let i = path.length - 1; i >= 1; --i) {
+    if (isPosixPathSeparator3(path.charCodeAt(i))) {
+      if (matchedNonSeparator) {
+        end = i;
+        break;
+      }
+    } else {
+      matchedNonSeparator = true;
+    }
+  }
+  if (end === -1) {
+    return isPosixPathSeparator3(path.charCodeAt(0)) ? "/" : ".";
+  }
+  return stripTrailingSeparators2(path.slice(0, end), isPosixPathSeparator3);
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/windows/dirname.ts
+function dirname5(path) {
+  if (path instanceof URL) {
+    path = fromFileUrl4(path);
+  }
+  assertArg6(path);
+  const len = path.length;
+  let rootEnd = -1;
+  let end = -1;
+  let matchedSlash = true;
+  let offset = 0;
+  const code2 = path.charCodeAt(0);
+  if (len > 1) {
+    if (isPathSeparator2(code2)) {
+      rootEnd = offset = 1;
+      if (isPathSeparator2(path.charCodeAt(1))) {
+        let j = 2;
+        let last = j;
+        for (; j < len; ++j) {
+          if (isPathSeparator2(path.charCodeAt(j))) break;
+        }
+        if (j < len && j !== last) {
+          last = j;
+          for (; j < len; ++j) {
+            if (!isPathSeparator2(path.charCodeAt(j))) break;
+          }
+          if (j < len && j !== last) {
+            last = j;
+            for (; j < len; ++j) {
+              if (isPathSeparator2(path.charCodeAt(j))) break;
+            }
+            if (j === len) {
+              return path;
+            }
+            if (j !== last) {
+              rootEnd = offset = j + 1;
+            }
+          }
+        }
+      }
+    } else if (isWindowsDeviceRoot2(code2)) {
+      if (path.charCodeAt(1) === CHAR_COLON2) {
+        rootEnd = offset = 2;
+        if (len > 2) {
+          if (isPathSeparator2(path.charCodeAt(2))) rootEnd = offset = 3;
+        }
+      }
+    }
+  } else if (isPathSeparator2(code2)) {
+    return path;
+  }
+  for (let i = len - 1; i >= offset; --i) {
+    if (isPathSeparator2(path.charCodeAt(i))) {
+      if (!matchedSlash) {
+        end = i;
+        break;
+      }
+    } else {
+      matchedSlash = false;
+    }
+  }
+  if (end === -1) {
+    if (rootEnd === -1) return ".";
+    else end = rootEnd;
+  }
+  return stripTrailingSeparators2(path.slice(0, end), isPosixPathSeparator4);
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/dirname.ts
+function dirname6(path) {
+  return isWindows2 ? dirname5(path) : dirname4(path);
 }
 
 // deno:https://jsr.io/@std/path/1.1.1/_common/normalize.ts
@@ -9582,6 +9704,11 @@ function join5(path, ...paths) {
 // deno:https://jsr.io/@std/path/1.1.1/join.ts
 function join6(path, ...paths) {
   return isWindows2 ? join5(path, ...paths) : join4(path, ...paths);
+}
+
+// deno:https://jsr.io/@std/path/1.1.1/normalize.ts
+function normalize6(path) {
+  return isWindows2 ? normalize5(path) : normalize4(path);
 }
 
 // libs/concurrent.ts
@@ -10309,6 +10436,880 @@ function promptForSync() {
   })();
 }
 
+// deno:https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_figures.ts
+var main2 = {
+  ARROW_UP: "\u2191",
+  ARROW_DOWN: "\u2193",
+  ARROW_LEFT: "\u2190",
+  ARROW_RIGHT: "\u2192",
+  ARROW_UP_LEFT: "\u2196",
+  ARROW_UP_RIGHT: "\u2197",
+  ARROW_DOWN_RIGHT: "\u2198",
+  ARROW_DOWN_LEFT: "\u2199",
+  RADIO_ON: "\u25C9",
+  RADIO_OFF: "\u25EF",
+  TICK: "\u2714",
+  CROSS: "\u2718",
+  ELLIPSIS: "\u2026",
+  POINTER_SMALL: "\u203A",
+  POINTER_SMALL_LEFT: "\u2039",
+  LINE: "\u2500",
+  POINTER: "\u276F",
+  POINTER_LEFT: "\u276E",
+  INFO: "\u2139",
+  TAB_LEFT: "\u21E4",
+  TAB_RIGHT: "\u21E5",
+  ESCAPE: "\u238B",
+  BACKSPACE: "\u232B",
+  PAGE_UP: "\u21DE",
+  PAGE_DOWN: "\u21DF",
+  ENTER: "\u21B5",
+  SEARCH: "\u{1F50E}",
+  FOLDER: "\u{1F4C1}",
+  FOLDER_OPEN: "\u{1F4C2}"
+};
+var win2 = {
+  ...main2,
+  RADIO_ON: "(*)",
+  RADIO_OFF: "( )",
+  TICK: "\u221A",
+  CROSS: "\xD7",
+  POINTER_SMALL: "\xBB"
+};
+var Figures2 = getOs() === "windows" ? win2 : main2;
+var keyMap2 = {
+  up: "ARROW_UP",
+  down: "ARROW_DOWN",
+  left: "ARROW_LEFT",
+  right: "ARROW_RIGHT",
+  pageup: "PAGE_UP",
+  pagedown: "PAGE_DOWN",
+  tab: "TAB_RIGHT",
+  enter: "ENTER",
+  return: "ENTER"
+};
+function getFiguresByKeys2(keys) {
+  const figures = [];
+  for (const key of keys) {
+    const figure = Figures2[keyMap2[key]] ?? key;
+    if (!figures.includes(figure)) {
+      figures.push(figure);
+    }
+  }
+  return figures;
+}
+
+// deno:https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_prompt.ts
+var GenericPrompt2 = class _GenericPrompt {
+  static injectedValue;
+  cursor = {
+    x: 0,
+    y: 0
+  };
+  #value;
+  #lastError;
+  #isFirstRun = true;
+  #encoder = new TextEncoder();
+  /**
+   * Inject prompt value. If called, the prompt doesn't prompt for an input and
+   * returns immediately the injected value. Can be used for unit tests or pre
+   * selections.
+   *
+   * @param value Input value.
+   */
+  static inject(value) {
+    _GenericPrompt.injectedValue = value;
+  }
+  getDefaultSettings(options) {
+    return {
+      ...options,
+      tty: tty({
+        // Stdin is only used by getCursorPosition which we don't need.
+        reader: {
+          readSync,
+          setRaw
+        },
+        writer: options.writer ?? {
+          writeSync
+        }
+      }),
+      cbreak: options.cbreak ?? false,
+      reader: options.reader ?? {
+        read,
+        setRaw,
+        isTerminal
+      },
+      writer: options.writer ?? {
+        writeSync
+      },
+      pointer: options.pointer ?? brightBlue(Figures2.POINTER_SMALL),
+      prefix: options.prefix ?? yellow("? "),
+      indent: options.indent ?? "",
+      keys: {
+        submit: [
+          "enter",
+          "return"
+        ],
+        ...options.keys ?? {}
+      }
+    };
+  }
+  /** Execute the prompt. */
+  async prompt() {
+    try {
+      return await this.#execute();
+    } finally {
+      this.settings.tty.cursorShow();
+    }
+  }
+  /** Clear prompt output. */
+  clear() {
+    this.settings.tty.cursorLeft.eraseDown();
+  }
+  /** Execute the prompt. */
+  #execute = async () => {
+    if (typeof _GenericPrompt.injectedValue !== "undefined" && this.#lastError) {
+      throw new Error(this.error());
+    }
+    await this.render();
+    this.#lastError = void 0;
+    if (!await this.read()) {
+      return this.#execute();
+    }
+    if (typeof this.#value === "undefined") {
+      throw new Error("internal error: failed to read value");
+    }
+    this.clear();
+    const successMessage = this.success(this.#value);
+    if (successMessage) {
+      this.settings.writer.writeSync(this.#encoder.encode(successMessage + "\n"));
+    }
+    _GenericPrompt.injectedValue = void 0;
+    this.settings.tty.cursorShow();
+    return this.#value;
+  };
+  /** Render prompt. */
+  async render() {
+    const result = await Promise.all([
+      this.message(),
+      this.body?.(),
+      this.footer()
+    ]);
+    const content = result.filter(Boolean).join("\n");
+    const lines = content.split("\n");
+    const columns = getColumns();
+    const linesCount = columns ? lines.reduce((prev, next) => {
+      const length = stripAnsiCode(next).length;
+      return prev + (length > columns ? Math.ceil(length / columns) : 1);
+    }, 0) : content.split("\n").length;
+    const y = linesCount - this.cursor.y - 1;
+    if (!this.#isFirstRun || this.#lastError) {
+      this.clear();
+    }
+    this.#isFirstRun = false;
+    this.settings.writer.writeSync(this.#encoder.encode(content));
+    if (y) {
+      this.settings.tty.cursorUp(y);
+    }
+    this.settings.tty.cursorTo(this.cursor.x);
+  }
+  /** Read user input from stdin, handle events and validate user input. */
+  async read() {
+    if (typeof _GenericPrompt.injectedValue !== "undefined") {
+      const value = _GenericPrompt.injectedValue;
+      await this.#validateValue(value);
+    } else {
+      const events = await this.#readKey();
+      if (!events.length) {
+        return false;
+      }
+      for (const event of events) {
+        await this.handleEvent(event);
+      }
+    }
+    return typeof this.#value !== "undefined";
+  }
+  submit() {
+    return this.#validateValue(this.getValue());
+  }
+  message() {
+    return `${this.settings.indent}${this.settings.prefix}` + bold(this.settings.message) + this.defaults();
+  }
+  defaults() {
+    let defaultMessage = "";
+    if (typeof this.settings.default !== "undefined" && !this.settings.hideDefault) {
+      defaultMessage += dim(` (${this.format(this.settings.default)})`);
+    }
+    return defaultMessage;
+  }
+  /** Get prompt success message. */
+  success(value) {
+    return `${this.settings.indent}${this.settings.prefix}` + bold(this.settings.message) + this.defaults() + " " + this.settings.pointer + " " + green(this.format(value));
+  }
+  footer() {
+    return this.error() ?? this.hint();
+  }
+  error() {
+    return this.#lastError ? this.settings.indent + red(bold(`${Figures2.CROSS} `) + this.#lastError) : void 0;
+  }
+  hint() {
+    return this.settings.hint ? this.settings.indent + italic(brightBlue(dim(`${Figures2.POINTER} `) + this.settings.hint)) : void 0;
+  }
+  setErrorMessage(message) {
+    this.#lastError = message;
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case (event.name === "c" && event.ctrl):
+        this.clear();
+        this.settings.tty.cursorShow();
+        exit(130);
+        return;
+      case this.isKey(this.settings.keys, "submit", event):
+        await this.submit();
+        break;
+    }
+  }
+  /** Read user input from stdin and pars ansi codes. */
+  #readKey = async () => {
+    const data2 = await this.#readChar();
+    return data2.length ? parse(data2) : [];
+  };
+  /** Read user input from stdin. */
+  #readChar = async () => {
+    const buffer = new Uint8Array(getRuntimeName() === "deno" ? 8 : 4096);
+    const isTty = this.settings.reader.isTerminal();
+    if (isTty) {
+      this.settings.reader.setRaw(true, {
+        cbreak: this.settings.cbreak
+      });
+    }
+    const nread = await this.settings.reader.read(buffer);
+    if (isTty) {
+      this.settings.reader.setRaw(false);
+    }
+    if (nread === null) {
+      return buffer;
+    }
+    return buffer.subarray(0, nread);
+  };
+  /**
+   * Map input value to output value. If a custom transform handler ist set, the
+   * custom handler will be executed, otherwise the default transform handler
+   * from the prompt will be executed.
+   * @param value The value to transform.
+   */
+  #transformValue = (value) => {
+    return this.settings.transform ? this.settings.transform(value) : this.transform(value);
+  };
+  /**
+   * Validate input value. Set error message if validation fails and transform
+   * output value on success.
+   * If a default value is set, the default will be used as value without any
+   * validation.
+   * If a custom validation handler ist set, the custom handler will
+   * be executed, otherwise a prompt specific default validation handler will be
+   * executed.
+   * @param value The value to validate.
+   */
+  #validateValue = async (value) => {
+    if (!value && typeof this.settings.default !== "undefined") {
+      this.#value = this.settings.default;
+      return;
+    }
+    this.#value = void 0;
+    this.#lastError = void 0;
+    const validation = await (this.settings.validate ? this.settings.validate(value) : this.validate(value));
+    if (validation === false) {
+      this.#lastError = `Invalid answer.`;
+    } else if (typeof validation === "string") {
+      this.#lastError = validation;
+    } else {
+      this.#value = this.#transformValue(value);
+    }
+  };
+  /**
+   * Check if key event has given name or sequence.
+   * @param keys  Key map.
+   * @param name  Key name.
+   * @param event Key event.
+   */
+  isKey(keys, name, event) {
+    const keyNames = keys?.[name];
+    return typeof keyNames !== "undefined" && (typeof event.name !== "undefined" && keyNames.indexOf(event.name) !== -1 || typeof event.sequence !== "undefined" && keyNames.indexOf(event.sequence) !== -1);
+  }
+};
+
+// deno:https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_input.ts
+var GenericInput2 = class extends GenericPrompt2 {
+  inputValue = "";
+  inputIndex = 0;
+  getDefaultSettings(options) {
+    const settings = super.getDefaultSettings(options);
+    return {
+      ...settings,
+      keys: {
+        moveCursorLeft: [
+          "left"
+        ],
+        moveCursorRight: [
+          "right"
+        ],
+        deleteCharLeft: [
+          "backspace"
+        ],
+        deleteCharRight: [
+          "delete"
+        ],
+        ...settings.keys ?? {}
+      }
+    };
+  }
+  getCurrentInputValue() {
+    return this.inputValue;
+  }
+  message() {
+    const message = super.message() + " " + this.settings.pointer + " ";
+    this.cursor.x = stripAnsiCode(message).length + this.inputIndex + 1;
+    return message + this.input();
+  }
+  input() {
+    return underline(this.inputValue);
+  }
+  highlight(value, color1 = dim, color2 = brightBlue) {
+    value = value.toString();
+    const inputLowerCase = this.getCurrentInputValue().toLowerCase();
+    const valueLowerCase = value.toLowerCase();
+    const index = valueLowerCase.indexOf(inputLowerCase);
+    const matched = value.slice(index, index + inputLowerCase.length);
+    return index >= 0 ? color1(value.slice(0, index)) + color2(matched) + color1(value.slice(index + inputLowerCase.length)) : value;
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case this.isKey(this.settings.keys, "moveCursorLeft", event):
+        this.moveCursorLeft();
+        break;
+      case this.isKey(this.settings.keys, "moveCursorRight", event):
+        this.moveCursorRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharRight", event):
+        this.deleteCharRight();
+        break;
+      case this.isKey(this.settings.keys, "deleteCharLeft", event):
+        this.deleteChar();
+        break;
+      case (event.char && !event.meta && !event.ctrl):
+        this.addChar(event.char);
+        break;
+      default:
+        await super.handleEvent(event);
+    }
+  }
+  /** Add character to current input. */
+  addChar(char) {
+    this.inputValue = this.inputValue.slice(0, this.inputIndex) + char + this.inputValue.slice(this.inputIndex);
+    this.inputIndex++;
+  }
+  /** Move prompt cursor left. */
+  moveCursorLeft() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+    }
+  }
+  /** Move prompt cursor right. */
+  moveCursorRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputIndex++;
+    }
+  }
+  /** Delete char left. */
+  deleteChar() {
+    if (this.inputIndex > 0) {
+      this.inputIndex--;
+      this.deleteCharRight();
+    }
+  }
+  /** Delete char right. */
+  deleteCharRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      this.inputValue = this.inputValue.slice(0, this.inputIndex) + this.inputValue.slice(this.inputIndex + 1);
+    }
+  }
+};
+
+// deno:https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/_generic_suggestions.ts
+var sep2 = getOs() === "windows" ? "\\" : "/";
+var GenericSuggestions2 = class extends GenericInput2 {
+  suggestionsIndex = -1;
+  suggestionsOffset = 0;
+  suggestions = [];
+  #envPermissions = {};
+  #hasReadPermissions;
+  getDefaultSettings(options) {
+    const settings = super.getDefaultSettings(options);
+    return {
+      ...settings,
+      listPointer: options.listPointer ?? brightBlue(Figures2.POINTER),
+      maxRows: options.maxRows ?? 8,
+      keys: {
+        complete: [
+          "tab"
+        ],
+        next: [
+          "up"
+        ],
+        previous: [
+          "down"
+        ],
+        nextPage: [
+          "pageup"
+        ],
+        previousPage: [
+          "pagedown"
+        ],
+        ...settings.keys ?? {}
+      }
+    };
+  }
+  get localStorage() {
+    if (this.settings.id && "localStorage" in window) {
+      try {
+        return window.localStorage;
+      } catch (_) {
+      }
+    }
+    return null;
+  }
+  loadSuggestions() {
+    if (this.settings.id) {
+      const json = this.localStorage?.getItem(this.settings.id);
+      const suggestions = json ? JSON.parse(json) : [];
+      if (!Array.isArray(suggestions)) {
+        return [];
+      }
+      return suggestions;
+    }
+    return [];
+  }
+  saveSuggestions(...suggestions) {
+    if (this.settings.id) {
+      this.localStorage?.setItem(this.settings.id, JSON.stringify([
+        ...suggestions,
+        ...this.loadSuggestions()
+      ].filter(uniqueSuggestions2)));
+    }
+  }
+  async render() {
+    if (this.settings.files && this.#hasReadPermissions === void 0) {
+      const status = await globalThis.Deno?.permissions.request({
+        name: "read"
+      });
+      this.#hasReadPermissions = !status || status.state === "granted";
+    }
+    if (this.#isFileModeEnabled()) {
+      await this.#expandInputValue(this.inputValue);
+    }
+    await this.match();
+    return super.render();
+  }
+  async match() {
+    this.suggestions = await this.getSuggestions();
+    this.suggestionsIndex = Math.max(this.getCurrentInputValue().trim().length === 0 ? -1 : 0, Math.min(this.suggestions.length - 1, this.suggestionsIndex));
+    this.suggestionsOffset = Math.max(0, Math.min(this.suggestions.length - this.getListHeight(), this.suggestionsOffset));
+  }
+  input() {
+    return super.input() + dim(this.getSuggestion());
+  }
+  getSuggestion() {
+    return this.suggestions[this.suggestionsIndex]?.toString().substr(this.getCurrentInputValue().length) ?? "";
+  }
+  async getUserSuggestions(input) {
+    return typeof this.settings.suggestions === "function" ? await this.settings.suggestions(input) : this.settings.suggestions ?? [];
+  }
+  #isFileModeEnabled() {
+    return !!this.settings.files && this.#hasReadPermissions === true;
+  }
+  async getFileSuggestions(input) {
+    if (!this.#isFileModeEnabled()) {
+      return [];
+    }
+    const path = await stat(input).then((file) => file.isDirectory ? input : dirname6(input)).catch(() => dirname6(input));
+    try {
+      return await listDir2(path, this.settings.files);
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound || error instanceof Deno.errors.PermissionDenied) {
+        this.setErrorMessage(error.message);
+        return [];
+      }
+      throw error;
+    }
+  }
+  async getSuggestions() {
+    const input = this.getCurrentInputValue();
+    const suggestions = [
+      ...this.loadSuggestions(),
+      ...await this.getUserSuggestions(input),
+      ...await this.getFileSuggestions(input)
+    ].filter(uniqueSuggestions2);
+    if (!input.length) {
+      return suggestions;
+    }
+    return suggestions.filter((value) => stripAnsiCode(value.toString()).toLowerCase().includes(input.toLowerCase())).sort((a, b) => levenshteinDistance((a || a).toString(), input) - levenshteinDistance((b || b).toString(), input));
+  }
+  body() {
+    return this.getList() + this.getInfo();
+  }
+  getInfo() {
+    if (!this.settings.info) {
+      return "";
+    }
+    const selected = this.suggestionsIndex + 1;
+    const matched = this.suggestions.length;
+    const actions = [];
+    if (this.suggestions.length) {
+      if (this.settings.list) {
+        actions.push([
+          "Next",
+          getFiguresByKeys2(this.settings.keys?.next ?? [])
+        ], [
+          "Previous",
+          getFiguresByKeys2(this.settings.keys?.previous ?? [])
+        ], [
+          "Next Page",
+          getFiguresByKeys2(this.settings.keys?.nextPage ?? [])
+        ], [
+          "Previous Page",
+          getFiguresByKeys2(this.settings.keys?.previousPage ?? [])
+        ]);
+      } else {
+        actions.push([
+          "Next",
+          getFiguresByKeys2(this.settings.keys?.next ?? [])
+        ], [
+          "Previous",
+          getFiguresByKeys2(this.settings.keys?.previous ?? [])
+        ]);
+      }
+      actions.push([
+        "Complete",
+        getFiguresByKeys2(this.settings.keys?.complete ?? [])
+      ]);
+    }
+    actions.push([
+      "Submit",
+      getFiguresByKeys2(this.settings.keys?.submit ?? [])
+    ]);
+    let info = this.settings.indent;
+    if (this.suggestions.length) {
+      info += brightBlue(Figures2.INFO) + bold(` ${selected}/${matched} `);
+    }
+    info += actions.map((cur) => `${cur[0]}: ${bold(cur[1].join(" "))}`).join(", ");
+    return info;
+  }
+  getList() {
+    if (!this.suggestions.length || !this.settings.list) {
+      return "";
+    }
+    const list = [];
+    const height = this.getListHeight();
+    for (let i = this.suggestionsOffset; i < this.suggestionsOffset + height; i++) {
+      list.push(this.getListItem(this.suggestions[i], this.suggestionsIndex === i));
+    }
+    if (list.length && this.settings.info) {
+      list.push("");
+    }
+    return list.join("\n");
+  }
+  /**
+   * Render option.
+   * @param value        Option.
+   * @param isSelected  Set to true if option is selected.
+   */
+  getListItem(value, isSelected) {
+    let line = this.settings.indent ?? "";
+    line += isSelected ? `${this.settings.listPointer} ` : "  ";
+    if (isSelected) {
+      line += underline(this.highlight(value));
+    } else {
+      line += this.highlight(value);
+    }
+    return line;
+  }
+  /** Get suggestions row height. */
+  getListHeight(suggestions = this.suggestions) {
+    return Math.min(suggestions.length, this.settings.maxRows || suggestions.length);
+  }
+  /**
+   * Handle user input event.
+   * @param event Key event.
+   */
+  async handleEvent(event) {
+    switch (true) {
+      case this.isKey(this.settings.keys, "next", event):
+        if (this.settings.list) {
+          this.selectPreviousSuggestion();
+        } else {
+          this.selectNextSuggestion();
+        }
+        break;
+      case this.isKey(this.settings.keys, "previous", event):
+        if (this.settings.list) {
+          this.selectNextSuggestion();
+        } else {
+          this.selectPreviousSuggestion();
+        }
+        break;
+      case this.isKey(this.settings.keys, "nextPage", event):
+        if (this.settings.list) {
+          this.selectPreviousSuggestionsPage();
+        } else {
+          this.selectNextSuggestionsPage();
+        }
+        break;
+      case this.isKey(this.settings.keys, "previousPage", event):
+        if (this.settings.list) {
+          this.selectNextSuggestionsPage();
+        } else {
+          this.selectPreviousSuggestionsPage();
+        }
+        break;
+      case this.isKey(this.settings.keys, "complete", event):
+        await this.#completeValue();
+        break;
+      case this.isKey(this.settings.keys, "moveCursorRight", event):
+        if (this.inputIndex < this.inputValue.length) {
+          this.moveCursorRight();
+        } else {
+          await this.#completeValue();
+        }
+        break;
+      default:
+        await super.handleEvent(event);
+    }
+  }
+  /** Delete char right. */
+  deleteCharRight() {
+    if (this.inputIndex < this.inputValue.length) {
+      super.deleteCharRight();
+      if (!this.getCurrentInputValue().length) {
+        this.suggestionsIndex = -1;
+        this.suggestionsOffset = 0;
+      }
+    }
+  }
+  async #completeValue() {
+    const inputValue = await this.complete();
+    this.setInputValue(inputValue);
+  }
+  setInputValue(inputValue) {
+    this.inputValue = inputValue;
+    this.inputIndex = this.inputValue.length;
+    this.suggestionsIndex = 0;
+    this.suggestionsOffset = 0;
+  }
+  async complete() {
+    let input = this.getCurrentInputValue();
+    const suggestion = this.suggestions[this.suggestionsIndex]?.toString();
+    if (this.settings.complete) {
+      input = await this.settings.complete(input, suggestion);
+    } else if (this.#isFileModeEnabled() && input.at(-1) !== sep2 && await isDirectory(input) && (this.getCurrentInputValue().at(-1) !== "." || this.getCurrentInputValue().endsWith(".."))) {
+      input += sep2;
+    } else if (suggestion) {
+      input = suggestion;
+    }
+    return this.#isFileModeEnabled() ? normalize6(input) : input;
+  }
+  /** Select previous suggestion. */
+  selectPreviousSuggestion() {
+    if (this.suggestions.length) {
+      if (this.suggestionsIndex > -1) {
+        this.suggestionsIndex--;
+        if (this.suggestionsIndex < this.suggestionsOffset) {
+          this.suggestionsOffset--;
+        }
+      }
+    }
+  }
+  /** Select next suggestion. */
+  selectNextSuggestion() {
+    if (this.suggestions.length) {
+      if (this.suggestionsIndex < this.suggestions.length - 1) {
+        this.suggestionsIndex++;
+        if (this.suggestionsIndex >= this.suggestionsOffset + this.getListHeight()) {
+          this.suggestionsOffset++;
+        }
+      }
+    }
+  }
+  /** Select previous suggestions page. */
+  selectPreviousSuggestionsPage() {
+    if (this.suggestions.length) {
+      const height = this.getListHeight();
+      if (this.suggestionsOffset >= height) {
+        this.suggestionsIndex -= height;
+        this.suggestionsOffset -= height;
+      } else if (this.suggestionsOffset > 0) {
+        this.suggestionsIndex -= this.suggestionsOffset;
+        this.suggestionsOffset = 0;
+      }
+    }
+  }
+  /** Select next suggestions page. */
+  selectNextSuggestionsPage() {
+    if (this.suggestions.length) {
+      const height = this.getListHeight();
+      if (this.suggestionsOffset + height + height < this.suggestions.length) {
+        this.suggestionsIndex += height;
+        this.suggestionsOffset += height;
+      } else if (this.suggestionsOffset + height < this.suggestions.length) {
+        const offset = this.suggestions.length - height;
+        this.suggestionsIndex += offset - this.suggestionsOffset;
+        this.suggestionsOffset = offset;
+      }
+    }
+  }
+  async #expandInputValue(path) {
+    if (!path.startsWith("~")) {
+      return;
+    }
+    const envVar = getHomeDirEnvVar2();
+    const hasEnvPermissions = await this.#hasEnvPermissions(envVar);
+    if (!hasEnvPermissions) {
+      return;
+    }
+    const homeDir = getHomeDir2();
+    if (homeDir) {
+      path = path.replace("~", homeDir);
+      this.setInputValue(path);
+    }
+  }
+  async #hasEnvPermissions(variable) {
+    if (this.#envPermissions[variable]) {
+      return this.#envPermissions[variable];
+    }
+    const desc = {
+      name: "env",
+      variable
+    };
+    const currentStatus = await Deno.permissions.query(desc);
+    this.#envPermissions[variable] = currentStatus.state === "granted";
+    if (!this.#envPermissions[variable]) {
+      this.clear();
+      const newStatus = await Deno.permissions.request(desc);
+      this.#envPermissions[variable] = newStatus.state === "granted";
+    }
+    return this.#envPermissions[variable];
+  }
+};
+function uniqueSuggestions2(value, index, self) {
+  return typeof value !== "undefined" && value !== "" && self.indexOf(value) === index;
+}
+async function listDir2(path, mode) {
+  const fileNames = [];
+  for (const file of await readDir(path)) {
+    if (mode === true && (file.name.startsWith(".") || file.name.endsWith("~"))) {
+      continue;
+    }
+    const filePath = join6(path, file.name);
+    if (mode instanceof RegExp && !mode.test(filePath)) {
+      continue;
+    }
+    fileNames.push(filePath);
+  }
+  return fileNames.sort(function(a, b) {
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+  });
+}
+function getHomeDirEnvVar2() {
+  return Deno.build.os === "windows" ? "USERPROFILE" : "HOME";
+}
+function getHomeDir2() {
+  return Deno.env.get(getHomeDirEnvVar2());
+}
+
+// deno:https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/input.ts
+var Input2 = class extends GenericSuggestions2 {
+  settings;
+  /** Execute the prompt with provided options. */
+  static prompt(options) {
+    return new this(options).prompt();
+  }
+  /**
+   * Inject prompt value. If called, the prompt doesn't prompt for an input and
+   * returns immediately the injected value. Can be used for unit tests or pre
+   * selections.
+   *
+   * @param value Input value.
+   */
+  static inject(value) {
+    GenericPrompt2.inject(value);
+  }
+  constructor(options) {
+    super();
+    if (typeof options === "string") {
+      options = {
+        message: options
+      };
+    }
+    this.settings = this.getDefaultSettings(options);
+  }
+  getDefaultSettings(options) {
+    return {
+      ...super.getDefaultSettings(options),
+      minLength: options.minLength ?? 0,
+      maxLength: options.maxLength ?? Infinity
+    };
+  }
+  success(value) {
+    this.saveSuggestions(value);
+    return super.success(value);
+  }
+  /** Get input value. */
+  getValue() {
+    return this.settings.files && this.inputValue ? normalize6(this.inputValue) : this.inputValue;
+  }
+  /**
+   * Validate input value.
+   * @param value User input value.
+   * @return True on success, false or error message on error.
+   */
+  validate(value) {
+    if (typeof value !== "string") {
+      return false;
+    }
+    if (value.length < this.settings.minLength) {
+      return `Value must be longer than ${this.settings.minLength} but has a length of ${value.length}.`;
+    }
+    if (value.length > this.settings.maxLength) {
+      return `Value can't be longer than ${this.settings.maxLength} but has a length of ${value.length}.`;
+    }
+    return true;
+  }
+  /**
+   * Map input value to output value.
+   * @param value Input value.
+   * @return Output value.
+   */
+  transform(value) {
+    return value.trim();
+  }
+  /**
+   * Format output value.
+   * @param value Output value.
+   */
+  format(value) {
+    return value;
+  }
+};
+
 // cmds/disable.ts
 async function disableCommand(option) {
   const configFile = option.config ?? "workspace.yml";
@@ -10381,7 +11382,7 @@ async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug
       return Result2.ok();
     }
     const shouldSync = syncResult2.value;
-    if (shouldSync.toLowerCase() !== "y" && shouldSync.toLowerCase() !== "yes") {
+    if (shouldSync.toLowerCase() === "n" || shouldSync.toLowerCase() === "no") {
       console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
       return Result2.ok();
     }
@@ -10399,7 +11400,7 @@ async function handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug
   return Result2.ok();
 }
 function promptWorkspaceSelection(suggestions) {
-  return Result2.wrap(() => Input.prompt({
+  return Result2.wrap(() => Input2.prompt({
     message: "Select workspace to disable:",
     suggestions,
     list: true,
@@ -10413,13 +11414,13 @@ function promptWorkspaceSelection(suggestions) {
   })();
 }
 function promptSyncConfirmation() {
-  return Result2.wrap(() => Input.prompt({
-    message: "Do you want to sync now? (y/N):",
+  return Result2.wrap(() => Input2.prompt({
+    message: "Do you want to sync now? (Y/n):",
     suggestions: [
-      "N",
-      "y"
+      "Y",
+      "n"
     ],
-    default: "N"
+    default: "Y"
   }), (error) => new ErrorWithCause("Failed to prompt for sync confirmation", error))();
 }
 
@@ -10495,7 +11496,7 @@ async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debu
       return Result2.ok();
     }
     const shouldSync = syncResult2.value;
-    if (shouldSync.toLowerCase() !== "y" && shouldSync.toLowerCase() !== "yes") {
+    if (shouldSync.toLowerCase() === "n" || shouldSync.toLowerCase() === "no") {
       console.log(blue("\u{1F4A1} Run 'workspace-manager sync' to apply changes"));
       return Result2.ok();
     }
@@ -10513,7 +11514,7 @@ async function handleSyncConfirmation2(autoSync, configFile, workspaceRoot, debu
   return Result2.ok();
 }
 function promptWorkspaceSelection2(suggestions) {
-  return Result2.wrap(() => Input.prompt({
+  return Result2.wrap(() => Input2.prompt({
     message: "Select workspace to enable:",
     suggestions,
     list: true,
@@ -10527,13 +11528,13 @@ function promptWorkspaceSelection2(suggestions) {
   })();
 }
 function promptSyncConfirmation2() {
-  return Result2.wrap(() => Input.prompt({
-    message: "Do you want to sync now? (y/N):",
+  return Result2.wrap(() => Input2.prompt({
+    message: "Do you want to sync now? (Y/n):",
     suggestions: [
-      "N",
-      "y"
+      "Y",
+      "n"
     ],
-    default: "N"
+    default: "Y"
   }), (error) => new ErrorWithCause("Failed to prompt for sync confirmation", error))();
 }
 
@@ -10718,7 +11719,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc8";
+var VERSION = "0.0.1-rc9";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"

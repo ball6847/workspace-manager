@@ -64,7 +64,13 @@ export async function disableCommand(option: DisableCommandOption): Promise<Resu
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug, option.concurrency ?? 4);
+	const syncResult = await handleSyncConfirmation(
+		autoSync,
+		configFile,
+		workspaceRoot,
+		debug,
+		option.concurrency ?? 4,
+	);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
@@ -171,7 +177,7 @@ async function handleSyncConfirmation(
 		}
 
 		const shouldSync = syncResult.value;
-		if (shouldSync.toLowerCase() !== "y" && shouldSync.toLowerCase() !== "yes") {
+		if (shouldSync.toLowerCase() === "n" || shouldSync.toLowerCase() === "no") {
 			// User selected not to sync, early return
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
 			return Result.ok();
@@ -228,9 +234,9 @@ function promptSyncConfirmation(): Promise<Result<string, Error>> {
 	return Result.wrap(
 		() =>
 			Input.prompt({
-				message: "Do you want to sync now? (y/N):",
-				suggestions: ["N", "y"],
-				default: "N",
+				message: "Do you want to sync now? (Y/n):",
+				suggestions: ["Y", "n"],
+				default: "Y",
 			}),
 		(error) => new ErrorWithCause("Failed to prompt for sync confirmation", error as Error),
 	)();
