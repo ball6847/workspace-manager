@@ -100,7 +100,14 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 		}
 	} else {
 		// Interactive mode: prompt for input (may use provided repo as default)
-		const interactiveResult = await runInteractiveMode(config, configFile, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
+		const interactiveResult = await runInteractiveMode(
+			config,
+			configFile,
+			workspaceRoot,
+			debug,
+			option.concurrency ?? 4,
+			option.repo,
+		);
 		if (!interactiveResult.ok) {
 			return Result.error(interactiveResult.error);
 		}

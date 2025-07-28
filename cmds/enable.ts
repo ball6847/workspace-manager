@@ -64,7 +64,13 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(autoSync, configFile, workspaceRoot, debug, option.concurrency ?? 4);
+	const syncResult = await handleSyncConfirmation(
+		autoSync,
+		configFile,
+		workspaceRoot,
+		debug,
+		option.concurrency ?? 4,
+	);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
