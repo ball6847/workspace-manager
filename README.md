@@ -19,7 +19,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc8/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc9/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
