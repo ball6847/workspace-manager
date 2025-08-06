@@ -268,6 +268,7 @@ deno task check
 
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
+- [ ] **Scan for nested go.mod** inside the cloned repository and import them to `go.work`
 
 ### Low Priority
 
