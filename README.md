@@ -68,6 +68,7 @@ workspace-manager sync [options]
 ```
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -85,6 +86,7 @@ workspace-manager update [options]
 ```
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -101,12 +103,14 @@ workspace-manager enable [options]
 ```
 
 This command will:
+
 1. Show a list of disabled workspaces (where `active: false`)
 2. Allow you to select which workspace to enable
 3. Update the workspace configuration file
 4. Optionally sync the workspace immediately
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -124,12 +128,14 @@ workspace-manager disable [options]
 ```
 
 This command will:
+
 1. Show a list of active workspaces (where `active: true`)
 2. Allow you to select which workspace to disable
 3. Update the workspace configuration file
 4. Optionally sync the workspace immediately to remove it from the filesystem
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -147,12 +153,14 @@ workspace-manager save [options]
 ```
 
 This command will:
+
 1. Iterate through all active workspace submodules
 2. Get their current branch information
 3. Update the workspace.yml configuration file with the current branches
 4. Report which workspaces were updated
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -167,7 +175,7 @@ workspace-manager status
 
 ```
 
-*Note: Status command is not yet implemented.*
+_Note: Status command is not yet implemented._
 
 ### Add Command
 
@@ -182,6 +190,7 @@ workspace-manager add [repo] [path] [options]
 ```
 
 This command will:
+
 1. **Interactive mode**: Prompt for repository URL, path, branch, and Go module setting
 2. **Non-interactive mode**: Use provided arguments and defaults
 3. Add the new workspace to the configuration file
@@ -189,6 +198,7 @@ This command will:
 5. In interactive mode, allow adding multiple repositories in sequence
 
 **Options:**
+
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
@@ -199,6 +209,7 @@ This command will:
 - `-y, --yes` - Skip interactive prompts and use non-interactive mode (default: false)
 
 **Examples:**
+
 ```bash
 # Interactive mode
 workspace-manager add
@@ -230,6 +241,7 @@ workspaces:
 ```
 
 **Configuration Fields:**
+
 - `url` - Git repository URL
 - `path` - Local path for the submodule
 - `branch` - Git branch to checkout
@@ -269,6 +281,7 @@ deno task check
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
 - [ ] **Scan for nested go.mod** inside the cloned repository and import them to `go.work`
+- [ ] **New `status` command** for quick workspace status showing current tracking branch for each active submodules (would be nice to have dirty status, commits ahead/behind remote)
 
 ### Low Priority
 
