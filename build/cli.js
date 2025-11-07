@@ -884,6 +884,14 @@ function blue(str2) {
     34
   ], 39));
 }
+function gray(str2) {
+  return brightBlack(str2);
+}
+function brightBlack(str2) {
+  return run(str2, code([
+    90
+  ], 39));
+}
 function brightBlue(str2) {
   return run(str2, code([
     94
@@ -9731,6 +9739,22 @@ async function processConcurrently(items, processor, concurrency = 4) {
   }
   return Result2.ok();
 }
+async function processConcurrentlyWithResults(items, processor, concurrency = 4) {
+  if (items.length === 0) {
+    return [];
+  }
+  const batches = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    batches.push(items.slice(i, i + concurrency));
+  }
+  const allResults = [];
+  for (const batch of batches) {
+    const promises = batch.map((item) => processor(item));
+    const results = await Promise.all(promises);
+    allResults.push(...results);
+  }
+  return allResults;
+}
 
 // libs/git.ts
 async function gitSubmoduleRemove(path, cwd) {
@@ -11614,6 +11638,255 @@ async function saveCommand(option) {
   return Result2.ok();
 }
 
+// cmds/status.ts
+async function statusCommand(option) {
+  const configFile = option.config ??= "workspace.yml";
+  const workspaceRoot = option.workspaceRoot ??= ".";
+  const debug = option.debug ?? false;
+  const concurrency = option.concurrency ?? 4;
+  const json = option.json ?? false;
+  const verbose = option.verbose ?? false;
+  const parseConfig2 = await parseConfigFile(configFile);
+  if (!parseConfig2.ok) {
+    if (!json) {
+      console.log(red("\u274C Failed to parse config file: "), configFile, `(${parseConfig2.error.message})`);
+    } else {
+      console.log(JSON.stringify({
+        error: parseConfig2.error.message
+      }, null, 2));
+    }
+    return Result2.error(parseConfig2.error);
+  }
+  const config = parseConfig2.value;
+  const activeWorkspaces = config.workspaces.filter((item) => item.active);
+  if (activeWorkspaces.length === 0) {
+    if (!json) {
+      console.log(yellow("\u26A0\uFE0F  No active repositories found in workspace configuration"));
+    } else {
+      console.log(JSON.stringify({
+        repositories: [],
+        summary: {
+          total: 0
+        }
+      }, null, 2));
+    }
+    return Result2.ok();
+  }
+  if (debug) {
+    console.log(blue(`\u{1F50D} Checking status for ${activeWorkspaces.length} active repositories...`));
+  }
+  const statusResults = await processConcurrentlyWithResults(activeWorkspaces, async (workspace) => {
+    const workspacePath = join6(workspaceRoot, workspace.path);
+    const status = {
+      path: workspace.path,
+      url: workspace.url,
+      trackingBranch: workspace.branch,
+      isGoModule: workspace.isGolang,
+      active: workspace.active,
+      exists: false
+    };
+    try {
+      const dir = await isDir(workspacePath);
+      if (!dir.ok) {
+        status.error = "Directory does not exist";
+        return Result2.ok(status);
+      }
+      const isRepo = await gitIsRepository(workspacePath);
+      if (!isRepo.ok) {
+        status.error = "Failed to check git repository";
+        return Result2.ok(status);
+      }
+      if (!isRepo.value) {
+        status.error = "Not a git repository";
+        return Result2.ok(status);
+      }
+      status.exists = true;
+      const currentBranch = await gitGetCurrentBranch(workspacePath);
+      if (!currentBranch.ok) {
+        status.error = "Failed to get current branch";
+        return Result2.ok(status);
+      }
+      status.currentBranch = currentBranch.value;
+      const isClean = await gitIsWorkingDirectoryClean(workspacePath);
+      if (!isClean.ok) {
+        status.error = "Failed to check working directory";
+        return Result2.ok(status);
+      }
+      status.isClean = isClean.value;
+      if (!isClean.value || verbose) {
+        const fileStatus = await getFileStatus(workspacePath);
+        if (fileStatus.ok) {
+          status.modifiedFiles = fileStatus.value.modified;
+          status.untrackedFiles = fileStatus.value.untracked;
+        }
+      }
+      return Result2.ok(status);
+    } catch (error) {
+      status.error = error instanceof Error ? error.message : "Unknown error";
+      return Result2.ok(status);
+    }
+  }, concurrency);
+  const repositories = statusResults.map((result) => result.ok ? result.value : {
+    path: "",
+    url: "",
+    trackingBranch: "",
+    isGoModule: false,
+    active: false,
+    exists: false,
+    error: result.error?.message || "Unknown error"
+  });
+  if (json) {
+    outputJson(repositories);
+  } else {
+    outputTable(repositories, verbose);
+  }
+  return Result2.ok();
+}
+async function getFileStatus(cwd) {
+  return await Result2.fromAsyncCatching(async () => {
+    const result = await new Deno.Command("git", {
+      args: [
+        "status",
+        "--porcelain"
+      ],
+      cwd,
+      stderr: "null"
+    }).output();
+    const output = new TextDecoder().decode(result.stdout).trim();
+    const lines = output.split("\n").filter((line) => line.length > 0);
+    let modified = 0;
+    let untracked = 0;
+    for (const line of lines) {
+      const status = line.substring(0, 2);
+      if (status === "??") {
+        untracked++;
+      } else if (status.includes("M") || status.includes("D") || status.includes("A")) {
+        modified++;
+      }
+    }
+    return {
+      modified,
+      untracked
+    };
+  }).mapError((error) => new ErrorWithCause("Failed to get file status", error));
+}
+function outputJson(repositories) {
+  const summary = {
+    total: repositories.length,
+    clean: repositories.filter((r) => r.exists && r.isClean).length,
+    modified: repositories.filter((r) => r.exists && !r.isClean).length,
+    missing: repositories.filter((r) => !r.exists).length,
+    onWrongBranch: repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length,
+    goModules: repositories.filter((r) => r.isGoModule).length
+  };
+  const output = {
+    summary,
+    repositories: repositories.map((repo) => {
+      const repoData = {
+        path: repo.path,
+        url: repo.url,
+        trackingBranch: repo.trackingBranch,
+        isGoModule: repo.isGoModule,
+        exists: repo.exists,
+        currentBranch: repo.currentBranch,
+        isClean: repo.isClean,
+        onCorrectBranch: repo.exists ? repo.currentBranch === repo.trackingBranch : true
+      };
+      if (repo.modifiedFiles !== void 0) {
+        repoData.modifiedFiles = repo.modifiedFiles;
+      }
+      if (repo.untrackedFiles !== void 0) {
+        repoData.untrackedFiles = repo.untrackedFiles;
+      }
+      if (repo.error) {
+        repoData.error = repo.error;
+      }
+      return repoData;
+    })
+  };
+  console.log(JSON.stringify(output, null, 2));
+}
+function outputTable(repositories, _verbose) {
+  if (repositories.length === 0) {
+    console.log(yellow("\u26A0\uFE0F  No active repositories found"));
+    return;
+  }
+  const clean = repositories.filter((r) => r.exists && r.isClean).length;
+  const modified = repositories.filter((r) => r.exists && !r.isClean).length;
+  const missing = repositories.filter((r) => !r.exists).length;
+  const wrongBranch = repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length;
+  const goModules = repositories.filter((r) => r.isGoModule).length;
+  console.log("");
+  console.log(blue(`\u{1F4CA} Workspace Status - ${repositories.length} active repositories`));
+  console.log("");
+  const cleanRepos = repositories.filter((r) => r.exists && r.isClean && r.currentBranch === r.trackingBranch);
+  const dirtyRepos = repositories.filter((r) => r.exists && !r.isClean);
+  const wrongBranchRepos = repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch);
+  const missingRepos = repositories.filter((r) => !r.exists);
+  if (cleanRepos.length > 0) {
+    console.log(green(`\u2705 Clean Repositories (${cleanRepos.length})`));
+    console.log("\u2500".repeat(80));
+    for (const repo of cleanRepos) {
+      const branchInfo = repo.currentBranch === repo.trackingBranch ? green(repo.currentBranch) : yellow(`${repo.currentBranch} \u2192 ${repo.trackingBranch}`);
+      const goIndicator = repo.isGoModule ? "\u{1F439}" : "  ";
+      const pathStr = (repo.path || "").padEnd(35);
+      const branchStr = branchInfo.padEnd(20);
+      console.log(`  ${goIndicator} ${pathStr} ${branchStr} \u2705 clean`);
+    }
+    console.log("");
+  }
+  if (dirtyRepos.length > 0) {
+    console.log(yellow(`\u26A0\uFE0F  Modified Repositories (${dirtyRepos.length})`));
+    console.log("\u2500".repeat(80));
+    for (const repo of dirtyRepos) {
+      const branchInfo = repo.currentBranch === repo.trackingBranch ? green(repo.currentBranch) : yellow(`${repo.currentBranch} \u2192 ${repo.trackingBranch}`);
+      const goIndicator = repo.isGoModule ? "\u{1F439}" : "  ";
+      const pathStr = (repo.path || "").padEnd(35);
+      const branchStr = branchInfo.padEnd(20);
+      const changes = [];
+      if (repo.modifiedFiles && repo.modifiedFiles > 0) changes.push(`${repo.modifiedFiles}M`);
+      if (repo.untrackedFiles && repo.untrackedFiles > 0) changes.push(`${repo.untrackedFiles}U`);
+      const changesStr = changes.length > 0 ? changes.join(" ") : "dirty";
+      console.log(`  ${goIndicator} ${pathStr} ${branchStr} \u26A0\uFE0F  ${changesStr}`);
+    }
+    console.log("");
+  }
+  if (wrongBranchRepos.length > 0) {
+    console.log(yellow(`\u{1F33F} Wrong Branch (${wrongBranchRepos.length})`));
+    console.log("\u2500".repeat(80));
+    for (const repo of wrongBranchRepos) {
+      if (repo.isClean === false) continue;
+      const branchInfo = yellow(`${repo.currentBranch} \u2192 ${repo.trackingBranch}`);
+      const goIndicator = repo.isGoModule ? "\u{1F439}" : "  ";
+      const pathStr = (repo.path || "").padEnd(35);
+      const branchStr = branchInfo.padEnd(20);
+      console.log(`  ${goIndicator} ${pathStr} ${branchStr} \u{1F33F} wrong branch`);
+    }
+    console.log("");
+  }
+  if (missingRepos.length > 0) {
+    console.log(red(`\u274C Missing Repositories (${missingRepos.length})`));
+    console.log("\u2500".repeat(80));
+    for (const repo of missingRepos) {
+      const goIndicator = repo.isGoModule ? "\u{1F439}" : "  ";
+      const pathStr = (repo.path || "").padEnd(35);
+      const trackingStr = gray(repo.trackingBranch || "unknown").padEnd(20);
+      const errorStr = red(repo.error || "missing");
+      console.log(`  ${goIndicator} ${pathStr} ${trackingStr} \u274C ${errorStr}`);
+    }
+    console.log("");
+  }
+  console.log(gray("SUMMARY"));
+  const summaryParts = [];
+  if (clean > 0) summaryParts.push(green(`\u2705 ${clean} clean`));
+  if (modified > 0) summaryParts.push(yellow(`\u26A0\uFE0F  ${modified} modified`));
+  if (wrongBranch > 0) summaryParts.push(yellow(`\u{1F33F} ${wrongBranch} wrong branch`));
+  if (missing > 0) summaryParts.push(red(`\u274C ${missing} missing`));
+  if (goModules > 0) summaryParts.push(`\u{1F439} ${goModules} Go modules`);
+  console.log(summaryParts.join("  "));
+  console.log("");
+}
+
 // cmds/update.ts
 async function updateCommand(option) {
   const configFile = option.config ??= "workspace.yml";
@@ -11719,7 +11992,7 @@ async function validateWorkspaceDir2(path) {
 }
 
 // main.ts
-var VERSION = "0.0.1-rc9";
+var VERSION = "0.0.1-rc10";
 var cli = new Command().name("workspace-manager").version(VERSION).description("Workspace manager for 7solutions");
 cli.command("sync", "Sync workspace with remote").option("-c, --config <config:string>", "Workspace config file", {
   default: "workspace.yml"
@@ -11854,8 +12127,31 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
     Deno.exit(1);
   }
 });
-cli.command("status", "Show current workspace status").alias("s").action(() => {
-  console.log(yellow("\u26A0\uFE0F Status command is not implemented yet"));
+cli.command("status", "Show current workspace status").alias("s").option("-c, --config <config:string>", "Workspace config file", {
+  default: "workspace.yml"
+}).option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+  default: "."
+}).option("-d, --debug", "Enable debug mode", {
+  default: false
+}).option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+  default: 4
+}).option("--json", "Output in JSON format", {
+  default: false
+}).option("-v, --verbose", "Show verbose git information", {
+  default: false
+}).action(async (options) => {
+  const result = await statusCommand({
+    config: options.config,
+    workspaceRoot: options.workspaceRoot,
+    debug: options.debug,
+    concurrency: options.concurrency,
+    json: options.json,
+    verbose: options.verbose
+  });
+  if (!result.ok) {
+    console.log(red("\u274C Status failed:"), result.error.message);
+    Deno.exit(1);
+  }
 });
 if (import.meta.main) {
   const result = await Result2.fromAsyncCatching(() => cli.parse(Deno.args));
