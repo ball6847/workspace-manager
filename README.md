@@ -7,6 +7,7 @@ A command-line tool for managing workspaces with Git submodules and Go workspace
 - Sync workspace with remote repositories
 - Manage Git submodules automatically
 - Go workspace integration with `go.work` file management
+- **Status monitoring** with branch tracking and dirty state detection
 - YAML-based configuration
 - Debug mode support
 
@@ -19,7 +20,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc9/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc10/build/cli.js
 ```
 
 After installation, you can use the tool from anywhere:
@@ -167,15 +168,42 @@ This command will:
 
 ### Status Command
 
-Show current workspace status:
+Show current workspace status for all active repositories:
 
 ```bash
 # Using global installation
 workspace-manager status
+workspace-manager s  # short alias
 
+# With options
+workspace-manager status --json     # Output in JSON format for scripting
+workspace-manager status --verbose  # Show detailed git information
+workspace-manager status --debug    # Enable debug mode
 ```
 
-_Note: Status command is not yet implemented._
+The status command displays:
+- **Repository path** and **URL**
+- **Current branch** vs **tracking branch** (configured branch)
+- **Clean/dirty status** with file counts for modified/untracked files
+- **Go module indicators** (🐹) for repositories included in go.work
+- **Missing repository detection** with error details
+
+Example output:
+```
+📊 Workspace Status - 3 active repositories
+
+✅ Clean Repositories (2)
+────────────────────────────────────────────────────────────────────────────────
+  🐹 modules/auth-service                main → main        ✅ clean
+      frontend/dashboard                  develop → develop  ✅ clean
+
+⚠️  Modified Repositories (1)
+────────────────────────────────────────────────────────────────────────────────
+  🐹 api/gateway                         staging → staging  ⚠️  3M 2U
+
+SUMMARY
+✅ 2 clean  ⚠️  1 modified  🐹 2 Go modules
+```
 
 ### Add Command
 

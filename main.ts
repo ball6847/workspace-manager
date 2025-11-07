@@ -1,14 +1,15 @@
 import { Command } from "@cliffy/command";
-import { red, yellow } from "@std/fmt/colors";
+import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { addCommand } from "./cmds/add.ts";
 import { disableCommand } from "./cmds/disable.ts";
 import { enableCommand } from "./cmds/enable.ts";
 import { saveCommand } from "./cmds/save.ts";
+import { statusCommand } from "./cmds/status.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc9";
+const VERSION = "0.0.1-rc10";
 
 // Create CLI application
 const cli = new Command()
@@ -182,9 +183,31 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
 // Status command
 cli.command("status", "Show current workspace status")
 	.alias("s")
-	.action(() => {
-		// coming soon
-		console.log(yellow("⚠️ Status command is not implemented yet"));
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
+		default: 4,
+	})
+	.option("--json", "Output in JSON format", { default: false })
+	.option("-v, --verbose", "Show verbose git information", { default: false })
+	.action(async (options) => {
+		const result = await statusCommand({
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+			concurrency: options.concurrency,
+			json: options.json,
+			verbose: options.verbose,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Status failed:"), result.error.message);
+			Deno.exit(1);
+		}
 	});
 
 // Handle main execution
