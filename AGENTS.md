@@ -1,4 +1,5 @@
 Technical Constraints
+
 - Deno 2.4 with TypeScript - see https://docs.deno.com
 - Command line application framework using Cliffy - see https://cliffy.io
 - TypeScript error handling using `typescript-result` instead of try-catch - see https://www.typescript-result.dev
@@ -9,6 +10,7 @@ Technical Constraints
 - Use `type` keyword when importing types from other files
 
 Directory Structure
+
 - `main.ts` - main entry point of the CLI application
 - `libs/` - reusable utility libraries
   - `config.ts` - workspace configuration file parser
@@ -37,7 +39,7 @@ import { Result } from "typescript-result";
 type Config = {
   name: string;
   version: number;
-}
+};
 
 const readFile = Result.wrap(
   (filePath: string) => fs.readFile(filePath, "utf-8"),
