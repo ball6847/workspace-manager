@@ -32,7 +32,8 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 ### Code Style Guidelines
 - Use `type` instead of `interface` for type definitions
 - Use async-await for all asynchronous operations
-- Use early-return pattern for control flow
+- **Use early-return pattern for control flow** - Handle error/edge cases first, then return early
+- **Use early-continue in loops** - Skip to next iteration immediately when conditions aren't met
 - Use `type` keyword when importing types from other files
 - 4-space indentation with tabs
 - 120 character line width
@@ -160,6 +161,58 @@ if (!finalResult.ok) {
 - **ErrorWithCause**: Base error class with cause chaining for debugging
 - All errors include contextual information and original causes
 
+### Early-Return Pattern Examples
+
+```typescript
+// ✅ GOOD: Early-return pattern
+function processValue(value: string | null): string {
+  if (!value) {
+    return "default";
+  }
+  
+  if (value.length === 0) {
+    return "empty";
+  }
+  
+  // Main logic after all edge cases handled
+  return value.toUpperCase();
+}
+
+// ✅ GOOD: Early-continue in loops
+function processItems(items: Item[]): ProcessedItem[] {
+  const results: ProcessedItem[] = [];
+  
+  for (const item of items) {
+    if (!item.isValid) {
+      continue; // Skip invalid items immediately
+    }
+    
+    if (item.isProcessed) {
+      continue; // Skip already processed items
+    }
+    
+    // Process valid, unprocessed items
+    results.push(processItem(item));
+  }
+  
+  return results;
+}
+
+// ❌ AVOID: Deep nesting
+function processValueBad(value: string | null): string {
+  if (value) {
+    if (value.length > 0) {
+      // Main logic buried deep in nesting
+      return value.toUpperCase();
+    } else {
+      return "empty";
+    }
+  } else {
+    return "default";
+  }
+}
+```
+
 ## Testing Strategy
 
 **Current Status**: No automated tests implemented
@@ -208,15 +261,17 @@ deno run --allow-all main.ts [command]
 1. Create new file in `cmds/` directory
 2. Define command options type
 3. Implement command function returning `Result<void, Error>`
-4. Add command to `main.ts` with proper error handling
-5. Update README.md with command documentation
+4. **Use early-return pattern** - Handle validation and error cases first
+5. Add command to `main.ts` with proper error handling
+6. Update README.md with command documentation
 
 ### Adding New Libraries
 1. Create file in `libs/` directory
 2. Export functions returning `Result` types
 3. Use `ErrorWithCause` for error wrapping
-4. Follow functional programming patterns
-5. Add JSDoc comments for public functions
+4. **Apply early-return pattern** - Check error conditions and return early
+5. Follow functional programming patterns
+6. Add JSDoc comments for public functions
 
 ## Dependencies
 
@@ -232,7 +287,7 @@ deno run --allow-all main.ts [command]
 
 1. **No schema validation**: Zod is imported but not implemented for config validation
 2. **No `--yes` option**: Automatic confirmation not implemented
-3. **No status command**: Workspace status reporting not implemented
+3. **Status command implemented**: Workspace status reporting is now implemented
 4. **Limited error reporting**: Git stderr suppressed for cleaner output
 5. **No transaction support**: No rollback on partial failures
 
