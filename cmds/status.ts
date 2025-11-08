@@ -278,7 +278,6 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 		repositories.filter((r) =>
 			r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
 		).length;
-	const goModules = repositories.filter((r) => r.isGoModule).length;
 
 	console.log("");
 	console.log(blue(`📊 Workspace Status - ${repositories.length} active repositories`));
@@ -289,23 +288,18 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 		.header([
 			"Path",
 			"Branch",
-			"Status",
-			"Go",
 		])
-		.border(true)
+		.border(false)
 		.padding(1);
 
 	// Add rows for each repository
 	for (const repo of repositories) {
 		const path = repo.path;
-		const goIndicator = repo.isGoModule ? "🐹" : "";
 
 		if (!repo.exists) {
 			table.push([
 				red(path),
 				gray(repo.trackingBranch || "unknown"),
-				red("❌ Missing"),
-				goIndicator,
 			]);
 			continue;
 		}
@@ -314,41 +308,28 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 			table.push([
 				yellow(path),
 				gray(repo.trackingBranch || "unknown"),
-				red(`❌ ${repo.error}`),
-				goIndicator,
 			]);
 			continue;
 		}
 
 		const currentBranch = repo.currentBranch || "unknown";
 		const trackingBranch = repo.trackingBranch || "unknown";
-		const isCorrectBranch = currentBranch === trackingBranch;
 
 		let branchDisplay: string;
-		if (isCorrectBranch) {
+		if (currentBranch === trackingBranch) {
 			branchDisplay = green(currentBranch);
 		} else {
 			branchDisplay = yellow(`${currentBranch} → ${trackingBranch}`);
 		}
 
-		let statusDisplay: string;
-		if (!repo.isClean) {
-			const changes = [];
-			if (repo.modifiedFiles && repo.modifiedFiles > 0) changes.push(`${repo.modifiedFiles}M`);
-			if (repo.untrackedFiles && repo.untrackedFiles > 0) changes.push(`${repo.untrackedFiles}U`);
-			const changesStr = changes.length > 0 ? changes.join(" ") : "dirty";
-			statusDisplay = yellow(`⚠️  Modified (${changesStr})`);
-		} else if (!isCorrectBranch) {
-			statusDisplay = yellow("🌿 Wrong branch");
-		} else {
-			statusDisplay = green("✅ Clean");
+		// Add dirty indicator if repository has uncommitted changes
+		if (repo.isClean === false) {
+			branchDisplay += " *";
 		}
 
 		table.push([
 			path,
 			branchDisplay,
-			statusDisplay,
-			goIndicator,
 		]);
 	}
 
@@ -362,7 +343,6 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 	if (modified > 0) summaryParts.push(yellow(`⚠️  ${modified} modified`));
 	if (wrongBranch > 0) summaryParts.push(yellow(`🌿 ${wrongBranch} wrong branch`));
 	if (missing > 0) summaryParts.push(red(`❌ ${missing} missing`));
-	if (goModules > 0) summaryParts.push(`🐹 ${goModules} Go modules`);
 
 	console.log(summaryParts.join("  "));
 	console.log("");
@@ -378,7 +358,7 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 				"URL",
 				"Details",
 			])
-			.border(true)
+			.border(false)
 			.padding(1);
 
 		for (const repo of repositories) {
