@@ -165,17 +165,22 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 		concurrency,
 	);
 
-	const repositories = statusResults.map((result) =>
-		result.ok ? result.value : ({
-			path: "",
-			url: "",
-			trackingBranch: "",
-			isGoModule: false,
-			active: false,
-			exists: false,
-			error: result.error?.message || "Unknown error",
-		})
-	);
+	const repositories = statusResults.map((result) => {
+		if (!result.ok) {
+			// This should theoretically never happen since the processor always returns Result.ok,
+			// but we handle it for type safety
+			return {
+				path: "",
+				url: "",
+				trackingBranch: "",
+				isGoModule: false,
+				active: false,
+				exists: false,
+				error: "Unexpected error occurred",
+			};
+		}
+		return result.value;
+	});
 
 	// output results
 	if (json) {
