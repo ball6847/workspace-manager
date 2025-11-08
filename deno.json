@@ -14,6 +14,7 @@
         "@cliffy/keycode": "jsr:@cliffy/keycode@^1.0.0-rc.8",
         "@cliffy/prompt/input": "https://cdn.jsdelivr.net/gh/ball6847/deno-cliffy@442ed09e0b4822e7a45212a9796d8615d1feae85/prompt/input.ts",
         "@cliffy/prompt": "jsr:@cliffy/prompt@^1.0.0-rc.8",
+        "@cliffy/table": "jsr:@cliffy/table@^1.0.0-rc.8",
         "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
         "@std/fmt/colors": "jsr:@std/fmt@^1.0.8/colors",
         "@std/path": "jsr:@std/path@^1.1.1",

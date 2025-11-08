@@ -1,6 +1,7 @@
 import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import { Table } from "@cliffy/table";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
@@ -263,7 +264,7 @@ function outputJson(repositories: RepositoryStatus[]) {
 	console.log(JSON.stringify(output, null, 2));
 }
 
-function outputTable(repositories: RepositoryStatus[], _verbose: boolean) {
+function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 	if (repositories.length === 0) {
 		console.log(yellow("⚠️  No active repositories found"));
 		return;
@@ -283,88 +284,78 @@ function outputTable(repositories: RepositoryStatus[], _verbose: boolean) {
 	console.log(blue(`📊 Workspace Status - ${repositories.length} active repositories`));
 	console.log("");
 
-	// group by status
-	const cleanRepos = repositories.filter((r) => r.exists && r.isClean && r.currentBranch === r.trackingBranch);
-	const dirtyRepos = repositories.filter((r) => r.exists && !r.isClean);
-	const wrongBranchRepos = repositories.filter((r) =>
-		r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
-	);
-	const missingRepos = repositories.filter((r) => !r.exists);
+	// Create main status table
+	const table = new Table()
+		.header([
+			"Path",
+			"Branch",
+			"Status",
+			"Go",
+		])
+		.border(true)
+		.padding(1);
 
-	// display clean repositories
-	if (cleanRepos.length > 0) {
-		console.log(green(`✅ Clean Repositories (${cleanRepos.length})`));
-		console.log("─".repeat(80));
-		for (const repo of cleanRepos) {
-			const branchInfo = repo.currentBranch === repo.trackingBranch
-				? green(repo.currentBranch)
-				: yellow(`${repo.currentBranch} → ${repo.trackingBranch}`);
+	// Add rows for each repository
+	for (const repo of repositories) {
+		const path = repo.path;
+		const goIndicator = repo.isGoModule ? "🐹" : "";
 
-			const goIndicator = repo.isGoModule ? "🐹" : "  ";
-			const pathStr = (repo.path || "").padEnd(35);
-			const branchStr = branchInfo.padEnd(20);
-
-			console.log(`  ${goIndicator} ${pathStr} ${branchStr} ✅ clean`);
+		if (!repo.exists) {
+			table.push([
+				red(path),
+				gray(repo.trackingBranch || "unknown"),
+				red("❌ Missing"),
+				goIndicator,
+			]);
+			continue;
 		}
-		console.log("");
-	}
 
-	// display dirty repositories
-	if (dirtyRepos.length > 0) {
-		console.log(yellow(`⚠️  Modified Repositories (${dirtyRepos.length})`));
-		console.log("─".repeat(80));
-		for (const repo of dirtyRepos) {
-			const branchInfo = repo.currentBranch === repo.trackingBranch
-				? green(repo.currentBranch)
-				: yellow(`${repo.currentBranch} → ${repo.trackingBranch}`);
+		if (repo.error) {
+			table.push([
+				yellow(path),
+				gray(repo.trackingBranch || "unknown"),
+				red(`❌ ${repo.error}`),
+				goIndicator,
+			]);
+			continue;
+		}
 
-			const goIndicator = repo.isGoModule ? "🐹" : "  ";
-			const pathStr = (repo.path || "").padEnd(35);
-			const branchStr = branchInfo.padEnd(20);
+		const currentBranch = repo.currentBranch || "unknown";
+		const trackingBranch = repo.trackingBranch || "unknown";
+		const isCorrectBranch = currentBranch === trackingBranch;
 
+		let branchDisplay: string;
+		if (isCorrectBranch) {
+			branchDisplay = green(currentBranch);
+		} else {
+			branchDisplay = yellow(`${currentBranch} → ${trackingBranch}`);
+		}
+
+		let statusDisplay: string;
+		if (!repo.isClean) {
 			const changes = [];
 			if (repo.modifiedFiles && repo.modifiedFiles > 0) changes.push(`${repo.modifiedFiles}M`);
 			if (repo.untrackedFiles && repo.untrackedFiles > 0) changes.push(`${repo.untrackedFiles}U`);
 			const changesStr = changes.length > 0 ? changes.join(" ") : "dirty";
-
-			console.log(`  ${goIndicator} ${pathStr} ${branchStr} ⚠️  ${changesStr}`);
+			statusDisplay = yellow(`⚠️  Modified (${changesStr})`);
+		} else if (!isCorrectBranch) {
+			statusDisplay = yellow("🌿 Wrong branch");
+		} else {
+			statusDisplay = green("✅ Clean");
 		}
-		console.log("");
+
+		table.push([
+			path,
+			branchDisplay,
+			statusDisplay,
+			goIndicator,
+		]);
 	}
 
-	// display wrong branch repositories
-	if (wrongBranchRepos.length > 0) {
-		console.log(yellow(`🌿 Wrong Branch (${wrongBranchRepos.length})`));
-		console.log("─".repeat(80));
-		for (const repo of wrongBranchRepos) {
-			if (repo.isClean === false) continue; // already shown in dirty section
+	console.log(table.toString());
 
-			const branchInfo = yellow(`${repo.currentBranch} → ${repo.trackingBranch}`);
-			const goIndicator = repo.isGoModule ? "🐹" : "  ";
-			const pathStr = (repo.path || "").padEnd(35);
-			const branchStr = branchInfo.padEnd(20);
-
-			console.log(`  ${goIndicator} ${pathStr} ${branchStr} 🌿 wrong branch`);
-		}
-		console.log("");
-	}
-
-	// display missing repositories
-	if (missingRepos.length > 0) {
-		console.log(red(`❌ Missing Repositories (${missingRepos.length})`));
-		console.log("─".repeat(80));
-		for (const repo of missingRepos) {
-			const goIndicator = repo.isGoModule ? "🐹" : "  ";
-			const pathStr = (repo.path || "").padEnd(35);
-			const trackingStr = gray(repo.trackingBranch || "unknown").padEnd(20);
-			const errorStr = red(repo.error || "missing");
-
-			console.log(`  ${goIndicator} ${pathStr} ${trackingStr} ❌ ${errorStr}`);
-		}
-		console.log("");
-	}
-
-	// summary
+	// Show summary
+	console.log("");
 	console.log(gray("SUMMARY"));
 	const summaryParts = [];
 	if (clean > 0) summaryParts.push(green(`✅ ${clean} clean`));
@@ -375,4 +366,45 @@ function outputTable(repositories: RepositoryStatus[], _verbose: boolean) {
 
 	console.log(summaryParts.join("  "));
 	console.log("");
+
+	// Show verbose details if requested
+	if (verbose) {
+		console.log(blue("🔍 Detailed Information:"));
+		console.log("");
+
+		const detailTable = new Table()
+			.header([
+				"Repository",
+				"URL",
+				"Details",
+			])
+			.border(true)
+			.padding(1);
+
+		for (const repo of repositories) {
+			if (!repo.exists || repo.error) continue;
+
+			const details = [];
+			if (repo.modifiedFiles && repo.modifiedFiles > 0) {
+				details.push(`${repo.modifiedFiles} modified files`);
+			}
+			if (repo.untrackedFiles && repo.untrackedFiles > 0) {
+				details.push(`${repo.untrackedFiles} untracked files`);
+			}
+			if (repo.currentBranch !== repo.trackingBranch) {
+				details.push(`tracking: ${repo.trackingBranch}`);
+			}
+
+			detailTable.push([
+				repo.path,
+				repo.url,
+				details.length > 0 ? details.join(", ") : "No additional details",
+			]);
+		}
+
+		if (detailTable.length > 0) {
+			console.log(detailTable.toString());
+			console.log("");
+		}
+	}
 }
