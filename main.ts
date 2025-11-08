@@ -9,7 +9,7 @@ import { statusCommand } from "./cmds/status.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 
-const VERSION = "0.0.1-rc10";
+const VERSION = "0.0.1-rc11";
 
 // Create CLI application
 const cli = new Command()
