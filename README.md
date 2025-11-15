@@ -29,7 +29,6 @@ After installation, you can use the tool from anywhere:
 workspace-manager sync
 workspace-manager update
 workspace-manager enable
-workspace-manager disable
 workspace-manager add
 workspace-manager save
 workspace-manager status
@@ -117,31 +116,6 @@ This command will:
 - `-d, --debug` - Enable debug mode
 - `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 - `-y, --yes` - Automatically sync after enabling without prompting
-
-### Disable Command
-
-Disable an active workspace repository by setting its `active` property to `false`:
-
-```bash
-# Using global installation
-workspace-manager disable [options]
-
-```
-
-This command will:
-
-1. Show a list of active workspaces (where `active: true`)
-2. Allow you to select which workspace to disable
-3. Update the workspace configuration file
-4. Optionally sync the workspace immediately to remove it from the filesystem
-
-**Options:**
-
-- `-c, --config <file>` - Workspace config file (default: workspace.yml)
-- `-w, --workspace-root <path>` - Workspace root directory (default: .)
-- `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
-- `-y, --yes` - Automatically sync after disabling without prompting
 
 ### Save Command
 

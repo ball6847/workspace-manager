@@ -2,7 +2,6 @@ import { Command } from "@cliffy/command";
 import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { addCommand } from "./cmds/add.ts";
-import { disableCommand } from "./cmds/disable.ts";
 import { enableCommand } from "./cmds/enable.ts";
 import { saveCommand } from "./cmds/save.ts";
 import { statusCommand } from "./cmds/status.ts";
@@ -112,37 +111,7 @@ cli
 		}
 	});
 
-// Disable command
-cli
-	.command("disable", "Disable an active workspace repository")
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
-	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option(
-		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 4,
-		},
-	)
-	.option("-y, --yes", "Skip sync confirmation prompt")
-	.action(async (options) => {
-		const result = await disableCommand({
-			config: options.config,
-			workspaceRoot: options.workspaceRoot,
-			debug: options.debug,
-			concurrency: options.concurrency,
-			yes: options.yes,
-		});
-		if (!result.ok) {
-			console.log(red("❌ Disable failed:"), result.error.message);
-			Deno.exit(1);
-		}
-	});
+
 
 // Save command
 cli
