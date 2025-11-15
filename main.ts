@@ -8,17 +8,17 @@ import { saveCommand } from "./cmds/save.ts";
 import { statusCommand } from "./cmds/status.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
-
-const VERSION = "0.0.1-rc11";
+import meta from "./deno.json" with { type: "json" };
 
 // Create CLI application
 const cli = new Command()
 	.name("workspace-manager")
-	.version(VERSION)
+	.version(meta.version)
 	.description("Workspace manager for 7solutions");
 
 // Sync command
-cli.command("sync", "Sync workspace with remote")
+cli
+	.command("sync", "Sync workspace with remote")
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -26,9 +26,13 @@ cli.command("sync", "Sync workspace with remote")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
 		const result = await syncCommand({
@@ -44,7 +48,11 @@ cli.command("sync", "Sync workspace with remote")
 	});
 
 // Update command
-cli.command("update", "Update all submodules by checking out to tracking branches and pulling latest changes")
+cli
+	.command(
+		"update",
+		"Update all submodules by checking out to tracking branches and pulling latest changes",
+	)
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -52,9 +60,13 @@ cli.command("update", "Update all submodules by checking out to tracking branche
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.action(async (options) => {
 		const result = await updateCommand({
 			config: options.config,
@@ -69,7 +81,8 @@ cli.command("update", "Update all submodules by checking out to tracking branche
 	});
 
 // Enable command
-cli.command("enable", "Enable a disabled workspace repository")
+cli
+	.command("enable", "Enable a disabled workspace repository")
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -77,9 +90,13 @@ cli.command("enable", "Enable a disabled workspace repository")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
 		const result = await enableCommand({
@@ -96,7 +113,8 @@ cli.command("enable", "Enable a disabled workspace repository")
 	});
 
 // Disable command
-cli.command("disable", "Disable an active workspace repository")
+cli
+	.command("disable", "Disable an active workspace repository")
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -104,9 +122,13 @@ cli.command("disable", "Disable an active workspace repository")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
 		const result = await disableCommand({
@@ -123,7 +145,11 @@ cli.command("disable", "Disable an active workspace repository")
 	});
 
 // Save command
-cli.command("save", "Save current workspace state by updating workspace.yml with current tracking branches")
+cli
+	.command(
+		"save",
+		"Save current workspace state by updating workspace.yml with current tracking branches",
+	)
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -144,7 +170,11 @@ cli.command("save", "Save current workspace state by updating workspace.yml with
 	});
 
 // Add command
-cli.command("add [repo] [path]", "Add a new repository to the workspace configuration")
+cli
+	.command(
+		"add [repo] [path]",
+		"Add a new repository to the workspace configuration",
+	)
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
 	})
@@ -152,15 +182,27 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.option("-b, --branch <branch:string>", "Git branch to checkout", {
 		default: "main",
 	})
-	.option("--go", "Mark as Go module for go.work integration", { default: false })
-	.option("--sync", "Sync workspace after adding repository", { default: false })
-	.option("-y, --yes", "Skip interactive prompts and use non-interactive mode", { default: false })
+	.option("--go", "Mark as Go module for go.work integration", {
+		default: false,
+	})
+	.option("--sync", "Sync workspace after adding repository", {
+		default: false,
+	})
+	.option(
+		"-y, --yes",
+		"Skip interactive prompts and use non-interactive mode",
+		{ default: false },
+	)
 	.action(async (options, repo, path) => {
 		const result = await addCommand({
 			repo,
@@ -181,7 +223,8 @@ cli.command("add [repo] [path]", "Add a new repository to the workspace configur
 	});
 
 // Status command
-cli.command("status", "Show current workspace status")
+cli
+	.command("status", "Show current workspace status")
 	.alias("s")
 	.option("-c, --config <config:string>", "Workspace config file", {
 		default: "workspace.yml",
@@ -190,9 +233,13 @@ cli.command("status", "Show current workspace status")
 		default: ".",
 	})
 	.option("-d, --debug", "Enable debug mode", { default: false })
-	.option("-j, --concurrency <concurrency:number>", "Number of concurrent operations", {
-		default: 4,
-	})
+	.option(
+		"-j, --concurrency <concurrency:number>",
+		"Number of concurrent operations",
+		{
+			default: 4,
+		},
+	)
 	.option("--json", "Output in JSON format", { default: false })
 	.option("-v, --verbose", "Show verbose git information", { default: false })
 	.action(async (options) => {
