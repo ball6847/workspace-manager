@@ -113,6 +113,7 @@ async function toggleWorkspaceStates(
 		() =>
 			Checkbox.prompt({
 				message: "Select workspaces to enable (use space to toggle, enter to confirm):",
+				search: true,
 				options,
 			}),
 		(error) => {
