@@ -1,4 +1,5 @@
 import { Input } from "@cliffy/prompt/input";
+import { Checkbox } from "@cliffy/prompt/checkbox";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { parseConfigFile, WorkspaceConfig, WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
@@ -57,8 +58,8 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	}
 	const config = parseConfig.value;
 
-	// Select and enable workspace
-	const enableResult = await selectAndEnableWorkspace(config, configFile, debug);
+	// Toggle workspace states
+	const enableResult = await toggleWorkspaceStates(config, configFile, debug);
 	if (!enableResult.ok) {
 		return Result.error(enableResult.error);
 	}
@@ -79,65 +80,76 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 }
 
 /**
- * Select and enable a workspace from disabled workspaces
+ * Toggle active states for workspaces using multi-select
  *
  * @param config Workspace configuration
  * @param configFile Path to config file
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-async function selectAndEnableWorkspace(
+async function toggleWorkspaceStates(
 	config: WorkspaceConfig,
 	configFile: string,
 	debug: boolean,
 ): Promise<Result<void, Error>> {
-	// Get disabled workspaces
-	const disabledWorkspaces = config.workspaces.filter((item: WorkspaceConfigItem) => !item.active);
-
-	if (disabledWorkspaces.length === 0) {
-		console.log(yellow("⚠️  No disabled workspaces found"));
+	if (config.workspaces.length === 0) {
+		console.log(yellow("⚠️  No workspaces found"));
 		return Result.ok();
 	}
 
 	if (debug) {
-		console.log(blue(`📊 Found ${disabledWorkspaces.length} disabled workspaces`));
+		console.log(blue(`📊 Found ${config.workspaces.length} workspaces`));
 	}
 
-	// Create suggestions in format "path (url)"
-	const suggestions = disabledWorkspaces.map((workspace: WorkspaceConfigItem) =>
-		`${workspace.path} (${workspace.url})`
-	);
+	// Create checkbox options with current active state
+	const options = config.workspaces.map((workspace: WorkspaceConfigItem) => ({
+		name: `${workspace.path} (${workspace.url})`,
+		value: workspace.path,
+		checked: workspace.active,
+	}));
 
-	// Prompt user to select workspace to enable
-	const selectedWorkspaceResult = await promptWorkspaceSelection(suggestions);
-	if (!selectedWorkspaceResult.ok) {
-		if (selectedWorkspaceResult.error.message.includes("cancelled")) {
+	// Prompt user to select workspaces to enable (multi-select)
+	const selectedPathsResult = await Result.wrap(
+		() =>
+			Checkbox.prompt({
+				message: "Select workspaces to enable (use space to toggle, enter to confirm):",
+				options,
+			}),
+		(error) => {
+			if (error instanceof Error && error.message.includes("cancelled")) {
+				return new ErrorWithCause("Operation cancelled", error);
+			}
+			return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
+		},
+	)();
+
+	if (!selectedPathsResult.ok) {
+		if (selectedPathsResult.error.message.includes("cancelled")) {
 			console.log(yellow("⚠️  Operation cancelled"));
 			return Result.ok();
 		}
-		return Result.error(selectedWorkspaceResult.error);
+		return Result.error(selectedPathsResult.error);
 	}
 
-	const selectedWorkspace = selectedWorkspaceResult.value;
+	const selectedPaths = selectedPathsResult.value;
 
-	// Validate selection
-	if (!selectedWorkspace || selectedWorkspace.trim() === "") {
-		console.log(yellow("⚠️  No workspace selected"));
+	// Update active states
+	let changed = false;
+	for (const workspace of config.workspaces) {
+		const wasActive = workspace.active;
+		workspace.active = selectedPaths.includes(workspace.path);
+		if (wasActive !== workspace.active) {
+			changed = true;
+			console.log(
+				workspace.active ? green(`✅ Enabled: ${workspace.path}`) : yellow(`⏸️  Disabled: ${workspace.path}`),
+			);
+		}
+	}
+
+	if (!changed) {
+		console.log(blue("ℹ️  No changes made"));
 		return Result.ok();
 	}
-
-	// Find the selected workspace by parsing the selection
-	const selectedPath = selectedWorkspace.split(" (")[0];
-	const workspaceIndex = config.workspaces.findIndex((workspace: WorkspaceConfigItem) =>
-		workspace.path === selectedPath
-	);
-
-	if (workspaceIndex === -1) {
-		return Result.error(new Error(`Workspace not found: ${selectedPath}`));
-	}
-
-	// Enable the workspace
-	config.workspaces[workspaceIndex].active = true;
 
 	// Write config back to file
 	const writeResult = await writeConfigFile(config, configFile);
@@ -146,7 +158,7 @@ async function selectAndEnableWorkspace(
 		return Result.error(writeResult.error);
 	}
 
-	console.log(green(`✅ Successfully enabled workspace: ${selectedPath}`));
+	console.log(green("✅ Workspace states updated successfully"));
 	return Result.ok();
 }
 
@@ -198,31 +210,6 @@ async function handleSyncConfirmation(
 	}
 
 	return Result.ok();
-}
-
-/**
- * Prompt user to select a workspace from the provided suggestions
- *
- * @param suggestions Array of workspace suggestions in format "path (url)"
- * @returns Result containing the selected workspace string or error
- */
-function promptWorkspaceSelection(suggestions: string[]): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Select workspace to enable:",
-				suggestions,
-				list: true,
-				info: true,
-				maxRows: 10,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
-		},
-	)();
 }
 
 /**

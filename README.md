@@ -95,7 +95,7 @@ workspace-manager update [options]
 
 ### Enable Command
 
-Enable a disabled workspace repository by setting its `active` property to `true`:
+Toggle active states for workspace repositories using multi-select:
 
 ```bash
 # Using global installation
@@ -105,9 +105,9 @@ workspace-manager enable [options]
 
 This command will:
 
-1. Show a list of disabled workspaces (where `active: false`)
-2. Allow you to select which workspace to enable
-3. Update the workspace configuration file
+1. Show all workspaces with their current active/inactive state pre-selected
+2. Allow you to toggle multiple workspaces on/off using spacebar
+3. Update the workspace configuration file with new active states
 4. Optionally sync the workspace immediately
 
 **Options:**
