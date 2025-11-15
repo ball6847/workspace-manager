@@ -20,7 +20,7 @@ Requires Deno 2.4 or later.
 Install globally using Deno:
 
 ```bash
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc11/build/cli.js
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net jsr:@ball6847/workspace-manager
 ```
 
 After installation, you can use the tool from anywhere:
@@ -182,6 +182,7 @@ workspace-manager status --debug    # Enable debug mode
 ```
 
 The status command displays:
+
 - **Repository path** and **URL**
 - **Current branch** vs **tracking branch** (configured branch)
 - **Clean/dirty status** with file counts for modified/untracked files
@@ -189,6 +190,7 @@ The status command displays:
 - **Missing repository detection** with error details
 
 Example output:
+
 ```
 📊 Workspace Status - 3 active repositories
 
