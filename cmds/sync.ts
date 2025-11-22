@@ -5,16 +5,7 @@ import { processConcurrently } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir, isDirectoryEmpty } from "../libs/file.ts";
-import {
-	gitCheckoutBranch,
-	gitFetch,
-	gitGetCurrentBranch,
-	gitIsRepository,
-	gitIsWorkingDirectoryClean,
-	gitPullOriginBranch,
-	gitSubmoduleAddWithBranch,
-	gitSubmoduleRemove,
-} from "../libs/git.ts";
+import { GitManager } from "../libs/git.ts";
 import { goWorkInit, goWorkRemove, goWorkUse, isGoAvailable } from "../libs/go.ts";
 
 export type SyncCommandOption = {
@@ -80,6 +71,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 		inactiveWorkspaces,
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const git = new GitManager(workspaceRoot);
 			const dir = await isDir(workspacePath);
 			if (!dir.ok) {
 				return Result.ok(); // skip if directory does not exist
@@ -87,7 +79,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 
 			console.log(yellow(`🗑️  Removing inactive workspace: ${workspace.path}`));
 
-			const remove = await gitSubmoduleRemove(workspace.path, workspaceRoot);
+			const remove = await git.submoduleRemove(workspace.path);
 			if (!remove.ok) {
 				console.log(
 					red(`❌ Failed to remove inactive workspace: ${workspace.path}`),
@@ -114,6 +106,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 		activeWorkspaces,
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const git = new GitManager(workspaceRoot);
 			const dir = await isDir(workspacePath);
 
 			// If directory exists, validate and heal it
@@ -131,7 +124,7 @@ export async function syncCommand(option: SyncCommandOption): Promise<Result<voi
 
 				// If healing returned false, we need to remove and re-checkout
 				console.log(yellow(`🗑️  Removing corrupted workspace for fresh checkout: ${workspace.path}`));
-				const removeResult = await gitSubmoduleRemove(workspace.path, workspaceRoot);
+				const removeResult = await git.submoduleRemove(workspace.path);
 				if (!removeResult.ok) {
 					console.log(
 						red(`❌ Failed to remove corrupted workspace: ${workspace.path}`),
@@ -206,15 +199,18 @@ async function validateWorkspaceDir(path: string) {
  * @param workspaceRoot - Root directory of the workspace
  */
 async function gitSubmoduleAdd(url: string, submodulePath: string, branch: string, workspaceRoot: string) {
+	const git = new GitManager(workspaceRoot);
+	
 	// Add submodule with specified branch
-	const addResult = await gitSubmoduleAddWithBranch(url, submodulePath, branch, workspaceRoot);
+	const addResult = await git.submoduleAdd(url, submodulePath, branch);
 	if (!addResult.ok) {
 		return Result.error(addResult.error);
 	}
 
 	// Check out the submodule to the specified branch
 	const fullSubmodulePath = path.join(workspaceRoot, submodulePath);
-	const checkoutResult = await gitCheckoutBranch(branch, fullSubmodulePath);
+	const submoduleGit = new GitManager(fullSubmodulePath);
+	const checkoutResult = await submoduleGit.checkoutBranch(branch);
 	if (!checkoutResult.ok) {
 		return Result.error(
 			new ErrorWithCause(
@@ -225,7 +221,7 @@ async function gitSubmoduleAdd(url: string, submodulePath: string, branch: strin
 	}
 
 	// Pull the latest changes from the specified branch
-	const pullResult = await gitPullOriginBranch(branch, fullSubmodulePath);
+	const pullResult = await submoduleGit.pullOriginBranch(branch);
 	if (!pullResult.ok) {
 		return Result.error(
 			new ErrorWithCause(
@@ -250,6 +246,8 @@ async function validateAndHealWorkspace(
 	workspace: { path: string; url: string; branch: string },
 	workspacePath: string,
 ): Promise<Result<boolean, Error>> {
+	const git = new GitManager(workspacePath);
+	
 	// Check if directory is empty
 	const isEmpty = await isDirectoryEmpty(workspacePath);
 	if (!isEmpty.ok) {
@@ -263,7 +261,7 @@ async function validateAndHealWorkspace(
 	}
 
 	// Check if it's a valid git repository
-	const isRepo = await gitIsRepository(workspacePath);
+	const isRepo = await git.isRepository();
 	if (!isRepo.ok) {
 		return Result.error(isRepo.error);
 	}
@@ -275,14 +273,14 @@ async function validateAndHealWorkspace(
 	}
 
 	// Check current branch
-	const currentBranch = await gitGetCurrentBranch(workspacePath);
+	const currentBranch = await git.getCurrentBranch();
 	if (!currentBranch.ok) {
 		return Result.error(currentBranch.error);
 	}
 
 	// If on wrong branch, try to switch (only if working directory is clean)
 	if (currentBranch.value !== workspace.branch) {
-		const isClean = await gitIsWorkingDirectoryClean(workspacePath);
+		const isClean = await git.isWorkingDirectoryClean();
 		if (!isClean.ok) {
 			return Result.error(isClean.error);
 		}
@@ -304,7 +302,7 @@ async function validateAndHealWorkspace(
 		);
 
 		// Fetch latest changes first
-		const fetchResult = await gitFetch(workspacePath);
+		const fetchResult = await git.fetch();
 		if (!fetchResult.ok) {
 			console.log(
 				yellow(`⚠️  Failed to fetch latest changes, continuing with checkout: ${fetchResult.error.message}`),
@@ -312,7 +310,7 @@ async function validateAndHealWorkspace(
 		}
 
 		// Checkout to the correct branch
-		const checkoutResult = await gitCheckoutBranch(workspace.branch, workspacePath);
+		const checkoutResult = await git.checkoutBranch(workspace.branch);
 		if (!checkoutResult.ok) {
 			console.log(
 				red(`❌ Failed to checkout to branch ${workspace.branch}: ${checkoutResult.error.message}`),
@@ -323,7 +321,7 @@ async function validateAndHealWorkspace(
 
 	// Pull latest changes from the correct branch
 	console.log(blue(`🔄 Pulling latest changes for workspace: ${workspace.path}`));
-	const pullResult = await gitPullOriginBranch(workspace.branch, workspacePath);
+	const pullResult = await git.pullOriginBranch(workspace.branch);
 	if (!pullResult.ok) {
 		console.log(yellow(`⚠️  Failed to pull latest changes: ${pullResult.error.message}`));
 		// Don't fail the entire operation if pull fails, workspace might still be usable

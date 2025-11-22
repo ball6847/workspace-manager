@@ -6,7 +6,7 @@ import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
-import { gitGetCurrentBranch, gitIsRepository, gitIsWorkingDirectoryClean } from "../libs/git.ts";
+import { GitManager } from "../libs/git.ts";
 
 export type StatusCommandOption = {
 	/**
@@ -101,6 +101,7 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 		activeWorkspaces,
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const git = new GitManager(workspacePath);
 			const status: RepositoryStatus = {
 				path: workspace.path,
 				url: workspace.url,
@@ -119,7 +120,7 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 				}
 
 				// check if it's a git repository
-				const isRepo = await gitIsRepository(workspacePath);
+				const isRepo = await git.isRepository();
 				if (!isRepo.ok) {
 					status.error = "Failed to check git repository";
 					return Result.ok(status);
@@ -133,7 +134,7 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 				status.exists = true;
 
 				// get current branch
-				const currentBranch = await gitGetCurrentBranch(workspacePath);
+				const currentBranch = await git.getCurrentBranch();
 				if (!currentBranch.ok) {
 					status.error = "Failed to get current branch";
 					return Result.ok(status);
@@ -141,7 +142,7 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 				status.currentBranch = currentBranch.value;
 
 				// check if working directory is clean
-				const isClean = await gitIsWorkingDirectoryClean(workspacePath);
+				const isClean = await git.isWorkingDirectoryClean();
 				if (!isClean.ok) {
 					status.error = "Failed to check working directory";
 					return Result.ok(status);

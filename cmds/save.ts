@@ -3,7 +3,7 @@ import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { parseConfigFile, writeConfigFile } from "../libs/config.ts";
 import { isDir } from "../libs/file.ts";
-import { gitGetCurrentBranch, gitIsRepository } from "../libs/git.ts";
+import { GitManager } from "../libs/git.ts";
 
 export type SaveCommandOption = {
 	/**
@@ -75,8 +75,10 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 			continue;
 		}
 
+		const git = new GitManager(workspacePath);
+
 		// Check if it's a git repository
-		const isRepo = await gitIsRepository(workspacePath);
+		const isRepo = await git.isRepository();
 		if (!isRepo.ok || !isRepo.value) {
 			console.log(yellow(`⚠️  Not a git repository: ${workspace.path}`));
 			errorCount++;
@@ -84,7 +86,7 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 		}
 
 		// Get current branch
-		const currentBranch = await gitGetCurrentBranch(workspacePath);
+		const currentBranch = await git.getCurrentBranch();
 		if (!currentBranch.ok) {
 			console.log(
 				red(`❌ Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`),

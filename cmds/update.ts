@@ -5,14 +5,7 @@ import { processConcurrently } from "../libs/concurrent.ts";
 import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
-import {
-	gitCheckoutBranch,
-	gitFetch,
-	gitIsWorkingDirectoryClean,
-	gitPullOriginBranch,
-	gitStash,
-	gitStashPop,
-} from "../libs/git.ts";
+import { GitManager } from "../libs/git.ts";
 
 export type UpdateCommandOption = {
 	/**
@@ -75,6 +68,9 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 		activeWorkspaces,
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const git = new GitManager(workspacePath);
+
+			// check if directory exists
 			const dir = await isDir(workspacePath);
 			if (!dir.ok) {
 				console.log(yellow(`⚠️  Workspace directory does not exist, skipping: ${workspace.path}`));
@@ -84,7 +80,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			console.log(blue(`🔄 Updating workspace: ${workspace.path} (branch: ${workspace.branch})`));
 
 			// checkout to tracking branch
-			const checkoutResult = await gitCheckoutBranch(workspace.branch, workspacePath);
+			const checkoutResult = await git.checkoutBranch(workspace.branch);
 			if (!checkoutResult.ok) {
 				console.log(
 					red(`❌ Failed to checkout to branch ${workspace.branch} in ${workspace.path}`),
@@ -98,7 +94,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			}
 
 			// check if working directory is clean
-			const isCleanResult = await gitIsWorkingDirectoryClean(workspacePath);
+			const isCleanResult = await git.isWorkingDirectoryClean();
 			if (!isCleanResult.ok) {
 				console.log(
 					red(`❌ Failed to check working directory status in ${workspace.path}`),
@@ -113,7 +109,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			// stash changes if working directory is dirty
 			if (!isClean) {
 				console.log(yellow(`💾 Working directory is dirty in ${workspace.path}, stashing changes...`));
-				const stashResult = await gitStash(workspacePath, `workspace-manager auto-stash before update`);
+				const stashResult = await git.stash(`workspace-manager auto-stash before update`);
 				if (!stashResult.ok) {
 					console.log(
 						red(`❌ Failed to stash changes in ${workspace.path}`),
@@ -128,7 +124,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			}
 
 			// fetch latest changes from origin
-			const fetchResult = await gitFetch(workspacePath);
+			const fetchResult = await git.fetch();
 			if (!fetchResult.ok) {
 				console.log(
 					red(`❌ Failed to fetch latest changes from origin in ${workspace.path}`),
@@ -142,7 +138,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			}
 
 			// pull latest changes from tracking branch
-			const pullResult = await gitPullOriginBranch(workspace.branch, workspacePath);
+			const pullResult = await git.pullOriginBranch(workspace.branch);
 			if (!pullResult.ok) {
 				console.log(
 					red(`❌ Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}`),
@@ -158,7 +154,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 			// pop stashed changes if we stashed them
 			if (hasStashedChanges) {
 				console.log(blue(`🔄 Restoring stashed changes in ${workspace.path}...`));
-				const popResult = await gitStashPop(workspacePath);
+				const popResult = await git.stashPop();
 				if (!popResult.ok) {
 					console.log(
 						yellow(
