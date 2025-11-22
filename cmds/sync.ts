@@ -6,7 +6,7 @@ import { parseConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir, isDirectoryEmpty } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
-import { goWorkInit, goWorkRemove, goWorkUse, isGoAvailable } from "../libs/go.ts";
+import { GoWork } from "../libs/go.ts";
 
 export type SyncCommandOption = {
 	/**
@@ -346,8 +346,11 @@ async function validateAndHealWorkspace(
  * @returns Result indicating success or failure with appropriate error
  */
 async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: string): Promise<Result<void, Error>> {
+	// Create single GoWork instance for this function
+	const goWork = new GoWork(goWorkRoot);
+
 	// Check if Go is available
-	const goAvailable = await isGoAvailable();
+	const goAvailable = await GoWork.isAvailable();
 	if (!goAvailable.ok) {
 		return Result.error(new Error("Failed to check Go availability"));
 	}
@@ -358,15 +361,14 @@ async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: str
 	}
 
 	// Initialize go workspace if it doesn't exist
-	const initResult = await goWorkInit(goWorkRoot);
+	const initResult = await goWork.init();
 	if (!initResult.ok) {
 		return Result.error(initResult.error);
 	}
 
 	// Remove inactive Go modules
 	if (remove.length > 0) {
-		// Use relative paths but run from goWorkRoot directory
-		const removeResult = await goWorkRemove(remove, goWorkRoot);
+		const removeResult = await goWork.remove(remove);
 		if (!removeResult.ok) {
 			return Result.error(removeResult.error);
 		}
@@ -374,8 +376,7 @@ async function setupGoWorkspace(add: string[], remove: string[], goWorkRoot: str
 
 	// Add active Go modules
 	if (add.length > 0) {
-		// Use relative paths but run from goWorkRoot directory
-		const addResult = await goWorkUse(add, goWorkRoot);
+		const addResult = await goWork.use(add);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
 		}
