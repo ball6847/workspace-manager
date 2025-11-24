@@ -200,7 +200,7 @@ async function validateWorkspaceDir(path: string) {
  */
 async function gitSubmoduleAdd(url: string, submodulePath: string, branch: string, workspaceRoot: string) {
 	const git = new GitManager(workspaceRoot);
-	
+
 	// Add submodule with specified branch
 	const addResult = await git.submoduleAdd(url, submodulePath, branch);
 	if (!addResult.ok) {
@@ -247,7 +247,7 @@ async function validateAndHealWorkspace(
 	workspacePath: string,
 ): Promise<Result<boolean, Error>> {
 	const git = new GitManager(workspacePath);
-	
+
 	// Check if directory is empty
 	const isEmpty = await isDirectoryEmpty(workspacePath);
 	if (!isEmpty.ok) {

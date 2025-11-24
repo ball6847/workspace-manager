@@ -152,5 +152,3 @@ export class GitManager {
 		return Result.ok(undefined);
 	}
 }
-
-
