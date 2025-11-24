@@ -1,4 +1,5 @@
 import { Command } from "@cliffy/command";
+import { CompletionsCommand } from "@cliffy/command/completions";
 import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { addCommand } from "./cmds/add.ts";
@@ -223,6 +224,11 @@ cli
 			Deno.exit(1);
 		}
 	});
+
+// Completions command
+cli
+	.command("completions", new CompletionsCommand())
+	.description("Generate shell completions");
 
 // Handle main execution
 if (import.meta.main) {

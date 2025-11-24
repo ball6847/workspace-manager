@@ -32,6 +32,7 @@ workspace-manager enable
 workspace-manager add
 workspace-manager save
 workspace-manager status
+workspace-manager completions
 ```
 
 ### Uninstall
@@ -230,6 +231,42 @@ workspace-manager add git@github.com:user/go-service.git services/go-service --b
 # Add and sync immediately in non-interactive mode
 workspace-manager add git@github.com:user/repo.git --sync -y
 ```
+
+### Completions Command
+
+Generate shell completions for bash, fish, and zsh:
+
+```bash
+# Generate bash completions
+workspace-manager completions bash
+
+# Generate fish completions  
+workspace-manager completions fish
+
+# Generate zsh completions
+workspace-manager completions zsh
+```
+
+**Setting up Shell Completions:**
+
+To enable shell completions, add the following to your shell configuration:
+
+**Bash** (add to `~/.bashrc`):
+```bash
+source <(workspace-manager completions bash)
+```
+
+**Fish** (add to `~/.config/fish/config.fish`):
+```bash
+source (workspace-manager completions fish | psub)
+```
+
+**Zsh** (add to `~/.zshrc`):
+```bash
+source <(workspace-manager completions zsh)
+```
+
+After adding to your shell configuration, restart your shell or run `source ~/.bashrc` (or the appropriate config file) to enable completions.
 
 ## Configuration
 
