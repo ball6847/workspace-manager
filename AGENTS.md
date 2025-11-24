@@ -6,7 +6,7 @@ Workspace Manager is a command-line tool for managing workspaces with Git submod
 
 **Key Features:**
 - Sync workspace with remote repositories
-- Manage Git submodules automatically  
+- Manage Git submodules automatically
 - Go workspace integration with `go.work` file management
 - YAML-based configuration
 - Concurrent operations with configurable parallelism
@@ -124,7 +124,7 @@ deno run --allow-all build/cli.js [command] [options]
 - **sync**: Synchronize workspace with remote repositories
 - **update**: Update all submodules to latest tracking branches
 - **enable**: Enable disabled workspace repositories
-- **disable**: Disable active workspace repositories  
+- **disable**: Disable active workspace repositories
 - **add**: Add new repositories to workspace configuration
 - **save**: Save current workspace state to configuration file
 - **status**: Show workspace status (not implemented)
@@ -169,11 +169,11 @@ function processValue(value: string | null): string {
   if (!value) {
     return "default";
   }
-  
+
   if (value.length === 0) {
     return "empty";
   }
-  
+
   // Main logic after all edge cases handled
   return value.toUpperCase();
 }
@@ -181,20 +181,20 @@ function processValue(value: string | null): string {
 // ✅ GOOD: Early-continue in loops
 function processItems(items: Item[]): ProcessedItem[] {
   const results: ProcessedItem[] = [];
-  
+
   for (const item of items) {
     if (!item.isValid) {
       continue; // Skip invalid items immediately
     }
-    
+
     if (item.isProcessed) {
       continue; // Skip already processed items
     }
-    
+
     // Process valid, unprocessed items
     results.push(processItem(item));
   }
-  
+
   return results;
 }
 
@@ -243,8 +243,8 @@ The CLI requires extensive Deno permissions:
 
 ### Global Installation
 ```bash
-# Install from CDN (production)
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager https://cdn.jsdelivr.net/gh/ball6847/workspace-manager@v0.0.1-rc9/build/cli.js
+# Install from JSR (recommended)
+deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net jsr:@ball6847/workspace-manager@VERSION
 ```
 
 ### Local Development
