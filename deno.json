@@ -8,7 +8,7 @@
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
     "build": "deno bundle --platform=deno main.ts -o build/cli.js",
-    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --name workspace-manager ./build/cli.js"
+    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager ./build/cli.js"
   },
   "imports": {
     "@cliffy/ansi": "jsr:@cliffy/ansi@1.0.0-rc.8",
@@ -26,8 +26,14 @@
     "zod": "npm:zod@^3.25.67"
   },
   "fmt": {
-    "exclude": ["node_modules", "dist", "build"],
-    "include": ["**/*.ts"],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "build"
+    ],
+    "include": [
+      "**/*.ts"
+    ],
     "indentWidth": 4,
     "lineWidth": 120,
     "proseWrap": "preserve",
@@ -35,10 +41,22 @@
     "useTabs": true
   },
   "lint": {
-    "exclude": ["node_modules", "dist", "build", "generated"],
-    "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "build",
+      "generated"
+    ],
+    "include": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx"
+    ],
     "rules": {
-      "tags": ["recommended"]
+      "tags": [
+        "recommended"
+      ]
     }
   },
   "nodeModulesDir": "auto"
