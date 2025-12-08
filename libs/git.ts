@@ -1,88 +1,77 @@
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
-import { GitLock } from "./git-lock.ts";
 
 export class GitManager {
 	constructor(private readonly cwd: string) {}
 
 	// Submodule operations
 	async submoduleAdd(url: string, path: string, branch?: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			const args = ["submodule", "add", "--force"];
-			if (branch) {
-				args.push("-b", branch);
-			}
-			args.push(url, path);
+		const args = ["submodule", "add", "--force"];
+		if (branch) {
+			args.push("-b", branch);
+		}
+		args.push(url, path);
 
-			return await this.runCommandWithErrorContext(
-				args,
-				`Failed to add submodule at ${path}${branch ? ` with branch ${branch}` : ""}`,
-			);
-		});
+		return await this.runCommandWithErrorContext(
+			args,
+			`Failed to add submodule at ${path}${branch ? ` with branch ${branch}` : ""}`,
+		);
 	}
 
 	async submoduleRemove(path: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			// De-initialize the submodule
-			const deInit = await this.deinit(path);
-			if (!deInit.ok) {
-				return Result.error(deInit.error);
-			}
+		// De-initialize the submodule
+		const deInit = await this.deinit(path);
+		if (!deInit.ok) {
+			return Result.error(deInit.error);
+		}
 
-			// Remove the submodule from git
-			const rm = await this.rm(path);
-			if (!rm.ok) {
-				return Result.error(rm.error);
-			}
+		// Remove the submodule from git
+		const rm = await this.rm(path);
+		if (!rm.ok) {
+			return Result.error(rm.error);
+		}
 
-			// Remove the submodule's git directory if it exists
-			const gitModulePath = `${this.cwd}/.git/modules/${path}`;
-			const stat = await Result.fromAsyncCatching(() => Deno.stat(gitModulePath));
-			if (!stat.ok) {
-				// Directory doesn't exist, no need to remove
-				return Result.ok(undefined);
-			}
+		// Remove the submodule's git directory if it exists
+		const gitModulePath = `${this.cwd}/.git/modules/${path}`;
+		const stat = await Result.fromAsyncCatching(() => Deno.stat(gitModulePath));
+		if (!stat.ok) {
+			// Directory doesn't exist, no need to remove
+			return Result.ok(undefined);
+		}
 
-			// Not a directory
-			if (stat.value.isDirectory) {
-				const remove = await Result.fromAsyncCatching(() => Deno.remove(gitModulePath, { recursive: true }));
-				if (!remove.ok) {
-					return Result.error(remove.error);
-				}
+		// Not a directory
+		if (stat.value.isDirectory) {
+			const remove = await Result.fromAsyncCatching(() => Deno.remove(gitModulePath, { recursive: true }));
+			if (!remove.ok) {
+				return Result.error(remove.error);
 			}
+		}
 
-			return Result.ok();
-		});
+		return Result.ok();
 	}
 
 	async deinit(path: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			const result = await this.runCommand(["submodule", "deinit", "-f", path]);
-			if (!result.ok) {
-				return Result.error(result.error);
-			}
-			return Result.ok(undefined);
-		});
+		const result = await this.runCommand(["submodule", "deinit", "-f", path]);
+		if (!result.ok) {
+			return Result.error(result.error);
+		}
+		return Result.ok(undefined);
 	}
 
 	async rm(path: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			const result = await this.runCommand(["rm", "-f", path]);
-			if (!result.ok) {
-				return Result.error(result.error);
-			}
-			return Result.ok(undefined);
-		});
+		const result = await this.runCommand(["rm", "-f", path]);
+		if (!result.ok) {
+			return Result.error(result.error);
+		}
+		return Result.ok(undefined);
 	}
 
 	// Branch operations
 	async checkoutBranch(branch: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			return await this.runCommandWithErrorContext(
-				["checkout", branch],
-				`Failed to checkout to branch ${branch}`,
-			);
-		});
+		return await this.runCommandWithErrorContext(
+			["checkout", branch],
+			`Failed to checkout to branch ${branch}`,
+		);
 	}
 
 	async getCurrentBranch(): Promise<Result<string, Error>> {
@@ -96,22 +85,18 @@ export class GitManager {
 	}
 
 	async pullOriginBranch(branch: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			return await this.runCommandWithErrorContext(
-				["pull", "origin", branch],
-				`Failed to pull latest changes from origin/${branch}`,
-			);
-		});
+		return await this.runCommandWithErrorContext(
+			["pull", "origin", branch],
+			`Failed to pull latest changes from origin/${branch}`,
+		);
 	}
 
 	// Repository operations
 	async fetch(): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			return await this.runCommandWithErrorContext(
-				["fetch", "origin"],
-				"Failed to fetch latest changes from origin",
-			);
-		});
+		return await this.runCommandWithErrorContext(
+			["fetch", "origin"],
+			"Failed to fetch latest changes from origin",
+		);
 	}
 
 	async isRepository(): Promise<Result<boolean, Error>> {
@@ -137,19 +122,15 @@ export class GitManager {
 
 	// Stash operations
 	async stash(message?: string): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			const args = ["stash", "push"];
-			if (message) {
-				args.push("-m", message);
-			}
-			return await this.runCommandWithErrorContext(args, "Failed to stash changes");
-		});
+		const args = ["stash", "push"];
+		if (message) {
+			args.push("-m", message);
+		}
+		return await this.runCommandWithErrorContext(args, "Failed to stash changes");
 	}
 
 	async stashPop(): Promise<Result<void, Error>> {
-		return await GitLock.withLock(this.cwd, async () => {
-			return await this.runCommandWithErrorContext(["stash", "pop"], "Failed to pop stash");
-		});
+		return await this.runCommandWithErrorContext(["stash", "pop"], "Failed to pop stash");
 	}
 
 	// Private utility methods
