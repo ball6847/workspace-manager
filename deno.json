@@ -11,6 +11,7 @@
     "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager ./build/cli.js"
   },
   "imports": {
+    "@117/mutex": "jsr:@117/mutex@^1.0.8",
     "@cliffy/ansi": "jsr:@cliffy/ansi@1.0.0-rc.8",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
     "@cliffy/internal": "jsr:@cliffy/internal@1.0.0-rc.8",

@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@117/mutex@^1.0.8": "1.0.8",
     "jsr:@cliffy/ansi@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/command@^1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/flags@1.0.0-rc.8": "1.0.0-rc.8",
@@ -28,11 +29,15 @@
     "npm:zod@^3.25.67": "3.25.67"
   },
   "jsr": {
+    "@117/mutex@1.0.8": {
+      "integrity": "8f14ef3e124ae427c92f93951fbe36b5cfad3aa74f84d443b2acf3034683255d"
+    },
     "@cliffy/ansi@1.0.0-rc.8": {
       "integrity": "ba37f10ce55bbfbdd8ddd987f91f029b17bce88385b98ba3058870f3b007b80c",
       "dependencies": [
         "jsr:@cliffy/internal",
         "jsr:@std/encoding",
+        "jsr:@std/fmt@~1.0.2",
         "jsr:@std/io"
       ]
     },
@@ -53,7 +58,10 @@
       ]
     },
     "@cliffy/internal@1.0.0-rc.8": {
-      "integrity": "34cdf2fad9b084b5aed493b138d573f52d4e988767215f7460daf0b918ff43d8"
+      "integrity": "34cdf2fad9b084b5aed493b138d573f52d4e988767215f7460daf0b918ff43d8",
+      "dependencies": [
+        "jsr:@std/fmt@~1.0.2"
+      ]
     },
     "@cliffy/keycode@1.0.0-rc.8": {
       "integrity": "76dbf85a67ec0aea2e29ca049b8507b6b3f62a2a971bd744d8d3fc447c177cd9"
@@ -152,6 +160,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@117/mutex@^1.0.8",
       "jsr:@cliffy/ansi@1.0.0-rc.8",
       "jsr:@cliffy/command@^1.0.0-rc.8",
       "jsr:@cliffy/internal@1.0.0-rc.8",
