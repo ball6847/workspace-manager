@@ -184,8 +184,7 @@ export class GitManager {
 			new Deno.Command("git", {
 				args,
 				cwd: this.cwd,
-				// TODO: Capture stderr for better error reporting instead of suppressing it
-				stderr: "null",
+				stderr: "piped",
 			}).output()
 		);
 	}
@@ -196,7 +195,9 @@ export class GitManager {
 	): Promise<Result<void, Error>> {
 		const result = await this.runCommand(args);
 		if (!result.ok) {
-			return Result.error(new ErrorWithCause(context, result.error));
+			// Create a more detailed error message including the original error
+			const detailedError = new Error(`${context}: ${result.error.message}`);
+			return Result.error(new ErrorWithCause(context, detailedError));
 		}
 		return Result.ok(undefined);
 	}
