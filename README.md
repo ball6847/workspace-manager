@@ -358,9 +358,9 @@ workspace-manager/
 ├── src/                       # Source code directory
 │   ├── cmds/                  # CLI command implementations (one per file)
 │   │   ├── add.ts            # Add new repositories to workspace
-│   │   ├── disable.ts        # Disable active workspace repositories
 │   │   ├── enable.ts         # Enable disabled workspace repositories
 │   │   ├── save.ts           # Save current workspace state to config
+│   │   ├── status.ts         # Show workspace status
 │   │   ├── sync.ts           # Sync workspace with remote repositories
 │   │   └── update.ts         # Update submodules to latest branches
 │   └── libs/                 # Reusable utility libraries
