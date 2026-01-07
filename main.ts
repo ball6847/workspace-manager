@@ -2,12 +2,12 @@ import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { addCommand } from "./cmds/add.ts";
-import { enableCommand } from "./cmds/enable.ts";
-import { saveCommand } from "./cmds/save.ts";
-import { statusCommand } from "./cmds/status.ts";
-import { syncCommand } from "./cmds/sync.ts";
-import { updateCommand } from "./cmds/update.ts";
+import { addCommand } from "./src/cmds/add.ts";
+import { enableCommand } from "./src/cmds/enable.ts";
+import { saveCommand } from "./src/cmds/save.ts";
+import { statusCommand } from "./src/cmds/status.ts";
+import { syncCommand } from "./src/cmds/sync.ts";
+import { updateCommand } from "./src/cmds/update.ts";
 import meta from "./deno.json" with { type: "json" };
 
 // Create CLI application

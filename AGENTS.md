@@ -45,20 +45,21 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 ```
 /home/ball6847/Projects/personal/workspace-manager/
 ├── main.ts                    # CLI entry point and command definitions
-├── libs/                      # Reusable utility libraries
-│   ├── config.ts             # YAML configuration parsing and validation
-│   ├── concurrent.ts         # Concurrent processing with batching
-│   ├── errors.ts             # Custom error types (ErrorWithCause)
-│   ├── file.ts               # File system utilities and validation
-│   ├── git.ts                # Git operations (submodules, branches, status)
-│   └── go.ts                 # Go workspace management (go.work integration)
-├── cmds/                      # CLI command implementations (one per file)
-│   ├── add.ts                # Add new repositories to workspace
-│   ├── disable.ts            # Disable active workspace repositories
-│   ├── enable.ts             # Enable disabled workspace repositories
-│   ├── save.ts               # Save current workspace state to config
-│   ├── sync.ts               # Sync workspace with remote repositories
-│   └── update.ts             # Update submodules to latest branches
+├── src/                       # Source code directory
+│   ├── cmds/                  # CLI command implementations (one per file)
+│   │   ├── add.ts            # Add new repositories to workspace
+│   │   ├── disable.ts        # Disable active workspace repositories
+│   │   ├── enable.ts         # Enable disabled workspace repositories
+│   │   ├── save.ts           # Save current workspace state to config
+│   │   ├── sync.ts           # Sync workspace with remote repositories
+│   │   └── update.ts         # Update submodules to latest branches
+│   └── libs/                 # Reusable utility libraries
+│       ├── config.ts         # YAML configuration parsing and validation
+│       ├── concurrent.ts     # Concurrent processing with batching
+│       ├── errors.ts         # Custom error types (ErrorWithCause)
+│       ├── file.ts           # File system utilities and validation
+│       ├── git.ts            # Git operations (submodules, branches, status)
+│       └── go.ts             # Go workspace management (go.work integration)
 ├── build/                     # Compiled output directory
 │   └── cli.js                # Bundled CLI executable (364KB)
 ├── example/                   # Example configuration files

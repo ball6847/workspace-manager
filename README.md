@@ -352,14 +352,32 @@ This process ensures that Git submodules are properly removed and re-added with 
 
 The project follows SOLID principles with a clean separation of concerns:
 
-- `main.ts` - CLI entry point and command definitions
-- `cmds/` - Command implementations
-- `libs/` - Reusable utility libraries
-  - `config.ts` - Configuration parsing
-  - `errors.ts` - Custom error types
-  - `file.ts` - File system utilities
-  - `git.ts` - Git operations
-  - `go.ts` - Go workspace management
+```
+workspace-manager/
+├── main.ts                    # CLI entry point and command definitions
+├── src/                       # Source code directory
+│   ├── cmds/                  # CLI command implementations (one per file)
+│   │   ├── add.ts            # Add new repositories to workspace
+│   │   ├── disable.ts        # Disable active workspace repositories
+│   │   ├── enable.ts         # Enable disabled workspace repositories
+│   │   ├── save.ts           # Save current workspace state to config
+│   │   ├── sync.ts           # Sync workspace with remote repositories
+│   │   └── update.ts         # Update submodules to latest branches
+│   └── libs/                 # Reusable utility libraries
+│       ├── config.ts         # YAML configuration parsing and validation
+│       ├── concurrent.ts     # Concurrent processing with batching
+│       ├── errors.ts         # Custom error types (ErrorWithCause)
+│       ├── file.ts           # File system utilities and validation
+│       ├── git.ts            # Git operations (submodules, branches, status)
+│       └── go.ts             # Go workspace management (go.work integration)
+├── build/                     # Compiled output directory
+│   └── cli.js                # Bundled CLI executable (364KB)
+├── example/                   # Example configuration files
+│   └── workspace.yml         # Sample workspace configuration
+├── deno.json                  # Deno project configuration and tasks
+├── deno.lock                  # Dependency lock file
+└── .vscode/settings.json      # VSCode Deno integration settings
+```
 
 ## Error Handling
 
