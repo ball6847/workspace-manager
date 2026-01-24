@@ -1,6 +1,6 @@
 {
   "name": "@ball6847/workspace-manager",
-  "version": "0.3.0-rc",
+  "version": "0.3.0",
   "exports": "./main.ts",
   "tasks": {
     "check": "deno check **/*.ts",
