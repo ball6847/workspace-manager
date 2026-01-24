@@ -322,12 +322,12 @@ deno task check
 - [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
 - [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
 - [ ] **Scan for nested go.mod** inside the cloned repository and import them to `go.work`
-- [ ] **New `status` command** for quick workspace status showing current tracking branch for each active submodules (would be nice to have dirty status, commits ahead/behind remote)
+- [x] **Status command** for quick workspace status showing current tracking branch for each active submodules (with dirty status, JSON output, verbose mode)
 
 ### Low Priority
 
 - [ ] **Consider adding transaction-like behavior** to rollback changes if any step fails during sync
-- [ ] **Implement status command** to show current workspace state
+- [x] **Status command** - Show current workspace state with branch tracking and dirty status detection
 - [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
 - [ ] **Add spinner for long-running actions** to improve user experience
 - [ ] **Auto-generate .env file from template** to maintain a single .env file and distribute it across submodules
