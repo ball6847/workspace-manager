@@ -1,0 +1,7 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"instructions": [
+		".opencode/context/AGENTS.md",
+		".opencode/context/TYPESCRIPT_RESULT_GUIDE.md"
+	]
+}
