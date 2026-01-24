@@ -1,3 +1,5 @@
+editor: "nvim"
+
 workspaces:
   - url: 'git@example.com:org1/repo1.git'
     path: projects/repo1

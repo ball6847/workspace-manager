@@ -29,6 +29,7 @@ After installation, you can use the tool from anywhere:
 workspace-manager sync
 workspace-manager update
 workspace-manager enable
+workspace-manager open
 workspace-manager add
 workspace-manager save
 workspace-manager status
@@ -182,6 +183,66 @@ SUMMARY
 ✅ 2 clean  ⚠️  1 modified  🐹 2 Go modules
 ```
 
+### Open Command
+
+Open workspace submodules in your configured editor via interactive selection:
+
+```bash
+# Interactive mode - shows searchable dropdown of workspaces
+workspace-manager open
+workspace-manager o  # short alias
+
+# Open specific workspace directly (skips interactive selection)
+workspace-manager open --workspace services/api
+
+# Use specific editor (overrides config and $EDITOR)
+workspace-manager open --editor "code -w"
+```
+
+**Interactive Selection Features:**
+
+- Type to search/filter workspaces
+- Arrow keys to navigate
+- Enter to select
+- Ctrl+C to cancel
+- Visual indicators:
+  - `◉` - Active workspace
+  - `○` - Disabled workspace
+  - Shows branch name and status (disabled, not found)
+
+**Options:**
+
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+- `-e, --editor <editor>` - Editor to use (overrides config and $EDITOR)
+- `--workspace <path>` - Open specific workspace directly (skips interactive selection)
+
+**Editor Configuration:**
+
+The editor is resolved in this order:
+
+1. CLI option: `--editor "nvim"`
+2. Config file: `editor: "nvim"` in workspace.yml
+3. Environment variable: `$EDITOR`
+4. Environment variable: `$VISUAL`
+
+**Examples:**
+
+```bash
+# Interactive selection
+workspace-manager open
+
+# Open with VS Code
+workspace-manager open --editor "code -w"
+
+# Open specific workspace directly
+workspace-manager open --workspace "services/api"
+
+# Debug mode to see what's happening
+workspace-manager open --debug
+```
+
 ### Add Command
 
 Add a new repository to the workspace configuration:
@@ -273,6 +334,10 @@ After adding to your shell configuration, restart your shell or run `source ~/.b
 Create a `workspace.yml` file in your project root:
 
 ```yaml
+# Global editor setting (used by 'open' command)
+# Can be overridden with --editor flag or $EDITOR environment variable
+editor: "nvim"
+
 workspaces:
   - url: git@github.com:user/repo.git
     path: tools/repo
@@ -283,6 +348,9 @@ workspaces:
 
 **Configuration Fields:**
 
+- `editor` (optional) - Global editor command for the `open` command
+  - Examples: `"nvim"`, `"code -w"`, `"vim"`
+  - Falls back to `$EDITOR` or `$VISUAL` if not set
 - `url` - Git repository URL
 - `path` - Local path for the submodule
 - `branch` - Git branch to checkout
@@ -359,6 +427,7 @@ workspace-manager/
 │   ├── cmds/                  # CLI command implementations (one per file)
 │   │   ├── add.ts            # Add new repositories to workspace
 │   │   ├── enable.ts         # Enable disabled workspace repositories
+│   │   ├── open.ts           # Open workspace in editor via interactive selection
 │   │   ├── save.ts           # Save current workspace state to config
 │   │   ├── status.ts         # Show workspace status
 │   │   ├── sync.ts           # Sync workspace with remote repositories

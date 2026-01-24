@@ -1,13 +1,14 @@
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import { red } from "@std/fmt/colors";
+import meta from "../deno.json" with { type: "json" };
 import { addCommand } from "./cmds/add.ts";
 import { enableCommand } from "./cmds/enable.ts";
+import { openCommand } from "./cmds/open.ts";
 import { saveCommand } from "./cmds/save.ts";
 import { statusCommand } from "./cmds/status.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
-import meta from "../deno.json" with { type: "json" };
 
 // Create CLI application
 export const cli = new Command()
@@ -220,6 +221,33 @@ cli
 		});
 		if (!result.ok) {
 			console.log(red("❌ Status failed:"), result.error.message);
+			Deno.exit(1);
+		}
+	});
+
+// Open command
+cli
+	.command("open", "Open workspace in configured editor")
+	.alias("o")
+	.option("-c, --config <config:string>", "Workspace config file", {
+		default: "workspace.yml",
+	})
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
+		default: ".",
+	})
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.option("-e, --editor <editor:string>", "Editor to use (overrides config and $EDITOR)")
+	.option("--workspace <workspace:string>", "Workspace path to open directly (skips interactive selection)")
+	.action(async (options) => {
+		const result = await openCommand({
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+			editor: options.editor,
+			workspace: options.workspace,
+		});
+		if (!result.ok) {
+			console.log(red("❌ Open failed:"), result.error.message);
 			Deno.exit(1);
 		}
 	});
