@@ -210,6 +210,19 @@ workspace-manager open --editor "code -w"
   - `○` - Disabled workspace
   - Shows branch name and status (disabled, not found)
 
+**Disabled Workspace Handling:**
+
+When you select a disabled workspace, you'll be prompted:
+
+```
+Workspace "services/api" is disabled. Enable and sync it first? (Y/n):
+```
+
+- Press `Enter` (default: Yes) to enable the workspace, sync it, then open in your editor
+- Press `n` or `no` to decline - the workspace will remain disabled and you can run `workspace-manager enable` manually
+
+This allows you to open any workspace from the configuration without manually running `enable` first.
+
 **Options:**
 
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
