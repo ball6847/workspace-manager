@@ -1,10 +1,11 @@
-import { Select } from "@cliffy/prompt";
-import { blue } from "@std/fmt/colors";
+import { Input, Select } from "@cliffy/prompt";
+import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { parseConfigFile, type WorkspaceConfig } from "../libs/config.ts";
+import { parseConfigFile, type WorkspaceConfig, writeConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { GitManager } from "../libs/git.ts";
 
 export type OpenCommandOption = {
 	/**
@@ -98,6 +99,36 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 		console.log(blue(`Selected workspace: ${selected.path}`));
 	}
 
+	// Check if workspace is disabled and handle enabling/syncing
+	if (!selected.isActive) {
+		const confirmResult = await promptEnableAndSync(selected.path);
+		if (!confirmResult.ok) {
+			// User cancelled or error
+			return confirmResult;
+		}
+
+		if (!confirmResult.value) {
+			// User declined to enable
+			console.log(blue("💡 Run 'workspace-manager enable' to enable workspaces manually"));
+			return Result.ok();
+		}
+
+		// Enable the workspace
+		const enableResult = await enableWorkspace(config, configFile, selected.path, debug);
+		if (!enableResult.ok) {
+			return enableResult;
+		}
+
+		// Sync the workspace
+		const syncResult = await syncSingleWorkspace(selected, workspaceRoot, debug);
+		if (!syncResult.ok) {
+			return syncResult;
+		}
+
+		// Update the selected directory to reflect the new state
+		selected.isActive = true;
+	}
+
 	// Open selected workspace in editor
 	return openInEditor(selected.directory, editor, debug);
 }
@@ -181,6 +212,127 @@ async function presentWorkspaceSelector(
 		// User cancelled with Ctrl+C
 		return null;
 	}
+}
+
+/**
+ * Prompt user to enable and sync a disabled workspace
+ *
+ * @param workspacePath Path of the workspace to enable
+ * @returns Result containing boolean (true = user confirmed, false = user declined) or error
+ */
+async function promptEnableAndSync(workspacePath: string): Promise<Result<boolean, Error>> {
+	const promptResult = await Result.wrap(
+		() =>
+			Input.prompt({
+				message: `Workspace "${workspacePath}" is disabled. Enable and sync it first? (Y/n):`,
+				suggestions: ["Y", "n"],
+				default: "Y",
+			}),
+		(error) => new ErrorWithCause("Failed to prompt for enable confirmation", error as Error),
+	)();
+
+	return promptResult.map((response: string) => {
+		return response.toLowerCase() !== "n" && response.toLowerCase() !== "no";
+	});
+}
+
+/**
+ * Enable a single workspace in the configuration
+ *
+ * @param config Workspace configuration
+ * @param configFile Path to config file
+ * @param workspacePath Path of workspace to enable
+ * @param debug Whether to show debug information
+ * @returns Result indicating success or failure
+ */
+async function enableWorkspace(
+	config: WorkspaceConfig,
+	configFile: string,
+	workspacePath: string,
+	debug: boolean,
+): Promise<Result<void, Error>> {
+	// Find and enable the workspace
+	const workspace = config.workspaces.find((w) => w.path === workspacePath);
+	if (!workspace) {
+		return Result.error(new Error(`Workspace not found: ${workspacePath}`));
+	}
+
+	if (workspace.active) {
+		if (debug) {
+			console.log(blue(`Workspace already enabled: ${workspacePath}`));
+		}
+		return Result.ok();
+	}
+
+	workspace.active = true;
+	console.log(green(`✅ Enabled: ${workspacePath}`));
+
+	// Write config back to file
+	const writeResult = await writeConfigFile(config, configFile);
+	if (!writeResult.ok) {
+		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+		return Result.error(writeResult.error);
+	}
+
+	return Result.ok();
+}
+
+/**
+ * Sync a single workspace (clone/checkout/pull)
+ *
+ * @param selected WorkspaceSelection object with workspace details
+ * @param workspaceRoot Path to workspace root directory
+ * @param debug Whether to show debug information
+ * @returns Result indicating success or failure
+ */
+async function syncSingleWorkspace(
+	selected: WorkspaceSelection,
+	workspaceRoot: string,
+	_debug: boolean,
+): Promise<Result<void, Error>> {
+	const workspacePath = selected.path;
+
+	console.log(
+		yellow(`📥 Checking out workspace: ${workspacePath} from ${selected.url} on branch ${selected.branch}`),
+	);
+
+	// Add submodule with specified branch
+	const git = new GitManager(workspaceRoot);
+	const addResult = await git.submoduleAdd(selected.url, workspacePath, selected.branch);
+	if (!addResult.ok) {
+		console.log(
+			red(`❌ Failed to checkout workspace: ${workspacePath}`),
+			`(${addResult.error.message})`,
+		);
+		return Result.error(addResult.error);
+	}
+
+	// Check out the submodule to the specified branch
+	const fullSubmodulePath = path.join(workspaceRoot, workspacePath);
+	const submoduleGit = new GitManager(fullSubmodulePath);
+	const checkoutResult = await submoduleGit.checkoutBranch(selected.branch);
+	if (!checkoutResult.ok) {
+		return Result.error(
+			new ErrorWithCause(
+				`Failed to checkout submodule at ${workspacePath} to branch ${selected.branch}`,
+				checkoutResult.error,
+			),
+		);
+	}
+
+	// Pull the latest changes from the specified branch
+	const pullResult = await submoduleGit.pullOriginBranch(selected.branch);
+	if (!pullResult.ok) {
+		return Result.error(
+			new ErrorWithCause(
+				`Failed to pull latest changes for submodule at ${workspacePath} from branch ${selected.branch}`,
+				pullResult.error,
+			),
+		);
+	}
+
+	console.log(green(`✅ Successfully checked out workspace: ${workspacePath}`));
+	return Result.ok();
 }
 
 function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | null {
