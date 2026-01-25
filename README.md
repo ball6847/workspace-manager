@@ -435,25 +435,27 @@ The project follows SOLID principles with a clean separation of concerns:
 
 ```
 workspace-manager/
-├── main.ts                    # CLI entry point and command definitions
-├── src/                       # Source code directory
+├── main.ts                    # CLI entry point (delegates to src/cli.ts)
+├── src/
+│   ├── cli.ts                 # CLI command definitions and configuration
 │   ├── cmds/                  # CLI command implementations (one per file)
 │   │   ├── add.ts            # Add new repositories to workspace
 │   │   ├── enable.ts         # Enable disabled workspace repositories
 │   │   ├── open.ts           # Open workspace in editor via interactive selection
 │   │   ├── save.ts           # Save current workspace state to config
-│   │   ├── status.ts         # Show workspace status
+│   │   ├── status.ts         # Show workspace status with branch/dirty tracking
 │   │   ├── sync.ts           # Sync workspace with remote repositories
 │   │   └── update.ts         # Update submodules to latest branches
 │   └── libs/                 # Reusable utility libraries
-│       ├── config.ts         # YAML configuration parsing and validation
+│       ├── command-error-handler.ts  # CLI error handling abstraction
 │       ├── concurrent.ts     # Concurrent processing with batching
-│       ├── errors.ts         # Custom error types (ErrorWithCause)
+│       ├── errors.ts         # Custom error types and wrappers
 │       ├── file.ts           # File system utilities and validation
 │       ├── git.ts            # Git operations (submodules, branches, status)
-│       └── go.ts             # Go workspace management (go.work integration)
+│       ├── go.ts             # Go workspace management (go.work integration)
+│       └── workspace-discovery.ts  # Auto-discovery of workspace config
 ├── build/                     # Compiled output directory
-│   └── cli.js                # Bundled CLI executable (364KB)
+│   └── cli.js                # Bundled CLI executable
 ├── example/                   # Example configuration files
 │   └── workspace.yml         # Sample workspace configuration
 ├── deno.json                  # Deno project configuration and tasks
