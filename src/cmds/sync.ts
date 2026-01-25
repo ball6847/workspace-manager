@@ -11,6 +11,9 @@ import { ConfigManager } from "../services/config-manager.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
 
+const createGoWork = (path: string) => new GoWork(path);
+const createGitManager = (path: string) => new GitManager(path);
+
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
 	const configFile = options.config ?? "workspace.yml";
 	const workspaceRoot = options.workspaceRoot ?? Deno.cwd();
@@ -79,8 +82,8 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	const workspaceManager = new WorkspaceManager(
 		workspaceRoot,
-		(path: string) => new GoWork(path),
-		(path: string) => new GitManager(path),
+		createGoWork,
+		createGitManager,
 	);
 
 	if (activeWorkspaces.length > 0) {

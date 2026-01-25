@@ -42,6 +42,9 @@ type WorkspaceSelection = {
 	directory: string;
 };
 
+const createGoWork = (path: string) => new GoWork(path);
+const createGitManager = (path: string) => new GitManager(path);
+
 /**
  * Open workspace submodule in configured editor via interactive selection
  */
@@ -53,11 +56,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 
 	// Initialize managers
 	const configManager = new ConfigManager(configFile);
-	const workspaceManager = new WorkspaceManager(
-		workspaceRoot,
-		(path: string) => new GoWork(path),
-		(path: string) => new GitManager(path),
-	);
+	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
 	const interactivePrompt = new InteractivePrompt();
 
 	// Parse config
