@@ -33,7 +33,7 @@ export const defaultPromptMessages: PromptMessages = {
 export class InteractivePrompt {
 	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
-	private handleError(error: unknown, context: string): ErrorWithCause {
+	private _handleError(error: unknown, context: string): ErrorWithCause {
 		if (error instanceof Error && error.message.includes("cancelled")) {
 			return new ErrorWithCause("Operation cancelled", error);
 		}
@@ -53,7 +53,7 @@ export class InteractivePrompt {
 						return true;
 					},
 				}),
-			(error) => this.handleError(error, "Failed to prompt for repository URL"),
+			(error) => this._handleError(error, "Failed to prompt for repository URL"),
 		)();
 	}
 
@@ -64,7 +64,7 @@ export class InteractivePrompt {
 					message: this.messages.path,
 					default: defaultPath,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for path"),
+			(error) => this._handleError(error, "Failed to prompt for path"),
 		)();
 	}
 
@@ -76,7 +76,7 @@ export class InteractivePrompt {
 					default: "main",
 					suggestions: this.messages.branchSuggestions,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for branch"),
+			(error) => this._handleError(error, "Failed to prompt for branch"),
 		)();
 	}
 
@@ -87,7 +87,7 @@ export class InteractivePrompt {
 					message: this.messages.go,
 					default: false,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for Go workspace setting"),
+			(error) => this._handleError(error, "Failed to prompt for Go workspace setting"),
 		)();
 	}
 
@@ -98,7 +98,7 @@ export class InteractivePrompt {
 					message: this.messages.continue,
 					default: false,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for continue"),
+			(error) => this._handleError(error, "Failed to prompt for continue"),
 		)();
 	}
 
@@ -109,7 +109,7 @@ export class InteractivePrompt {
 					message: this.messages.sync,
 					default: true,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for sync confirmation"),
+			(error) => this._handleError(error, "Failed to prompt for sync confirmation"),
 		)();
 	}
 
@@ -121,7 +121,7 @@ export class InteractivePrompt {
 					suggestions: ["Y", "n"],
 					default: "Y",
 				}),
-			(error) => this.handleError(error, "Failed to prompt for sync confirmation"),
+			(error) => this._handleError(error, "Failed to prompt for sync confirmation"),
 		)();
 	}
 
@@ -132,7 +132,7 @@ export class InteractivePrompt {
 					message: this.messages.enableAndSync(workspacePath),
 					default: true,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for enable and sync confirmation"),
+			(error) => this._handleError(error, "Failed to prompt for enable and sync confirmation"),
 		)();
 	}
 
@@ -150,7 +150,7 @@ export class InteractivePrompt {
 					search: true,
 					options,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for workspace selection"),
+			(error) => this._handleError(error, "Failed to prompt for workspace selection"),
 		)();
 	}
 
@@ -172,7 +172,7 @@ export class InteractivePrompt {
 					options: options,
 					search: true,
 				}),
-			(error) => this.handleError(error, "Failed to prompt for workspace selection"),
+			(error) => this._handleError(error, "Failed to prompt for workspace selection"),
 		)();
 
 		if (result.ok && result.value === "cancel") {
