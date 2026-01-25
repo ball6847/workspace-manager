@@ -1,10 +1,10 @@
-import { Input } from "@cliffy/prompt/input";
 import { Checkbox } from "@cliffy/prompt/checkbox";
+import { Input } from "@cliffy/prompt/input";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { parseConfigFile, WorkspaceConfig, WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { ConfigManager, type WorkspaceConfig, type WorkspaceConfigItem } from "../services/config-manager.ts";
 import { syncCommand } from "./sync.ts";
 
 export type EnableCommandOption = {
@@ -50,16 +50,19 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 		return Result.error(validated.error);
 	}
 
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configFile);
+
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	// Toggle workspace states
-	const enableResult = await toggleWorkspaceStates(config, configFile, debug);
+	const enableResult = await toggleWorkspaceStates(config, configManager, configManager.configPath, debug);
 	if (!enableResult.ok) {
 		return Result.error(enableResult.error);
 	}
@@ -83,12 +86,13 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
  * Toggle active states for workspaces using multi-select
  *
  * @param config Workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
 async function toggleWorkspaceStates(
 	config: WorkspaceConfig,
+	configManager: ConfigManager,
 	configFile: string,
 	debug: boolean,
 ): Promise<Result<void, Error>> {
@@ -153,7 +157,7 @@ async function toggleWorkspaceStates(
 	}
 
 	// Write config back to file
-	const writeResult = await writeConfigFile(config, configFile);
+	const writeResult = await configManager.writeConfig(config);
 	if (!writeResult.ok) {
 		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
 		return Result.error(writeResult.error);

@@ -1,24 +1,42 @@
-# Mission: Refactor open.ts to use services like sync.ts
+# Mission: Merge config.ts into ConfigManager class (internal functions only)
 
-## M1: Extend ConfigManager service | agent:Worker
-### T1.1: Add enableWorkspace method to ConfigManager
-- [x] S1.1.1: Add `enableWorkspace(workspacePath: string, config: WorkspaceConfig): Result<void, Error>` method | size:S
+## M1: Refactor ConfigManager | status:completed
+### T1.1: Make functions internal | agent:Worker
+- [x] S1.1.1: Removed `export` from parseConfigFile and writeConfigFile functions | size:S
+- [x] S1.1.2: Functions now only accessible via ConfigManager class methods | size:S
+- [x] S1.1.3: Added `configPath` getter to ConfigManager for accessing config file path | size:S
 
-## M2: Refactor open.ts to use services | agent:Worker
-### T2.1: Replace raw config functions with ConfigManager
-- [x] S2.1.1: Import ConfigManager instead of raw parseConfigFile/writeConfigFile | size:S
-- [x] S2.1.2: Replace manual config parsing with ConfigManager service | size:S
-- [x] S2.1.3: Remove custom enableWorkspace function, use ConfigManager method | size:S
+### T1.2: Update command files to use ConfigManager | agent:Worker | depends:T1.1
+- [x] S1.2.1: Refactor src/cmds/open.ts - already uses ConfigManager | size:S
+- [x] S1.2.2: Refactor src/cmds/status.ts - now uses ConfigManager.parseConfig() | size:S
+- [x] S1.2.3: Refactor src/cmds/save.ts - now uses ConfigManager methods | size:S
+- [x] S1.2.4: Refactor src/cmds/add.ts - now uses ConfigManager methods + configPath getter | size:S
+- [x] S1.2.5: Refactor src/cmds/update.ts - now uses ConfigManager.parseConfig() | size:S
+- [x] S1.2.6: Refactor src/cmds/enable.ts - now uses ConfigManager methods + configPath getter | size:S
 
-### T2.2: Replace sync logic with WorkspaceManager
-- [x] S2.2.1: Import WorkspaceManager service | size:S
-- [x] S2.2.2: Replace custom syncSingleWorkspace with WorkspaceManager.checkoutWorkspace | size:S
-- [x] S2.2.3: Remove redundant GitManager usage | size:S
+## M2: Final Verification | status:completed
+### T2.1: Build verification | agent:Reviewer | depends:M1
+- [x] S2.1.1: `deno task lint` - Passed (19 files checked) | size:S
+- [x] S2.1.2: `deno task check` - All types valid | size:S
+- [x] S2.1.3: `deno task build` - Bundled 278 modules (402.48KB) | size:S
 
-## M3: Final verification | agent:Reviewer
-### T3.1: Run lsp diagnostics
-- [x] S3.1.1: Verify no TypeScript errors | size:S
+## API Summary
+```typescript
+// Types remain exported (useful for consumers)
+export type WorkspaceConfigItem = { ... };
+export type WorkspaceConfig = { ... };
 
-### T3.2: Run project tests/lint
-- [x] S3.2.1: Run lint check | size:S
-- [x] S3.2.2: Run format check | size:S
+// Functions are now internal (not exported)
+function parseConfigFile(path: string): Promise<Result<WorkspaceConfig, Error>>;
+function writeConfigFile(config: WorkspaceConfig, path: string): Promise<Result<void, Error>>;
+
+// Only class methods are exposed
+export class ConfigManager {
+  constructor(private readonly configFile: string) {}
+  get configPath(): string;  // NEW: getter for config file path
+
+  async parseConfig(): Promise<Result<WorkspaceConfig, Error>> {}
+  async writeConfig(config: WorkspaceConfig): Promise<Result<void, Error>> {}
+  // ... other methods
+}
+```

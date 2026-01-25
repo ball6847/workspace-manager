@@ -3,7 +3,7 @@ import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { Table } from "@cliffy/table";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
-import { parseConfigFile } from "../libs/config.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
@@ -68,17 +68,20 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 	const json = option.json ?? false;
 	const verbose = option.verbose ?? false;
 
-	// parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configFile);
+
+	// Parse config file
+	const configResult = await configManager.getConfig();
+	if (!configResult.ok) {
 		if (!json) {
-			console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
+			console.log(red("❌ Failed to parse config file: "), configFile, `(${configResult.error.message})`);
 		} else {
-			console.log(JSON.stringify({ error: parseConfig.error.message }, null, 2));
+			console.log(JSON.stringify({ error: configResult.error.message }, null, 2));
 		}
-		return Result.error(parseConfig.error);
+		return Result.error(configResult.error);
 	}
-	const config = parseConfig.value;
+	const config = configResult.value;
 
 	// filter active workspaces only
 	const activeWorkspaces = config.workspaces.filter((item) => item.active);

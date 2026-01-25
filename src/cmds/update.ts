@@ -2,7 +2,7 @@ import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { processConcurrently } from "../libs/concurrent.ts";
-import { parseConfigFile } from "../libs/config.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
@@ -48,13 +48,16 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 		return Result.error(validated.error);
 	}
 
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configFile);
+
 	// parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	// get only active workspaces
 	const activeWorkspaces = config.workspaces.filter((item) => item.active);

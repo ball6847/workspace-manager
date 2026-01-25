@@ -1,9 +1,9 @@
 import { Confirm, Input } from "@cliffy/prompt";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { ConfigManager, type WorkspaceConfig, type WorkspaceConfigItem } from "../services/config-manager.ts";
 import { syncCommand } from "./sync.ts";
 
 export type AddCommandOption = {
@@ -68,13 +68,16 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 		return Result.error(validated.error);
 	}
 
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configFile);
+
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	// Check if running in non-interactive mode
 	const isNonInteractive = option.yes === true;
@@ -86,7 +89,7 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 			return Result.error(new Error("Repository URL is required in non-interactive mode"));
 		}
 
-		const addResult = await addSingleWorkspace(config, configFile, option, debug);
+		const addResult = await addSingleWorkspace(config, configManager, option, debug);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
 		}
@@ -102,7 +105,7 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 		// Interactive mode: prompt for input (may use provided repo as default)
 		const interactiveResult = await runInteractiveMode(
 			config,
-			configFile,
+			configManager,
 			workspaceRoot,
 			debug,
 			option.concurrency ?? 4,
@@ -120,14 +123,14 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
  * Add a single workspace to the configuration
  *
  * @param config Current workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param option Command options containing workspace details
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
 async function addSingleWorkspace(
 	config: WorkspaceConfig,
-	configFile: string,
+	configManager: ConfigManager,
 	option: AddCommandOption,
 	debug: boolean,
 ): Promise<Result<void, Error>> {
@@ -161,9 +164,9 @@ async function addSingleWorkspace(
 	config.workspaces.push(newWorkspace);
 
 	// Write config back to file
-	const writeResult = await writeConfigFile(config, configFile);
+	const writeResult = await configManager.writeConfig(config);
 	if (!writeResult.ok) {
-		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+		console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 		return Result.error(writeResult.error);
 	}
 
@@ -175,7 +178,7 @@ async function addSingleWorkspace(
  * Run interactive mode to add multiple workspaces
  *
  * @param config Current workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
@@ -184,7 +187,7 @@ async function addSingleWorkspace(
  */
 async function runInteractiveMode(
 	config: WorkspaceConfig,
-	configFile: string,
+	configManager: ConfigManager,
 	workspaceRoot: string,
 	debug: boolean,
 	concurrency: number,
@@ -268,9 +271,9 @@ async function runInteractiveMode(
 		hasAddedWorkspaces = true;
 
 		// Write config back to file
-		const writeResult = await writeConfigFile(config, configFile);
+		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+			console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);
 		}
 
@@ -300,7 +303,7 @@ async function runInteractiveMode(
 		}
 
 		if (syncResult.value) {
-			const performSyncResult = await performSync(configFile, workspaceRoot, debug, concurrency);
+			const performSyncResult = await performSync(configManager.configPath, workspaceRoot, debug, concurrency);
 			if (!performSyncResult.ok) {
 				return Result.error(performSyncResult.error);
 			}

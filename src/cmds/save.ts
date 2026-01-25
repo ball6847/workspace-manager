@@ -1,7 +1,7 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { parseConfigFile, writeConfigFile } from "../libs/config.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 
@@ -40,13 +40,16 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 		return Result.error(validated.error);
 	}
 
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configFile);
+
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	if (debug) {
 		console.log(blue("🔍 Scanning active workspaces for current branches..."));
@@ -115,7 +118,7 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 
 	// Write updated config back to file if there were changes
 	if (updatedCount > 0) {
-		const writeResult = await writeConfigFile(config, configFile);
+		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
 			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);

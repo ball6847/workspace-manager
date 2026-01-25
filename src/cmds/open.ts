@@ -7,7 +7,7 @@ import { isDir } from "../libs/file.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
-import { type WorkspaceConfig } from "../libs/config.ts";
+import { type WorkspaceConfig } from "../services/config-manager.ts";
 
 export type OpenCommandOption = {
 	/**
