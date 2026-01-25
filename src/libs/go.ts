@@ -1,6 +1,14 @@
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 
+export interface GoWorkFactory {
+	create(path: string): GoWork;
+}
+
+export interface GoAvailabilityChecker {
+	check(): Promise<Result<boolean, Error>>;
+}
+
 export class GoWork {
 	constructor(private cwd?: string) {}
 

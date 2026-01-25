@@ -2,6 +2,10 @@ import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 import { createMutex, type Mutex } from "@117/mutex";
 
+export interface GitManagerFactory {
+	create(path: string): GitManager;
+}
+
 // Registry to share mutexes by cwd
 const mutexRegistry = new Map<string, Mutex>();
 
