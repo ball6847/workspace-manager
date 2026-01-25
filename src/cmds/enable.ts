@@ -62,7 +62,7 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	const config = parseResult.value;
 
 	// Toggle workspace states
-	const enableResult = await toggleWorkspaceStates(config, configManager, configManager.configPath, debug);
+	const enableResult = await toggleWorkspaceStates(config, configManager, debug);
 	if (!enableResult.ok) {
 		return Result.error(enableResult.error);
 	}
@@ -93,7 +93,6 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 async function toggleWorkspaceStates(
 	config: WorkspaceConfig,
 	configManager: ConfigManager,
-	configFile: string,
 	debug: boolean,
 ): Promise<Result<void, Error>> {
 	if (config.workspaces.length === 0) {
@@ -159,7 +158,7 @@ async function toggleWorkspaceStates(
 	// Write config back to file
 	const writeResult = await configManager.writeConfig(config);
 	if (!writeResult.ok) {
-		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+		console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 		return Result.error(writeResult.error);
 	}
 

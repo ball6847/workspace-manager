@@ -4,10 +4,9 @@ import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import { ConfigManager, type WorkspaceConfig } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
-import { type WorkspaceConfig } from "../services/config-manager.ts";
 
 export type OpenCommandOption = {
 	/**

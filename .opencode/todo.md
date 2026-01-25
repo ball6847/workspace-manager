@@ -20,6 +20,18 @@
 - [x] S2.1.2: `deno task check` - All types valid | size:S
 - [x] S2.1.3: `deno task build` - Bundled 278 modules (402.48KB) | size:S
 
+## M3: Eliminate redundant configFile parameter from toggleWorkspaceStates function | status:completed
+### T3.1: Refactor toggleWorkspaceStates function | agent:Worker
+- [x] S3.1.1: Remove configFile parameter from toggleWorkspaceStates function | size:S
+- [x] S3.1.2: Update function call site to remove configFile argument | size:S
+- [x] S3.1.3: Replace configFile usage with configManager.configPath | size:S
+- [x] S3.1.4: Update JSDoc to remove @param configFile entry | size:S
+
+### T3.2: Verify refactoring | agent:Reviewer | depends:T3.1
+- [x] S3.2.1: `deno task check` - All types valid | size:S
+- [x] S3.2.2: `deno task lint` - Passed (19 files checked) | size:S
+- [x] S3.2.3: `deno task build` - Bundled 278 modules (403.46KB) | size:S
+
 ## API Summary
 ```typescript
 // Types remain exported (useful for consumers)

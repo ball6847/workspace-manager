@@ -1,12 +1,12 @@
+import { Table } from "@cliffy/table";
 import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { Table } from "@cliffy/table";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
-import { ConfigManager } from "../services/config-manager.ts";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 
 export type StatusCommandOption = {
 	/**

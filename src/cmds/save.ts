@@ -1,9 +1,9 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { ConfigManager } from "../services/config-manager.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 
 export type SaveCommandOption = {
 	/**
