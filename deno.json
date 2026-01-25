@@ -1,6 +1,6 @@
 {
   "name": "@ball6847/workspace-manager",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "exports": "./main.ts",
   "tasks": {
     "check": "deno check **/*.ts",
@@ -36,7 +36,7 @@
       "**/*.ts"
     ],
     "indentWidth": 4,
-    "lineWidth": 120,
+    "lineWidth": 200,
     "proseWrap": "preserve",
     "singleQuote": false,
     "useTabs": true

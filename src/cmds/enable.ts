@@ -1,10 +1,12 @@
-import { Input } from "@cliffy/prompt/input";
 import { Checkbox } from "@cliffy/prompt/checkbox";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { parseConfigFile, WorkspaceConfig, WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
+import { ConfigManager } from "../services/config-manager.ts";
+import { InteractivePrompt } from "../services/interactive-prompt.ts";
+import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 import { syncCommand } from "./sync.ts";
 
 export type EnableCommandOption = {
@@ -37,9 +39,20 @@ export type EnableCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function enableCommand(option: EnableCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 	const autoSync = option.yes ?? false;
 
@@ -50,16 +63,19 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 		return Result.error(validated.error);
 	}
 
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configPath);
+
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	// Toggle workspace states
-	const enableResult = await toggleWorkspaceStates(config, configFile, debug);
+	const enableResult = await toggleWorkspaceStates(config, configManager, debug);
 	if (!enableResult.ok) {
 		return Result.error(enableResult.error);
 	}
@@ -67,7 +83,7 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	// Handle sync confirmation
 	const syncResult = await handleSyncConfirmation(
 		autoSync,
-		configFile,
+		configPath,
 		workspaceRoot,
 		debug,
 		option.concurrency ?? 4,
@@ -83,15 +99,11 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
  * Toggle active states for workspaces using multi-select
  *
  * @param config Workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-async function toggleWorkspaceStates(
-	config: WorkspaceConfig,
-	configFile: string,
-	debug: boolean,
-): Promise<Result<void, Error>> {
+async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: ConfigManager, debug: boolean): Promise<Result<void, Error>> {
 	if (config.workspaces.length === 0) {
 		console.log(yellow("⚠️  No workspaces found"));
 		return Result.ok();
@@ -118,9 +130,9 @@ async function toggleWorkspaceStates(
 			}),
 		(error) => {
 			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
+				return wrapError("Operation cancelled", error);
 			}
-			return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
+			return wrapError("Failed to prompt for workspace selection", error as Error);
 		},
 	)();
 
@@ -153,9 +165,9 @@ async function toggleWorkspaceStates(
 	}
 
 	// Write config back to file
-	const writeResult = await writeConfigFile(config, configFile);
+	const writeResult = await configManager.writeConfig(config);
 	if (!writeResult.ok) {
-		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+		console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 		return Result.error(writeResult.error);
 	}
 
@@ -182,7 +194,8 @@ async function handleSyncConfirmation(
 ): Promise<Result<void, Error>> {
 	// Prompt for sync if not auto-sync
 	if (!autoSync) {
-		const syncResult = await promptSyncConfirmation();
+		const interactivePrompt = new InteractivePrompt();
+		const syncResult = await interactivePrompt.promptForSyncWithInput();
 		if (!syncResult.ok) {
 			// User cancelled or other error, tell user to run sync manually
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
@@ -211,21 +224,4 @@ async function handleSyncConfirmation(
 	}
 
 	return Result.ok();
-}
-
-/**
- * Prompt user for sync confirmation
- *
- * @returns Result containing the user's response or error
- */
-function promptSyncConfirmation(): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Do you want to sync now? (Y/n):",
-				suggestions: ["Y", "n"],
-				default: "Y",
-			}),
-		(error) => new ErrorWithCause("Failed to prompt for sync confirmation", error as Error),
-	)();
 }

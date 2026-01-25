@@ -1,9 +1,10 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { parseConfigFile, writeConfigFile } from "../libs/config.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 
 export type SaveCommandOption = {
 	/**
@@ -28,25 +29,32 @@ export type SaveCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function saveCommand(option: SaveCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 
-	// Validate workspace directory
-	const validated = await isDir(workspaceRoot);
-	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return Result.error(validated.error);
-	}
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	if (debug) {
 		console.log(blue("🔍 Scanning active workspaces for current branches..."));
@@ -115,13 +123,13 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 
 	// Write updated config back to file if there were changes
 	if (updatedCount > 0) {
-		const writeResult = await writeConfigFile(config, configFile);
+		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+			console.log(red("❌ Failed to write config file: "), configPath, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);
 		}
 
-		console.log(green(`✅ Successfully updated ${updatedCount} workspace(s) in ${configFile}`));
+		console.log(green(`✅ Successfully updated ${updatedCount} workspace(s) in ${configPath}`));
 	} else {
 		console.log(green("✅ All workspaces are already up to date"));
 	}

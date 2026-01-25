@@ -1,12 +1,13 @@
+import { Table } from "@cliffy/table";
 import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { Table } from "@cliffy/table";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
-import { parseConfigFile } from "../libs/config.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
+import { ConfigManager } from "../services/config-manager.ts";
 
 export type StatusCommandOption = {
 	/**
@@ -60,25 +61,43 @@ type RepositoryStatus = {
  * @returns Result indicating success or failure
  */
 export async function statusCommand(option: StatusCommandOption): Promise<Result<void, Error>> {
-	// handle default values
-	const configFile = option.config ??= "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ??= ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		if (!option.json) {
+			console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		} else {
+			console.log(JSON.stringify({ error: discoverResult.error.message }, null, 2));
+		}
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 	const concurrency = option.concurrency ?? 4;
 	const json = option.json ?? false;
 	const verbose = option.verbose ?? false;
 
-	// parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configPath);
+
+	// Parse config file
+	const configResult = await configManager.getConfig();
+	if (!configResult.ok) {
 		if (!json) {
-			console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
+			console.log(red("❌ Failed to parse config file: "), configPath, `(${configResult.error.message})`);
 		} else {
-			console.log(JSON.stringify({ error: parseConfig.error.message }, null, 2));
+			console.log(JSON.stringify({ error: configResult.error.message }, null, 2));
 		}
-		return Result.error(parseConfig.error);
+		return Result.error(configResult.error);
 	}
-	const config = parseConfig.value;
+	const config = configResult.value;
 
 	// filter active workspaces only
 	const activeWorkspaces = config.workspaces.filter((item) => item.active);
@@ -217,7 +236,7 @@ async function getFileStatus(cwd: string): Promise<Result<{ modified: number; un
 		}
 
 		return { modified, untracked };
-	}).mapError((error) => new ErrorWithCause("Failed to get file status", error));
+	}).mapError((error) => wrapError("Failed to get file status", error));
 }
 
 function outputJson(repositories: RepositoryStatus[]) {
@@ -226,10 +245,7 @@ function outputJson(repositories: RepositoryStatus[]) {
 		clean: repositories.filter((r) => r.exists && r.isClean).length,
 		modified: repositories.filter((r) => r.exists && !r.isClean).length,
 		missing: repositories.filter((r) => !r.exists).length,
-		onWrongBranch:
-			repositories.filter((r) =>
-				r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
-			).length,
+		onWrongBranch: repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length,
 		goModules: repositories.filter((r) => r.isGoModule).length,
 	};
 
@@ -275,10 +291,7 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 	const clean = repositories.filter((r) => r.exists && r.isClean).length;
 	const modified = repositories.filter((r) => r.exists && !r.isClean).length;
 	const missing = repositories.filter((r) => !r.exists).length;
-	const wrongBranch =
-		repositories.filter((r) =>
-			r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
-		).length;
+	const wrongBranch = repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length;
 
 	console.log("");
 	console.log(blue(`📊 Workspace Status - ${repositories.length} active repositories`));

@@ -8,6 +8,8 @@ Workspace Manager is a command-line tool for managing workspaces with Git submod
 - Sync workspace with remote repositories
 - Manage Git submodules automatically
 - Go workspace integration with `go.work` file management
+- **Status monitoring** with branch tracking and dirty state detection
+- **Interactive workspace selection** with fuzzy search
 - YAML-based configuration
 - Concurrent operations with configurable parallelism
 - Debug mode support
@@ -36,7 +38,7 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 - **Use early-continue in loops** - Skip to next iteration immediately when conditions aren't met
 - Use `type` keyword when importing types from other files
 - 4-space indentation with tabs
-- 120 character line width
+- 200 character line width (from deno.json)
 - Double quotes for strings
 - Format on save enabled in VSCode
 
@@ -44,42 +46,27 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 
 ```
 /home/ball6847/Projects/personal/workspace-manager/
-├── main.ts                    # CLI entry point and command definitions
-├── src/                       # Source code directory
+├── main.ts                    # CLI entry point (minimal - delegates to src/cli.ts)
+├── src/
+│   ├── cli.ts                 # CLI command definitions and configuration
 │   ├── cmds/                  # CLI command implementations (one per file)
 │   │   ├── add.ts            # Add new repositories to workspace
 │   │   ├── enable.ts         # Enable disabled workspace repositories
+│   │   ├── open.ts           # Open workspace in editor via interactive selection
 │   │   ├── save.ts           # Save current workspace state to config
-│   │   ├── status.ts         # Show workspace status
+│   │   ├── status.ts         # Show workspace status with branch/dirty tracking
 │   │   ├── sync.ts           # Sync workspace with remote repositories
 │   │   └── update.ts         # Update submodules to latest branches
 │   └── libs/                 # Reusable utility libraries
-│       ├── config.ts         # YAML configuration parsing and validation
+│       ├── command-error-handler.ts  # CLI error handling abstraction
 │       ├── concurrent.ts     # Concurrent processing with batching
-│       ├── errors.ts         # Custom error types (ErrorWithCause)
+│       ├── errors.ts         # Custom error types and wrappers
 │       ├── file.ts           # File system utilities and validation
 │       ├── git.ts            # Git operations (submodules, branches, status)
-│       └── go.ts             # Go workspace management (go.work integration)
-```
-/home/ball6847/Projects/personal/workspace-manager/
-├── main.ts                    # CLI entry point and command definitions
-├── src/                       # Source code directory
-│   ├── cmds/                  # CLI command implementations (one per file)
-│   │   ├── add.ts            # Add new repositories to workspace
-│   │   ├── enable.ts         # Enable disabled workspace repositories
-│   │   ├── save.ts           # Save current workspace state to config
-│   │   ├── status.ts         # Show workspace status
-│   │   ├── sync.ts           # Sync workspace with remote repositories
-│   │   └── update.ts         # Update submodules to latest branches
-│   └── libs/                 # Reusable utility libraries
-│       ├── config.ts         # YAML configuration parsing and validation
-│       ├── concurrent.ts     # Concurrent processing with batching
-│       ├── errors.ts         # Custom error types (ErrorWithCause)
-│       ├── file.ts           # File system utilities and validation
-│       ├── git.ts            # Git operations (submodules, branches, status)
-│       └── go.ts             # Go workspace management (go.work integration)
+│       ├── go.ts             # Go workspace management (go.work integration)
+│       └── workspace-discovery.ts  # Auto-discovery of workspace config
 ├── build/                     # Compiled output directory
-│   └── cli.js                # Bundled CLI executable (364KB)
+│   └── cli.js                # Bundled CLI executable
 ├── example/                   # Example configuration files
 │   └── workspace.yml         # Sample workspace configuration
 ├── deno.json                  # Deno project configuration and tasks
@@ -91,6 +78,9 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 
 ### Workspace Configuration (`workspace.yml`)
 ```yaml
+# Global editor setting (used by 'open' command)
+editor: "nvim"
+
 workspaces:
   - url: 'git@github.com:user/repo.git'
     path: services/my-service
@@ -101,8 +91,8 @@ workspaces:
 
 ### Deno Configuration (`deno.json`)
 - **Tasks**: check, fmt, fmt:check, lint, build, local-install
-- **Imports**: JSR packages (@cliffy, @std) + npm packages (typescript-result, zod)
-- **Formatter**: 4-space tabs, 120 width, double quotes
+- **Imports**: JSR packages (@cliffy, @std) + npm packages (typescript-result, zod - imported but not used)
+- **Formatter**: 4-space tabs, 200 width, double quotes
 - **Linter**: Recommended rules only
 
 ## Build & Development Commands
@@ -143,16 +133,26 @@ deno run --allow-all build/cli.js [command] [options]
 - **sync**: Synchronize workspace with remote repositories
 - **update**: Update all submodules to latest tracking branches
 - **enable**: Enable disabled workspace repositories
-- **disable**: Disable active workspace repositories
 - **add**: Add new repositories to workspace configuration
 - **save**: Save current workspace state to configuration file
-- **status**: Show workspace status (not implemented)
+- **status**: Show workspace status with branch tracking and dirty detection
+- **open**: Open workspace in editor via interactive selection
+- **completions**: Generate shell completions (bash, fish, zsh)
 
 ### Common Options (All Commands)
-- `-c, --config <file>`: Workspace config file (default: workspace.yml)
-- `-w, --workspace-root <path>`: Workspace root directory (default: .)
+- `-c, --config <file>`: Workspace config file (auto-discovers if not specified)
+- `-w, --workspace-root <path>`: Workspace root directory (auto-discovers if not specified)
 - `-d, --debug`: Enable debug mode
 - `-j, --concurrency <number>`: Concurrent operations (default: 4)
+
+### Command-Specific Options
+| Command | Unique Options |
+|---------|---------------|
+| sync | `-y, --yes` - Accept all changes |
+| enable | `-y, --yes` - Skip sync confirmation |
+| add | `-b, --branch <branch>`, `--go`, `--sync`, `-y, --yes` |
+| status | `--json`, `-v, --verbose` |
+| open | `-e, --editor <editor>`, `--workspace <path>` |
 
 ## Error Handling Strategy
 
@@ -166,71 +166,113 @@ const result = await Result.fromAsyncCatching(() => riskyOperation());
 
 // Chain operations with error propagation
 const finalResult = result
-  .map(data => transformData(data))
-  .mapError(error => new ErrorWithCause("Operation failed", error));
+    .map(data => transformData(data))
+    .mapError(error => new ErrorWithCause("Operation failed", error));
 
 // Handle results
 if (!finalResult.ok) {
-  console.error("Error:", finalResult.error.message);
-  Deno.exit(1);
+    console.error("Error:", finalResult.error.message);
+    Deno.exit(1);
 }
 ```
 
 ### Error Types
 - **ErrorWithCause**: Base error class with cause chaining for debugging
-- All errors include contextual information and original causes
+- **wrapError(context, cause)**: One-liner helper to create ErrorWithCause
+- **wrapErrorResult(context, cause)**: One-liner for Result.error with ErrorWithCause
+
+### Error Handler Abstraction
+The `command-error-handler.ts` module provides error handling abstraction:
+- **ErrorHandler**: Interface for custom error handlers
+- **ConsoleErrorHandler**: Default handler that prints to console
+- **CommandErrorHandler**: Wrapper that processes Result types
+- **CommandErrorHandler.withExit()**: Static method that exits on error
+
+```typescript
+import { CommandErrorHandler, ConsoleErrorHandler } from "./libs/command-error-handler.ts";
+
+// In CLI action:
+const result = await someCommand(options);
+CommandErrorHandler.withExit(result, "CommandName");
+```
 
 ### Early-Return Pattern Examples
 
 ```typescript
 // ✅ GOOD: Early-return pattern
 function processValue(value: string | null): string {
-  if (!value) {
-    return "default";
-  }
+    if (!value) {
+        return "default";
+    }
 
-  if (value.length === 0) {
-    return "empty";
-  }
+    if (value.length === 0) {
+        return "empty";
+    }
 
-  // Main logic after all edge cases handled
-  return value.toUpperCase();
+    // Main logic after all edge cases handled
+    return value.toUpperCase();
 }
 
 // ✅ GOOD: Early-continue in loops
 function processItems(items: Item[]): ProcessedItem[] {
-  const results: ProcessedItem[] = [];
+    const results: ProcessedItem[] = [];
 
-  for (const item of items) {
-    if (!item.isValid) {
-      continue; // Skip invalid items immediately
+    for (const item of items) {
+        if (!item.isValid) {
+            continue; // Skip invalid items immediately
+        }
+
+        if (item.isProcessed) {
+            continue; // Skip already processed items
+        }
+
+        // Process valid, unprocessed items
+        results.push(processItem(item));
     }
 
-    if (item.isProcessed) {
-      continue; // Skip already processed items
-    }
-
-    // Process valid, unprocessed items
-    results.push(processItem(item));
-  }
-
-  return results;
+    return results;
 }
 
 // ❌ AVOID: Deep nesting
 function processValueBad(value: string | null): string {
-  if (value) {
-    if (value.length > 0) {
-      // Main logic buried deep in nesting
-      return value.toUpperCase();
+    if (value) {
+        if (value.length > 0) {
+            // Main logic buried deep in nesting
+            return value.toUpperCase();
+        } else {
+            return "empty";
+        }
     } else {
-      return "empty";
+        return "default";
     }
-  } else {
-    return "default";
-  }
 }
 ```
+
+## Workspace Discovery
+
+The `workspace-discovery.ts` module provides intelligent config file discovery:
+
+```typescript
+import { WorkspaceDiscovery } from "./libs/workspace-discovery.ts";
+
+// Option 1: Auto-discover by searching cwd and parent directories
+const discovery = new WorkspaceDiscovery();
+const result = await discovery.discover();
+
+// Option 2: Provide explicit config
+const discovery = new WorkspaceDiscovery({ config: "custom.yml" });
+const result = await discovery.discover();
+
+// Option 3: Provide explicit workspace root
+const discovery = new WorkspaceDiscovery({ workspaceRoot: "/path/to/workspace" });
+const result = await discovery.discover();
+```
+
+**Resolution Order:**
+1. If both config and workspaceRoot provided → use them directly
+2. If only config provided → use it, derive workspaceRoot from its directory
+3. If only workspaceRoot provided → look for config file there
+4. If neither provided → discover workspace.yml in current and parent directories
 
 ## Testing Strategy
 
@@ -281,7 +323,7 @@ deno run --allow-all main.ts [command]
 2. Define command options type
 3. Implement command function returning `Result<void, Error>`
 4. **Use early-return pattern** - Handle validation and error cases first
-5. Add command to `main.ts` with proper error handling
+5. Add command to `src/cli.ts` with proper error handling
 6. Update README.md with command documentation
 
 ### Adding New Libraries
@@ -292,38 +334,71 @@ deno run --allow-all main.ts [command]
 5. Follow functional programming patterns
 6. Add JSDoc comments for public functions
 
+### Workspace Discovery Integration
+When adding new commands, use `WorkspaceDiscovery` for config/workspaceRoot handling:
+
+```typescript
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
+
+async function myCommand(options: MyOptions): Result<void, Error> {
+    const discovery = new WorkspaceDiscovery({
+        config: options.config,
+        workspaceRoot: options.workspaceRoot,
+    });
+
+    const discoverResult = await discovery.discover();
+    if (!discoverResult.ok) {
+        return Result.error(discoverResult.error);
+    }
+
+    const { workspaceRoot, configPath } = discoverResult.value;
+    // Proceed with operations...
+}
+```
+
 ## Dependencies
 
 ### JSR Packages (Preferred)
-- `@cliffy/*`: CLI framework components
+- `@cliffy/*`: CLI framework components (command, prompt, table, ansi, keycode, internal)
 - `@std/*`: Standard library modules (yaml, path, fmt, text, dotenv)
 
 ### NPM Packages (When JSR unavailable)
 - `typescript-result`: Functional error handling
-- `zod`: Schema validation (imported but not yet implemented)
+- `zod`: **Imported but not used** (schema validation available but not implemented)
 
 ## Known Limitations
 
-1. **No schema validation**: Zod is imported but not implemented for config validation
-2. **No `--yes` option**: Automatic confirmation not implemented
-3. **Status command implemented**: Workspace status reporting is now implemented
-4. **Limited error reporting**: Git stderr suppressed for cleaner output
-5. **No transaction support**: No rollback on partial failures
+1. **No schema validation**: Zod is imported in deno.json but not used for config validation
+2. **No transaction support**: No rollback on partial failures
+3. **Git stderr suppressed**: Limited error reporting from Git commands
 
 ## Future Enhancements
 
 ### High Priority
 - Add Zod schema validation for workspace configuration
-- Implement `--yes` flag for automatic confirmations
+- Implement `--yes` option for sync command (not yet implemented)
 - Add confirmation prompts before destructive operations
 
 ### Medium Priority
 - Improve Git error reporting with stderr capture
-- Add input validation for URLs and paths
+- Add input validation for workspace URLs and paths
 - Scan for nested `go.mod` files in repositories
-- Implement `status` command for workspace overview
 
 ### Low Priority
 - Add transaction-like behavior for rollback support
 - Implement progress spinners for long operations
 - Auto-generate `.env` file distribution across submodules
+
+## Implementation Status Summary
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| sync | ✅ Implemented | Full functionality with concurrent operations |
+| update | ✅ Implemented | Pulls latest on tracking branches |
+| enable | ✅ Implemented | Interactive multi-select with sync option |
+| add | ✅ Implemented | Interactive and non-interactive modes |
+| save | ✅ Implemented | Persists current branch state to config |
+| status | ✅ Implemented | Branch tracking, dirty status, JSON output |
+| open | ✅ Implemented | Interactive editor selection |
+| completions | ✅ Implemented | Bash, fish, zsh support |
+| go.work | ✅ Implemented | Automatic go module management |

@@ -1,9 +1,9 @@
-import { Confirm, Input } from "@cliffy/prompt";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
+import { ConfigManager } from "../services/config-manager.ts";
+import { InteractivePrompt } from "../services/interactive-prompt.ts";
+import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 import { syncCommand } from "./sync.ts";
 
 export type AddCommandOption = {
@@ -56,25 +56,32 @@ export type AddCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function addCommand(option: AddCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 
-	// Validate workspace directory
-	const validated = await isDir(workspaceRoot);
-	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return Result.error(validated.error);
-	}
+	// Initialize ConfigManager
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
-	const parseConfig = await parseConfigFile(configFile);
-	if (!parseConfig.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseConfig.error.message})`);
-		return Result.error(parseConfig.error);
+	const parseResult = await configManager.getConfig();
+	if (!parseResult.ok) {
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
+		return Result.error(parseResult.error);
 	}
-	const config = parseConfig.value;
+	const config = parseResult.value;
 
 	// Check if running in non-interactive mode
 	const isNonInteractive = option.yes === true;
@@ -86,14 +93,14 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 			return Result.error(new Error("Repository URL is required in non-interactive mode"));
 		}
 
-		const addResult = await addSingleWorkspace(config, configFile, option, debug);
+		const addResult = await addSingleWorkspace(config, configManager, option, debug);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
 		}
 
 		// Handle sync if requested
 		if (option.sync) {
-			const syncResult = await performSync(configFile, workspaceRoot, debug, option.concurrency ?? 4);
+			const syncResult = await performSync(configPath, workspaceRoot, debug, option.concurrency ?? 4);
 			if (!syncResult.ok) {
 				return Result.error(syncResult.error);
 			}
@@ -102,7 +109,7 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 		// Interactive mode: prompt for input (may use provided repo as default)
 		const interactiveResult = await runInteractiveMode(
 			config,
-			configFile,
+			configManager,
 			workspaceRoot,
 			debug,
 			option.concurrency ?? 4,
@@ -120,14 +127,14 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
  * Add a single workspace to the configuration
  *
  * @param config Current workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param option Command options containing workspace details
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
 async function addSingleWorkspace(
 	config: WorkspaceConfig,
-	configFile: string,
+	configManager: ConfigManager,
 	option: AddCommandOption,
 	debug: boolean,
 ): Promise<Result<void, Error>> {
@@ -161,9 +168,9 @@ async function addSingleWorkspace(
 	config.workspaces.push(newWorkspace);
 
 	// Write config back to file
-	const writeResult = await writeConfigFile(config, configFile);
+	const writeResult = await configManager.writeConfig(config);
 	if (!writeResult.ok) {
-		console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+		console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 		return Result.error(writeResult.error);
 	}
 
@@ -175,7 +182,7 @@ async function addSingleWorkspace(
  * Run interactive mode to add multiple workspaces
  *
  * @param config Current workspace configuration
- * @param configFile Path to config file
+ * @param configManager ConfigManager instance
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
@@ -184,19 +191,20 @@ async function addSingleWorkspace(
  */
 async function runInteractiveMode(
 	config: WorkspaceConfig,
-	configFile: string,
+	configManager: ConfigManager,
 	workspaceRoot: string,
 	debug: boolean,
 	concurrency: number,
 	defaultRepo?: string,
 ): Promise<Result<void, Error>> {
+	const interactivePrompt = new InteractivePrompt();
 	let hasAddedWorkspaces = false;
 
 	while (true) {
 		console.log(blue("\n📦 Adding a new workspace repository"));
 
 		// Prompt for repository URL
-		const repoResult = await promptForRepo(defaultRepo);
+		const repoResult = await interactivePrompt.promptForRepo(defaultRepo);
 		if (!repoResult.ok) {
 			if (repoResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -215,7 +223,7 @@ async function runInteractiveMode(
 		const defaultPath = extractRepoName(repo);
 
 		// Prompt for path
-		const pathResult = await promptForPath(defaultPath);
+		const pathResult = await interactivePrompt.promptForPath(defaultPath);
 		if (!pathResult.ok) {
 			if (pathResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -226,7 +234,7 @@ async function runInteractiveMode(
 		const workspacePath = pathResult.value || defaultPath;
 
 		// Prompt for branch
-		const branchResult = await promptForBranch();
+		const branchResult = await interactivePrompt.promptForBranch();
 		if (!branchResult.ok) {
 			if (branchResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -237,7 +245,7 @@ async function runInteractiveMode(
 		const branch = branchResult.value || "main";
 
 		// Prompt for Go workspace
-		const goResult = await promptForGo();
+		const goResult = await interactivePrompt.promptForGo();
 		if (!goResult.ok) {
 			if (goResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -268,16 +276,16 @@ async function runInteractiveMode(
 		hasAddedWorkspaces = true;
 
 		// Write config back to file
-		const writeResult = await writeConfigFile(config, configFile);
+		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+			console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);
 		}
 
 		console.log(green(`✅ Successfully added workspace: ${workspacePath}`));
 
 		// Ask if user wants to add another workspace
-		const continueResult = await promptForContinue();
+		const continueResult = await interactivePrompt.promptForContinue();
 		if (!continueResult.ok) {
 			if (continueResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -293,14 +301,14 @@ async function runInteractiveMode(
 
 	// If workspaces were added, ask about syncing
 	if (hasAddedWorkspaces) {
-		const syncResult = await promptForSync();
+		const syncResult = await interactivePrompt.promptForSync();
 		if (!syncResult.ok) {
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
 			return Result.ok();
 		}
 
 		if (syncResult.value) {
-			const performSyncResult = await performSync(configFile, workspaceRoot, debug, concurrency);
+			const performSyncResult = await performSync(configManager.configPath, workspaceRoot, debug, concurrency);
 			if (!performSyncResult.ok) {
 				return Result.error(performSyncResult.error);
 			}
@@ -341,20 +349,20 @@ function extractRepoName(repoUrl: string): string {
 /**
  * Perform sync operation
  *
- * @param configFile Path to config file
+ * @param configPath Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
 async function performSync(
-	configFile: string,
+	configPath: string,
 	workspaceRoot: string,
 	debug: boolean,
 	concurrency: number,
 ): Promise<Result<void, Error>> {
 	const syncResult = await syncCommand({
-		config: configFile,
+		config: configPath,
 		workspaceRoot,
 		debug,
 		concurrency,
@@ -366,141 +374,4 @@ async function performSync(
 	}
 
 	return Result.ok();
-}
-
-// Prompt functions
-
-/**
- * Prompt user for repository URL
- *
- * @param defaultRepo Optional default repository URL
- * @returns Result containing the repository URL or error
- */
-function promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Repository URL:",
-				default: defaultRepo,
-				validate: (value) => {
-					if (!value || value.trim() === "") {
-						return "Repository URL is required";
-					}
-					return true;
-				},
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for repository URL", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for local path
- *
- * @param defaultPath Default path value
- * @returns Result containing the path or error
- */
-function promptForPath(defaultPath: string): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Local path:",
-				default: defaultPath,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for path", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for branch name
- *
- * @returns Result containing the branch name or error
- */
-function promptForBranch(): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Branch:",
-				default: "main",
-				suggestions: ["main", "master", "develop", "staging"],
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for branch", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for Go workspace setting
- *
- * @returns Result containing the Go workspace boolean or error
- */
-function promptForGo(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Is this a Go module?",
-				default: false,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for Go workspace setting", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user to continue adding workspaces
- *
- * @returns Result containing the continue boolean or error
- */
-function promptForContinue(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Do you want to add another workspace?",
-				default: false,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for continue", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for sync confirmation
- *
- * @returns Result containing the sync boolean or error
- */
-function promptForSync(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Do you want to sync now?",
-				default: true,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for sync confirmation", error as Error);
-		},
-	)();
 }

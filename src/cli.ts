@@ -19,12 +19,8 @@ export const cli = new Command()
 // Sync command
 cli
 	.command("sync", "Sync workspace with remote")
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
@@ -53,12 +49,8 @@ cli
 		"update",
 		"Update all submodules by checking out to tracking branches and pulling latest changes",
 	)
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
@@ -83,12 +75,8 @@ cli
 // Enable command
 cli
 	.command("enable", "Enable a disabled workspace repository")
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
@@ -118,12 +106,8 @@ cli
 		"save",
 		"Save current workspace state by updating workspace.yml with current tracking branches",
 	)
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.action(async (options) => {
 		const result = await saveCommand({
@@ -143,12 +127,8 @@ cli
 		"add [repo] [path]",
 		"Add a new repository to the workspace configuration",
 	)
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
@@ -194,12 +174,8 @@ cli
 cli
 	.command("status", "Show current workspace status")
 	.alias("s")
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
@@ -229,12 +205,8 @@ cli
 cli
 	.command("open", "Open workspace in configured editor")
 	.alias("o")
-	.option("-c, --config <config:string>", "Workspace config file", {
-		default: "workspace.yml",
-	})
-	.option("-w, --workspace-root <workspace-root:string>", "Workspace root", {
-		default: ".",
-	})
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option("-e, --editor <editor:string>", "Editor to use (overrides config and $EDITOR)")
 	.option("--workspace <workspace:string>", "Workspace path to open directly (skips interactive selection)")

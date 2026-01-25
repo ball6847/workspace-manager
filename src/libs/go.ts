@@ -1,5 +1,11 @@
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "./errors.ts";
+import { wrapErrorResult } from "./errors.ts";
+
+export type GoWorkFactory = (path: string) => GoWork;
+
+export interface GoAvailabilityChecker {
+	check(): Promise<Result<boolean, Error>>;
+}
 
 export class GoWork {
 	constructor(private cwd?: string) {}
@@ -42,7 +48,7 @@ export class GoWork {
 			return await command.output();
 		});
 		if (!result.ok) {
-			return Result.error(new ErrorWithCause(`failed to run "go work init"`, result.error));
+			return wrapErrorResult(`failed to run "go work init"`, result.error);
 		}
 
 		const stderr = new TextDecoder().decode(result.value.stderr).trim();
@@ -71,7 +77,7 @@ export class GoWork {
 		});
 
 		if (!result.ok) {
-			return Result.error(new ErrorWithCause(`failed to run "go work use"`, result.error));
+			return wrapErrorResult(`failed to run "go work use"`, result.error);
 		}
 
 		if (result.value.code !== 0) {
@@ -103,9 +109,7 @@ export class GoWork {
 			});
 
 			if (!result.ok) {
-				return Result.error(
-					new ErrorWithCause(`failed to run "go work edit -dropuse" for path: ${path}`, result.error),
-				);
+				return wrapErrorResult(`failed to run "go work edit -dropuse" for path: ${path}`, result.error);
 			}
 
 			if (result.value.code !== 0) {
