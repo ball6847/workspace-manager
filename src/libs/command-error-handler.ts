@@ -22,8 +22,9 @@ export class CommandErrorHandler {
 		return result.value as T | null;
 	}
 
-	handleAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
-		return promise.then((result) => this.handle(result, commandName));
+	async handleAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+		const result = await promise;
+		return this.handle(result, commandName);
 	}
 
 	// Static factory methods for convenience
@@ -35,7 +36,8 @@ export class CommandErrorHandler {
 		return result.value as T | null;
 	}
 
-	static withExitAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
-		return promise.then((result) => this.withExit(result, commandName));
+	static async withExitAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+		const result = await promise;
+		return this.withExit(result, commandName);
 	}
 }

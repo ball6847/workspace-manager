@@ -1,15 +1,14 @@
 import { Command } from "@cliffy/command";
-import { Result } from "typescript-result";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
-import { parseConfigFile, type WorkspaceConfig } from "../libs/config.ts";
+import { Result } from "typescript-result";
+import { CommandErrorHandler } from "../libs/command-error-handler.ts";
+import { processConcurrently } from "../libs/concurrent.ts";
+import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { GoWorkspaceManager } from "../libs/go-workspace-manager.ts";
 import { WorkspaceCheckoutManager } from "../libs/workspace-checkout-manager.ts";
 import { WorkspaceConfigManager } from "../libs/workspace-config-manager.ts";
-import { GoWorkspaceManager } from "../libs/go-workspace-manager.ts";
-import { WorkspaceProcessor } from "../libs/workspace-processor.ts";
-import { isDir } from "../libs/file.ts";
-import { CommandErrorHandler } from "../libs/command-error-handler.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
 
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
@@ -47,8 +46,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	if (inactiveWorkspaces.length > 0) {
 		console.log(yellow("Removing inactive workspaces..."));
-		const processor = new WorkspaceProcessor(concurrency);
-		const removeResult = await processor.processConcurrently(
+		const removeResult = await processConcurrently(
 			inactiveWorkspaces,
 			async (workspace) => {
 				const workspacePath = path.join(workspaceRoot, workspace.path);
@@ -81,14 +79,12 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));
-		const processor = new WorkspaceProcessor(concurrency);
 		const checkoutManager = new WorkspaceCheckoutManager(workspaceRoot);
 
-		const syncResult = await processor.processConcurrently(
+		const syncResult = await processConcurrently(
 			activeWorkspaces,
 			async (workspace) => {
 				const workspacePath = path.join(workspaceRoot, workspace.path);
-				const git = new GitManager(workspaceRoot);
 
 				// Check if submodule exists
 				const dir = await isDir(workspacePath);
