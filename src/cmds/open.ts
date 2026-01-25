@@ -5,6 +5,7 @@ import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { GoWork } from "../libs/go.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
@@ -49,13 +50,23 @@ const createGitManager = (path: string) => new GitManager(path);
  * Open workspace submodule in configured editor via interactive selection
  */
 export async function openCommand(option: OpenCommandOption): Promise<Result<void, Error>> {
-	// Handle defaults
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 
 	// Initialize managers
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
 	const interactivePrompt = new InteractivePrompt();
 
@@ -133,7 +144,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 		// Write config back to file
 		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+			console.log(red("❌ Failed to write config file: "), configPath, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);
 		}
 

@@ -1,6 +1,6 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { isDir } from "../libs/file.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
@@ -56,25 +56,29 @@ export type AddCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function addCommand(option: AddCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
-	const debug = option.debug ?? false;
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
 
-	// Validate workspace directory
-	const validated = await isDir(workspaceRoot);
-	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return Result.error(validated.error);
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
 	}
 
+	const { workspaceRoot, configPath } = discoverResult.value;
+	const debug = option.debug ?? false;
+
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
 	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
 		return Result.error(parseResult.error);
 	}
 	const config = parseResult.value;
@@ -96,7 +100,7 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 
 		// Handle sync if requested
 		if (option.sync) {
-			const syncResult = await performSync(configFile, workspaceRoot, debug, option.concurrency ?? 4);
+			const syncResult = await performSync(configPath, workspaceRoot, debug, option.concurrency ?? 4);
 			if (!syncResult.ok) {
 				return Result.error(syncResult.error);
 			}
@@ -345,20 +349,20 @@ function extractRepoName(repoUrl: string): string {
 /**
  * Perform sync operation
  *
- * @param configFile Path to config file
+ * @param configPath Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
 async function performSync(
-	configFile: string,
+	configPath: string,
 	workspaceRoot: string,
 	debug: boolean,
 	concurrency: number,
 ): Promise<Result<void, Error>> {
 	const syncResult = await syncCommand({
-		config: configFile,
+		config: configPath,
 		workspaceRoot,
 		debug,
 		concurrency,

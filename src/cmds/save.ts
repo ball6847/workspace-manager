@@ -3,6 +3,7 @@ import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 
 export type SaveCommandOption = {
@@ -28,25 +29,29 @@ export type SaveCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function saveCommand(option: SaveCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
-	const debug = option.debug ?? false;
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
 
-	// Validate workspace directory
-	const validated = await isDir(workspaceRoot);
-	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return Result.error(validated.error);
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
 	}
 
+	const { workspaceRoot, configPath } = discoverResult.value;
+	const debug = option.debug ?? false;
+
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
 	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
 		return Result.error(parseResult.error);
 	}
 	const config = parseResult.value;
@@ -120,11 +125,11 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 	if (updatedCount > 0) {
 		const writeResult = await configManager.writeConfig(config);
 		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configFile, `(${writeResult.error.message})`);
+			console.log(red("❌ Failed to write config file: "), configPath, `(${writeResult.error.message})`);
 			return Result.error(writeResult.error);
 		}
 
-		console.log(green(`✅ Successfully updated ${updatedCount} workspace(s) in ${configFile}`));
+		console.log(green(`✅ Successfully updated ${updatedCount} workspace(s) in ${configPath}`));
 	} else {
 		console.log(green("✅ All workspaces are already up to date"));
 	}

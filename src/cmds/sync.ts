@@ -7,6 +7,7 @@ import { processConcurrently } from "../libs/concurrent.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { GoWork } from "../libs/go.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
@@ -15,20 +16,31 @@ const createGoWork = (path: string) => new GoWork(path);
 const createGitManager = (path: string) => new GitManager(path);
 
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
-	const configFile = options.config ?? "workspace.yml";
-	const workspaceRoot = options.workspaceRoot ?? Deno.cwd();
+	const discovery = new WorkspaceDiscovery({
+		config: options.config,
+		workspaceRoot: options.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const concurrency = options.concurrency ?? 4;
 	const debug = options.debug ?? false;
 
 	console.log(blue("🔄 Starting workspace sync..."));
-	console.log(blue(`📄 Config file: ${configFile}`));
+	console.log(blue(`📄 Config file: ${configPath}`));
 	console.log(blue(`📁 Workspace root: ${workspaceRoot}`));
 	console.log(blue(`⚡ Concurrency: ${concurrency}`));
 	if (debug) {
 		console.log(blue("🐛 Debug mode enabled"));
 	}
 
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 	const configResult = await configManager.getWorkspaceConfig(workspaceRoot);
 	if (!configResult.ok) {
 		console.log(red("❌ Failed to read workspace config"), `(${configResult.error.message})`);

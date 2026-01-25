@@ -6,6 +6,7 @@ import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 
 export type StatusCommandOption = {
@@ -60,22 +61,37 @@ type RepositoryStatus = {
  * @returns Result indicating success or failure
  */
 export async function statusCommand(option: StatusCommandOption): Promise<Result<void, Error>> {
-	// handle default values
-	const configFile = option.config ??= "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ??= ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		if (!option.json) {
+			console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		} else {
+			console.log(JSON.stringify({ error: discoverResult.error.message }, null, 2));
+		}
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 	const concurrency = option.concurrency ?? 4;
 	const json = option.json ?? false;
 	const verbose = option.verbose ?? false;
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
 	const configResult = await configManager.getConfig();
 	if (!configResult.ok) {
 		if (!json) {
-			console.log(red("❌ Failed to parse config file: "), configFile, `(${configResult.error.message})`);
+			console.log(red("❌ Failed to parse config file: "), configPath, `(${configResult.error.message})`);
 		} else {
 			console.log(JSON.stringify({ error: configResult.error.message }, null, 2));
 		}

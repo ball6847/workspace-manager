@@ -3,6 +3,7 @@ import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
@@ -38,9 +39,20 @@ export type EnableCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function enableCommand(option: EnableCommandOption): Promise<Result<void, Error>> {
-	// Handle default values
-	const configFile = option.config ?? "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ?? ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 	const autoSync = option.yes ?? false;
 
@@ -52,12 +64,12 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	}
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
 	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
 		return Result.error(parseResult.error);
 	}
 	const config = parseResult.value;
@@ -71,7 +83,7 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	// Handle sync confirmation
 	const syncResult = await handleSyncConfirmation(
 		autoSync,
-		configFile,
+		configPath,
 		workspaceRoot,
 		debug,
 		option.concurrency ?? 4,

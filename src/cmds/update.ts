@@ -2,9 +2,9 @@ import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { processConcurrently } from "../libs/concurrent.ts";
-import { wrapErrorResult } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 
 export type UpdateCommandOption = {
@@ -35,26 +35,30 @@ export type UpdateCommandOption = {
  * @returns Result indicating success or failure
  */
 export async function updateCommand(option: UpdateCommandOption): Promise<Result<void, Error>> {
-	// handle default values
-	const configFile = option.config ??= "workspace.yml";
-	const workspaceRoot = option.workspaceRoot ??= ".";
+	// Discover workspace
+	const discovery = new WorkspaceDiscovery({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+	});
+
+	const discoverResult = await discovery.discover();
+
+	if (!discoverResult.ok) {
+		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
+		return Result.error(discoverResult.error);
+	}
+
+	const { workspaceRoot, configPath } = discoverResult.value;
 	const debug = option.debug ?? false;
 	const concurrency = option.concurrency ?? 4;
 
-	// validate workspace directory and parse config file
-	const validated = await validateWorkspaceDir(workspaceRoot);
-	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
-		return Result.error(validated.error);
-	}
-
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configFile);
+	const configManager = new ConfigManager(configPath);
 
 	// parse config file
 	const parseResult = await configManager.getConfig();
 	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configFile, `(${parseResult.error.message})`);
+		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
 		return Result.error(parseResult.error);
 	}
 	const config = parseResult.value;
@@ -187,16 +191,5 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 	}
 
 	console.log(green(`🎉 All workspaces updated successfully!`));
-	return Result.ok();
-}
-
-async function validateWorkspaceDir(path: string) {
-	const stat = await Result.fromAsyncCatching(() => Deno.stat(path));
-	if (!stat.ok) {
-		return wrapErrorResult(`Workspace directory is not a directory`, stat.error);
-	}
-	if (!stat.value.isDirectory) {
-		return Result.error(new Error(`Workspace directory is not a directory`));
-	}
 	return Result.ok();
 }
