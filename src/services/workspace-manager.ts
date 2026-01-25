@@ -1,8 +1,8 @@
-import { GoWork, GoWorkFactory } from "../libs/go.ts";
-import { GitManager, GitManagerFactory } from "../libs/git.ts";
+import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "../libs/errors.ts";
-import * as path from "@std/path";
+import { GitManager, GitManagerFactory } from "../libs/git.ts";
+import { GoWork, GoWorkFactory } from "../libs/go.ts";
 
 export class WorkspaceManager {
 	private readonly goWorkFactory: GoWorkFactory;

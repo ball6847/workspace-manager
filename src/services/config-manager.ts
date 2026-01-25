@@ -1,24 +1,7 @@
 import { parse, stringify } from "@std/yaml";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "../libs/errors.ts";
-
-export type WorkspaceConfigItem = {
-	url: string;
-	path: string;
-	branch: string;
-	isGolang: boolean;
-	active: boolean;
-};
-
-export type WorkspaceConfig = {
-	workspaces: WorkspaceConfigItem[];
-	/**
-	 * Global editor for opening workspaces. Can be overridden per workspace.
-	 * Falls back to $EDITOR environment variable if not set.
-	 * Examples: "nvim", "code -w", "vim"
-	 */
-	editor?: string;
-};
+import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
 export class ConfigManager {
 	private _cachedConfig: WorkspaceConfig | null = null;

@@ -1,8 +1,9 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
-import { ConfigManager, type WorkspaceConfig, type WorkspaceConfigItem } from "../services/config-manager.ts";
-import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { Result } from "typescript-result";
 import { isDir } from "../libs/file.ts";
+import { ConfigManager } from "../services/config-manager.ts";
+import { InteractivePrompt } from "../services/interactive-prompt.ts";
+import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 import { syncCommand } from "./sync.ts";
 
 export type AddCommandOption = {
