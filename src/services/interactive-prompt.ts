@@ -113,6 +113,18 @@ export class InteractivePrompt {
 		)();
 	}
 
+	promptForSyncWithInput(): Promise<Result<string, Error>> {
+		return Result.wrap(
+			() =>
+				Input.prompt({
+					message: this.messages.sync,
+					suggestions: ["Y", "n"],
+					default: "Y",
+				}),
+			(error) => this.handleError(error, "Failed to prompt for sync confirmation"),
+		)();
+	}
+
 	promptForEnableAndSync(workspacePath: string): Promise<Result<boolean, Error>> {
 		return Result.wrap(
 			() =>

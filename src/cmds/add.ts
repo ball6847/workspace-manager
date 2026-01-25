@@ -1,9 +1,8 @@
-import { Confirm, Input } from "@cliffy/prompt";
 import { blue, green, red, yellow } from "@std/fmt/colors";
-import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
 import { ConfigManager, type WorkspaceConfig, type WorkspaceConfigItem } from "../services/config-manager.ts";
+import { InteractivePrompt } from "../services/interactive-prompt.ts";
+import { Result } from "typescript-result";
+import { isDir } from "../libs/file.ts";
 import { syncCommand } from "./sync.ts";
 
 export type AddCommandOption = {
@@ -193,13 +192,14 @@ async function runInteractiveMode(
 	concurrency: number,
 	defaultRepo?: string,
 ): Promise<Result<void, Error>> {
+	const interactivePrompt = new InteractivePrompt();
 	let hasAddedWorkspaces = false;
 
 	while (true) {
 		console.log(blue("\n📦 Adding a new workspace repository"));
 
 		// Prompt for repository URL
-		const repoResult = await promptForRepo(defaultRepo);
+		const repoResult = await interactivePrompt.promptForRepo(defaultRepo);
 		if (!repoResult.ok) {
 			if (repoResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -218,7 +218,7 @@ async function runInteractiveMode(
 		const defaultPath = extractRepoName(repo);
 
 		// Prompt for path
-		const pathResult = await promptForPath(defaultPath);
+		const pathResult = await interactivePrompt.promptForPath(defaultPath);
 		if (!pathResult.ok) {
 			if (pathResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -229,7 +229,7 @@ async function runInteractiveMode(
 		const workspacePath = pathResult.value || defaultPath;
 
 		// Prompt for branch
-		const branchResult = await promptForBranch();
+		const branchResult = await interactivePrompt.promptForBranch();
 		if (!branchResult.ok) {
 			if (branchResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -240,7 +240,7 @@ async function runInteractiveMode(
 		const branch = branchResult.value || "main";
 
 		// Prompt for Go workspace
-		const goResult = await promptForGo();
+		const goResult = await interactivePrompt.promptForGo();
 		if (!goResult.ok) {
 			if (goResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -280,7 +280,7 @@ async function runInteractiveMode(
 		console.log(green(`✅ Successfully added workspace: ${workspacePath}`));
 
 		// Ask if user wants to add another workspace
-		const continueResult = await promptForContinue();
+		const continueResult = await interactivePrompt.promptForContinue();
 		if (!continueResult.ok) {
 			if (continueResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -296,7 +296,7 @@ async function runInteractiveMode(
 
 	// If workspaces were added, ask about syncing
 	if (hasAddedWorkspaces) {
-		const syncResult = await promptForSync();
+		const syncResult = await interactivePrompt.promptForSync();
 		if (!syncResult.ok) {
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
 			return Result.ok();
@@ -369,141 +369,4 @@ async function performSync(
 	}
 
 	return Result.ok();
-}
-
-// Prompt functions
-
-/**
- * Prompt user for repository URL
- *
- * @param defaultRepo Optional default repository URL
- * @returns Result containing the repository URL or error
- */
-function promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Repository URL:",
-				default: defaultRepo,
-				validate: (value) => {
-					if (!value || value.trim() === "") {
-						return "Repository URL is required";
-					}
-					return true;
-				},
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for repository URL", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for local path
- *
- * @param defaultPath Default path value
- * @returns Result containing the path or error
- */
-function promptForPath(defaultPath: string): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Local path:",
-				default: defaultPath,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for path", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for branch name
- *
- * @returns Result containing the branch name or error
- */
-function promptForBranch(): Promise<Result<string, Error>> {
-	return Result.wrap(
-		() =>
-			Input.prompt({
-				message: "Branch:",
-				default: "main",
-				suggestions: ["main", "master", "develop", "staging"],
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for branch", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for Go workspace setting
- *
- * @returns Result containing the Go workspace boolean or error
- */
-function promptForGo(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Is this a Go module?",
-				default: false,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for Go workspace setting", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user to continue adding workspaces
- *
- * @returns Result containing the continue boolean or error
- */
-function promptForContinue(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Do you want to add another workspace?",
-				default: false,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for continue", error as Error);
-		},
-	)();
-}
-
-/**
- * Prompt user for sync confirmation
- *
- * @returns Result containing the sync boolean or error
- */
-function promptForSync(): Promise<Result<boolean, Error>> {
-	return Result.wrap(
-		() =>
-			Confirm.prompt({
-				message: "Do you want to sync now?",
-				default: true,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
-			}
-			return new ErrorWithCause("Failed to prompt for sync confirmation", error as Error);
-		},
-	)();
 }

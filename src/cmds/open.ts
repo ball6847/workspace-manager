@@ -1,4 +1,3 @@
-import { Select } from "@cliffy/prompt";
 import { blue, green, red } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
@@ -200,39 +199,25 @@ async function buildWorkspaceList(
 async function presentWorkspaceSelector(
 	workspaces: WorkspaceSelection[],
 ): Promise<WorkspaceSelection | null> {
-	// Build options for Select prompt
-	const options = workspaces.map((w) => {
-		const displayName = (w as WorkspaceSelection & { displayName: string }).displayName;
-		return {
-			name: displayName,
-			value: w.path,
-		};
-	});
+	const interactivePrompt = new InteractivePrompt();
 
-	// Add cancel option
-	options.push({
-		name: "Cancel",
-		value: "cancel",
-	});
+	// Map to format expected by promptForWorkspaceSelectionSingle
+	const workspacesForPrompt = workspaces.map((w) => ({
+		path: w.path,
+		url: w.url,
+		branch: w.branch,
+		active: w.isActive,
+	}));
 
-	try {
-		const selected = await Select.prompt({
-			message: "Select workspace to open:",
-			options: options,
-			search: true, // Enable type-to-search
-		});
+	const result = await interactivePrompt.promptForWorkspaceSelectionSingle(workspacesForPrompt);
 
-		if (selected === "cancel") {
-			return null;
-		}
-
-		// Find selected workspace
-		const workspace = workspaces.find((w) => w.path === selected);
-		return workspace ?? null;
-	} catch {
-		// User cancelled with Ctrl+C
+	if (!result.ok || result.value === null) {
 		return null;
 	}
+
+	// Find selected workspace
+	const workspace = workspaces.find((w) => w.path === result.value);
+	return workspace ?? null;
 }
 
 function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | null {
