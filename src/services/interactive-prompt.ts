@@ -13,6 +13,7 @@ export type PromptMessages = {
 	workspaceSelection: string;
 	workspaceOpen: string;
 	cancel: string;
+	enableAndSync: (workspacePath: string) => string;
 };
 
 export const defaultPromptMessages: PromptMessages = {
@@ -26,6 +27,7 @@ export const defaultPromptMessages: PromptMessages = {
 	workspaceSelection: "Select workspaces to enable (use space to toggle, enter to confirm):",
 	workspaceOpen: "Select workspace to open:",
 	cancel: "Cancel",
+	enableAndSync: (workspacePath: string) => `Workspace "${workspacePath}" is disabled. Enable and sync it first?`,
 };
 
 export class InteractivePrompt {
@@ -108,6 +110,17 @@ export class InteractivePrompt {
 					default: true,
 				}),
 			(error) => this.handleError(error, "Failed to prompt for sync confirmation"),
+		)();
+	}
+
+	promptForEnableAndSync(workspacePath: string): Promise<Result<boolean, Error>> {
+		return Result.wrap(
+			() =>
+				Confirm.prompt({
+					message: this.messages.enableAndSync(workspacePath),
+					default: true,
+				}),
+			(error) => this.handleError(error, "Failed to prompt for enable and sync confirmation"),
 		)();
 	}
 

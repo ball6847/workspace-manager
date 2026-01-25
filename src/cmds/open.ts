@@ -1,10 +1,11 @@
-import { Input, Select } from "@cliffy/prompt";
+import { Select } from "@cliffy/prompt";
 import { blue, green, red } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { ConfigManager } from "../services/config-manager.ts";
+import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type WorkspaceConfig } from "../libs/config.ts";
 
@@ -52,6 +53,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	// Initialize managers
 	const configManager = new ConfigManager(configFile);
 	const workspaceManager = new WorkspaceManager(workspaceRoot);
+	const interactivePrompt = new InteractivePrompt();
 
 	// Parse config
 	const configResult = await configManager.getWorkspaceConfig(workspaceRoot);
@@ -106,7 +108,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 
 	// Check if workspace is disabled and handle enabling/syncing
 	if (!selected.isActive) {
-		const confirmResult = await promptEnableAndSync(selected.path);
+		const confirmResult = await interactivePrompt.promptForEnableAndSync(selected.path);
 		if (!confirmResult.ok) {
 			// User cancelled or error
 			return confirmResult;
@@ -232,28 +234,6 @@ async function presentWorkspaceSelector(
 		// User cancelled with Ctrl+C
 		return null;
 	}
-}
-
-/**
- * Prompt user to enable and sync a disabled workspace
- *
- * @param workspacePath Path of the workspace to enable
- * @returns Result containing boolean (true = user confirmed, false = user declined) or error
- */
-async function promptEnableAndSync(workspacePath: string): Promise<Result<boolean, Error>> {
-	const promptResult = await Result.wrap(
-		() =>
-			Input.prompt({
-				message: `Workspace "${workspacePath}" is disabled. Enable and sync it first? (Y/n):`,
-				suggestions: ["Y", "n"],
-				default: "Y",
-			}),
-		(error) => new ErrorWithCause("Failed to prompt for enable confirmation", error as Error),
-	)();
-
-	return promptResult.map((response: string) => {
-		return response.toLowerCase() !== "n" && response.toLowerCase() !== "no";
-	});
 }
 
 function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | null {
