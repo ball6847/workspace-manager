@@ -509,6 +509,62 @@ function promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
 
 ## 2. Proposed Extracted Classes/Modules
 
+### 2.0 Tight Coupling Analysis
+
+Before implementing the extracted classes, we identified critical tight coupling issues in the original proposals. Addressing these ensures the refactoring improves, not worsens, code quality.
+
+#### 2.0.1 CommandErrorHandler - Hardcoded Deno Exit Dependency
+
+**Issue**: The original `CommandErrorHandler` called `Deno.exit(1)` directly, creating runtime coupling to Deno runtime:
+
+```typescript
+if (exitOnError) {
+    Deno.exit(1);  // Tight coupling - makes class untestable
+}
+```
+
+**Impact**:
+- Untestable without mocking `Deno.exit`
+- Non-reusable outside Deno runtime
+- Hard to customize behavior (always exits, can't return error)
+
+**Solution**: Remove `Deno.exit()` call, return `Result`, and let caller handle termination. Accept optional error handler callback.
+
+#### 2.0.2 WorkspaceCheckoutManager - Concrete GitManager Instantiation
+
+**Issue**: The class instantiated `GitManager` directly, violating Dependency Inversion Principle:
+
+```typescript
+const git = new GitManager(this.workspaceRoot);  // Tight coupling
+const submoduleGit = new GitManager(fullSubmodulePath);  // Tight coupling
+```
+
+**Impact**:
+- No way to inject mock `GitManager` for testing
+- Can't change Git implementation without modifying the class
+- Violates DIP (high-level module depends on low-level detail)
+
+**Solution**: Accept `GitManager` factory or instances via constructor injection.
+
+#### 2.0.3 GoWorkspaceManager - Same GitManager Coupling Issue
+
+**Issue**: Identical problem as `WorkspaceCheckoutManager`:
+
+```typescript
+const goWork = new GoWork(this.workspaceRoot);  // Tight coupling
+```
+
+**Solution**: Accept `GoWork` instances via constructor injection.
+
+#### 2.0.4 InteractivePromptManager - Static Methods with Hardcoded Messages
+
+**Issue**: Static methods with embedded messages make the class:
+- Impossible to customize without subclassing
+- Hard to internationalize
+- Difficult to mock for testing
+
+**Solution**: Use instance methods, accept message templates via constructor, support localization.
+
 ### 2.1 `CommandOptions` Type (Shared Type Definition)
 
 **Purpose**: Define common command options that all commands share.
@@ -599,26 +655,38 @@ export class WorkspaceConfigManager {
 
 ### 2.3 `WorkspaceCheckoutManager` Class
 
-**Purpose**: Handle Git submodule checkout operations.
+**Purpose**: Handle Git submodule checkout operations with dependency injection for testability.
 
 **Location**: `src/libs/workspace-checkout-manager.ts`
 
 **Content**:
 ```typescript
-import { GitManager } from "./git.ts";
+import { GitManager, GitManagerFactory } from "./git.ts";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 import * as path from "@std/path";
 
+export interface GitManagerFactory {
+    create(path: string): GitManager;
+}
+
 export class WorkspaceCheckoutManager {
-    constructor(private readonly workspaceRoot: string) {}
+    constructor(
+        private readonly workspaceRoot: string,
+        private readonly gitManagerFactory: GitManagerFactory,
+    ) {
+        // Default factory if none provided
+        if (!gitManagerFactory) {
+            this.gitManagerFactory = (path: string) => new GitManager(path);
+        }
+    }
 
     async checkoutWorkspace(
         url: string,
         workspacePath: string,
         branch: string,
     ): Promise<Result<void, Error>> {
-        const git = new GitManager(this.workspaceRoot);
+        const git = this.gitManagerFactory(this.workspaceRoot);
 
         // Add submodule with specified branch
         const addResult = await git.submoduleAdd(url, workspacePath, branch);
@@ -628,7 +696,7 @@ export class WorkspaceCheckoutManager {
 
         // Check out the submodule to the specified branch
         const fullSubmodulePath = path.join(this.workspaceRoot, workspacePath);
-        const submoduleGit = new GitManager(fullSubmodulePath);
+        const submoduleGit = this.gitManagerFactory(fullSubmodulePath);
         const checkoutResult = await submoduleGit.checkoutBranch(branch);
         if (!checkoutResult.ok) {
             return Result.error(
@@ -654,6 +722,12 @@ export class WorkspaceCheckoutManager {
     }
 }
 ```
+
+**Benefits**:
+- Reduces ~35 lines of duplicated checkout logic
+- Provides a reusable interface for workspace checkout operations
+- **DI-enabled**: Factory injection allows mocking for tests
+- **Flexible**: Can swap Git implementation without modifying class
 
 **Benefits**:
 - Reduces ~35 lines of duplicated checkout logic
@@ -697,23 +771,41 @@ export class WorkspaceProcessor {
 
 ### 2.5 `GoWorkspaceManager` Class
 
-**Purpose**: Manage Go workspace operations.
+**Purpose**: Manage Go workspace operations with dependency injection for testability.
 
 **Location**: `src/libs/go-workspace-manager.ts`
 
 **Content**:
 ```typescript
-import { GoWork } from "./go.ts";
+import { GoWork, GoWorkFactory, GoAvailabilityChecker } from "./go.ts";
 import { Result } from "typescript-result";
 
+export interface GoAvailabilityChecker {
+    check(): Promise<Result<boolean, Error>>;
+}
+
 export class GoWorkspaceManager {
-    constructor(private readonly workspaceRoot: string) {}
+    constructor(
+        private readonly workspaceRoot: string,
+        private readonly goWorkFactory: GoWorkFactory,
+        private readonly availabilityChecker: GoAvailabilityChecker,
+    ) {
+        // Default factory if none provided
+        if (!goWorkFactory) {
+            this.goWorkFactory = (path: string) => new GoWork(path);
+        }
+        if (!availabilityChecker) {
+            this.availabilityChecker = {
+                check: () => GoWork.isAvailable(),
+            };
+        }
+    }
 
     async setupWorkspace(add: string[], remove: string[]): Promise<Result<void, Error>> {
-        const goWork = new GoWork(this.workspaceRoot);
+        const goWork = this.goWorkFactory(this.workspaceRoot);
 
         // Check if Go is available
-        const goAvailable = await GoWork.isAvailable();
+        const goAvailable = await this.availabilityChecker.check();
         if (!goAvailable.ok) {
             return Result.error(new Error("Failed to check Go availability"));
         }
@@ -757,7 +849,7 @@ export class GoWorkspaceManager {
 
 ### 2.6 `CommandErrorHandler` Class
 
-**Purpose**: Handle command errors consistently.
+**Purpose**: Handle command errors consistently without tight coupling to Deno runtime.
 
 **Location**: `src/libs/command-error-handler.ts`
 
@@ -766,28 +858,42 @@ export class GoWorkspaceManager {
 import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 
+export interface ErrorHandler {
+    onError(error: Error, commandName: string): void;
+}
+
+export class ConsoleErrorHandler implements ErrorHandler {
+    onError(error: Error, commandName: string): void {
+        console.log(red(`❌ ${commandName} failed:`), error.message);
+    }
+}
+
 export class CommandErrorHandler {
-    static handle<T>(
-        result: Result<T, Error>,
-        commandName: string,
-        exitOnError: boolean = true,
-    ): T | null {
+    constructor(private readonly errorHandler: ErrorHandler) {}
+
+    handle<T>(result: Result<T, Error>, commandName: string): T | null {
         if (!result.ok) {
-            console.log(red(`❌ ${commandName} failed:`), result.error.message);
-            if (exitOnError) {
-                Deno.exit(1);
-            }
+            this.errorHandler.onError(result.error, commandName);
             return null;
         }
         return result.value;
     }
 
-    static handleAsync<T>(
-        promise: Promise<Result<T, Error>>,
-        commandName: string,
-        exitOnError: boolean = true,
-    ): Promise<T | null> {
-        return promise.then((result) => this.handle(result, commandName, exitOnError));
+    handleAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+        return promise.then((result) => this.handle(result, commandName));
+    }
+
+    // Static factory methods for convenience
+    static withExit<T>(result: Result<T, Error>, commandName: string): T | null {
+        if (!result.ok) {
+            console.log(red(`❌ ${commandName} failed:`), result.error.message);
+            Deno.exit(1);
+        }
+        return result.value;
+    }
+
+    static withExitAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+        return promise.then((result) => this.withExit(result, commandName));
     }
 }
 ```
@@ -799,7 +905,7 @@ export class CommandErrorHandler {
 
 ### 2.7 `InteractivePromptManager` Class
 
-**Purpose**: Centralize interactive prompt logic with consistent error handling.
+**Purpose**: Centralize interactive prompt logic with consistent error handling and customization support.
 
 **Location**: `src/libs/interactive-prompt-manager.ts`
 
@@ -809,12 +915,86 @@ import { Input, Checkbox, Confirm, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 
+export interface PromptMessageProvider {
+    getRepoMessage(): string;
+    getPathMessage(): string;
+    getBranchMessage(): string;
+    getBranchSuggestions(): string[];
+    getGoMessage(): string;
+    getContinueMessage(): string;
+    getSyncMessage(): string;
+    getWorkspaceSelectionMessage(): string;
+    getWorkspaceOpenMessage(): string;
+    getCancelLabel(): string;
+}
+
+export class DefaultPromptMessageProvider implements PromptMessageProvider {
+    getRepoMessage(): string {
+        return "Repository URL:";
+    }
+
+    getPathMessage(): string {
+        return "Local path:";
+    }
+
+    getBranchMessage(): string {
+        return "Branch:";
+    }
+
+    getBranchSuggestions(): string[] {
+        return ["main", "master", "develop", "staging"];
+    }
+
+    getGoMessage(): string {
+        return "Is this a Go module?";
+    }
+
+    getContinueMessage(): string {
+        return "Do you want to add another workspace?";
+    }
+
+    getSyncMessage(): string {
+        return "Do you want to sync now?";
+    }
+
+    getWorkspaceSelectionMessage(): string {
+        return "Select workspaces to enable (use space to toggle, enter to confirm):";
+    }
+
+    getWorkspaceOpenMessage(): string {
+        return "Select workspace to open:";
+    }
+
+    getCancelLabel(): string {
+        return "Cancel";
+    }
+}
+
 export class InteractivePromptManager {
-    static async promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
+    constructor(
+        private readonly messageProvider: PromptMessageProvider = new DefaultPromptMessageProvider(),
+    ) {}
+
+    private wrapPrompt<T>(
+        promptFn: () => Promise<T>,
+        errorContext: string,
+    ): Promise<Result<T, Error>> {
         return Result.wrap(
+            () => promptFn(),
+            (error) => {
+                if (error instanceof Error && error.message.includes("cancelled")) {
+                    return new ErrorWithCause("Operation cancelled", error);
+                }
+                return new ErrorWithCause(errorContext, error as Error);
+            },
+        )();
+    }
+
+    async promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
+        return this.wrapPrompt(
             () =>
                 Input.prompt({
-                    message: "Repository URL:",
+                    message: this.messageProvider.getRepoMessage(),
                     default: defaultRepo,
                     validate: (value) => {
                         if (!value || value.trim() === "") {
@@ -823,97 +1003,67 @@ export class InteractivePromptManager {
                         return true;
                     },
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for repository URL", error as Error);
-            },
-        )();
+            "Failed to prompt for repository URL",
+        );
     }
 
-    static async promptForPath(defaultPath: string): Promise<Result<string, Error>> {
-        return Result.wrap(
+    async promptForPath(defaultPath: string): Promise<Result<string, Error>> {
+        return this.wrapPrompt(
             () =>
                 Input.prompt({
-                    message: "Local path:",
+                    message: this.messageProvider.getPathMessage(),
                     default: defaultPath,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for path", error as Error);
-            },
-        )();
+            "Failed to prompt for path",
+        );
     }
 
-    static async promptForBranch(): Promise<Result<string, Error>> {
-        return Result.wrap(
+    async promptForBranch(): Promise<Result<string, Error>> {
+        return this.wrapPrompt(
             () =>
                 Input.prompt({
-                    message: "Branch:",
+                    message: this.messageProvider.getBranchMessage(),
                     default: "main",
-                    suggestions: ["main", "master", "develop", "staging"],
+                    suggestions: this.messageProvider.getBranchSuggestions(),
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for branch", error as Error);
-            },
-        )();
+            "Failed to prompt for branch",
+        );
     }
 
-    static async promptForGo(): Promise<Result<boolean, Error>> {
-        return Result.wrap(
+    async promptForGo(): Promise<Result<boolean, Error>> {
+        return this.wrapPrompt(
             () =>
                 Confirm.prompt({
-                    message: "Is this a Go module?",
+                    message: this.messageProvider.getGoMessage(),
                     default: false,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for Go workspace setting", error as Error);
-            },
-        )();
+            "Failed to prompt for Go workspace setting",
+        );
     }
 
-    static async promptForContinue(): Promise<Result<boolean, Error>> {
-        return Result.wrap(
+    async promptForContinue(): Promise<Result<boolean, Error>> {
+        return this.wrapPrompt(
             () =>
                 Confirm.prompt({
-                    message: "Do you want to add another workspace?",
+                    message: this.messageProvider.getContinueMessage(),
                     default: false,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for continue", error as Error);
-            },
-        )();
+            "Failed to prompt for continue",
+        );
     }
 
-    static async promptForSync(): Promise<Result<boolean, Error>> {
-        return Result.wrap(
+    async promptForSync(): Promise<Result<boolean, Error>> {
+        return this.wrapPrompt(
             () =>
                 Confirm.prompt({
-                    message: "Do you want to sync now?",
+                    message: this.messageProvider.getSyncMessage(),
                     default: true,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for sync confirmation", error as Error);
-            },
-        )();
+            "Failed to prompt for sync confirmation",
+        );
     }
 
-    static async promptForWorkspaceSelection(
+    async promptForWorkspaceSelection(
         workspaces: Array<{ path: string; url: string; active: boolean }>,
     ): Promise<Result<string[], Error>> {
         const options = workspaces.map((workspace) => ({
@@ -922,23 +1072,18 @@ export class InteractivePromptManager {
             checked: workspace.active,
         }));
 
-        return Result.wrap(
+        return this.wrapPrompt(
             () =>
                 Checkbox.prompt({
-                    message: "Select workspaces to enable (use space to toggle, enter to confirm):",
+                    message: this.messageProvider.getWorkspaceSelectionMessage(),
                     search: true,
                     options,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
-            },
-        )();
+            "Failed to prompt for workspace selection",
+        );
     }
 
-    static async promptForWorkspaceSelectionSingle(
+    async promptForWorkspaceSelectionSingle(
         workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>,
     ): Promise<Result<string | null, Error>> {
         const options = workspaces.map((workspace) => ({
@@ -947,28 +1092,23 @@ export class InteractivePromptManager {
         }));
 
         options.push({
-            name: "Cancel",
+            name: this.messageProvider.getCancelLabel(),
             value: "cancel",
         });
 
-        return Result.wrap(
+        return this.wrapPrompt(
             () =>
                 Select.prompt({
-                    message: "Select workspace to open:",
+                    message: this.messageProvider.getWorkspaceOpenMessage(),
                     options: options,
                     search: true,
                 }),
-            (error) => {
-                if (error instanceof Error && error.message.includes("cancelled")) {
-                    return new ErrorWithCause("Operation cancelled", error);
-                }
-                return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
-            },
-        )().then((result) => {
-            if (result === "cancel") {
+            "Failed to prompt for workspace selection",
+        ).then((result) => {
+            if (result.ok && result.value === "cancel") {
                 return Result.ok(null);
             }
-            return Result.ok(result);
+            return result;
         });
     }
 }
@@ -1000,37 +1140,83 @@ export class InteractivePromptManager {
 - **Better Separation of Concerns**: Each class has a single responsibility
 - **Improved Readability**: Command files become shorter and more focused on their specific logic
 - **Better Type Safety**: Shared types ensure consistency across commands
+- **Improved Testability**: Dependency injection enables unit testing with mocks
+- **Reduced Coupling**: Classes depend on abstractions (interfaces), not concrete implementations
 
 ## 4. Implementation Plan
 
+### Phase 0: Dependency Updates (Critical for DI Support)
+Before creating new classes, update existing libraries to support factory interfaces:
+
+1. **Update `src/libs/git.ts`**:
+   - Export `GitManagerFactory` interface: `create(path: string): GitManager`
+   - Keep `GitManager` class as default implementation
+
+2. **Update `src/libs/go.ts`**:
+   - Export `GoWorkFactory` interface: `create(path: string): GoWork`
+   - Export `GoAvailabilityChecker` interface for mockable availability checking
+   - Keep `GoWork` class as default implementation
+
 ### Phase 1: Create Shared Types and Base Classes
 1. Create `src/types/command-options.ts` with common option types
-2. Create `src/libs/command-error-handler.ts` for error handling
+2. Create `src/libs/command-error-handler.ts` for error handling (no Deno.exit)
 3. Create `src/libs/workspace-config-manager.ts` for config management
+4. Create `src/types/prompt-messages.ts` for customizable message interfaces
 
-### Phase 2: Create Domain-Specific Classes
+### Phase 2: Create Domain-Specific Classes (With DI Support)
 1. Create `src/libs/workspace-checkout-manager.ts` for checkout operations
+   - Accept `GitManagerFactory` via constructor
+   - Support default factory for backward compatibility
 2. Create `src/libs/workspace-processor.ts` for concurrent processing
 3. Create `src/libs/go-workspace-manager.ts` for Go workspace operations
+   - Accept `GoWorkFactory` and `GoAvailabilityChecker` via constructor
+   - Support default factories for backward compatibility
 4. Create `src/libs/interactive-prompt-manager.ts` for prompts
+   - Accept `PromptMessageProvider` via constructor
+   - Support default provider for backward compatibility
 
-### Phase 3: Refactor Commands
-1. Update all command files to use the new classes
+### Phase 3: Refactor Commands (Using New Classes)
+1. Update all command files to use the new classes with DI
 2. Remove duplicated code from command files
 3. Update imports and type definitions
+4. Use `CommandErrorHandler.withExit()` at CLI entry points only
 
 ### Phase 4: Testing and Validation
-1. Test each extracted class independently
-2. Test each command to ensure functionality is preserved
-3. Update documentation
+1. Write unit tests for `WorkspaceCheckoutManager` with mocked `GitManager`
+2. Write unit tests for `GoWorkspaceManager` with mocked `GoWork`
+3. Write unit tests for `InteractivePromptManager` with custom message provider
+4. Test each command to ensure functionality is preserved
+5. Verify no regressions in existing functionality
+6. Update documentation
+
+### Key Principles for Phase 3 & 4
+- **Backward Compatibility**: All new classes accept optional factories with default implementations
+- **Testability**: All dependencies injectable for mocking
+- **No Deno Exit in Libraries**: Error handlers return results, callers decide exit behavior
+- **Customization**: Message providers support localization and customization
 
 ## 5. Estimated Impact
 
 - **Lines of Code Reduction**: ~825 lines of duplicated code
-- **File Count**: 7 new files (6 classes + 1 types file)
+- **File Count**: 9 new files (6 classes + 2 types files + 1 provider interface)
 - **Command File Size Reduction**: Each command file will be reduced by 20-40%
-- **Test Coverage**: Can add unit tests for extracted classes
+- **Test Coverage**: Can add unit tests for all extracted classes with mocked dependencies
+- **Coupling Reduction**: Classes follow Dependency Inversion Principle
+- **Reusability**: All extracted classes are reusable outside Deno runtime (except config manager)
 
 ## 6. Conclusion
 
-The codebase has several repeated patterns that can be extracted into reusable classes and modules. This refactoring will significantly improve code maintainability, reduce duplication, and make the codebase easier to extend and test. The proposed extraction plan is incremental and can be implemented in phases to minimize risk.
+The codebase has several repeated patterns that can be extracted into reusable classes and modules. This refactoring will significantly improve:
+
+1. **Maintainability**: Reduce code duplication by ~825 lines
+2. **Testability**: Dependency injection enables unit testing with mocked dependencies
+3. **Extensibility**: Interfaces allow easy substitution of implementations
+4. **Quality**: Dependency Inversion Principle reduces tight coupling
+
+**Critical Improvement**: Unlike the initial proposal, this updated plan explicitly addresses tight coupling issues by:
+- Using factory interfaces instead of concrete instantiations
+- Removing hardcoded `Deno.exit()` calls from library code
+- Supporting message customization for internationalization
+- Making all dependencies injectable for testing
+
+The proposed extraction plan is incremental and can be implemented in phases to minimize risk. Each phase builds on the previous, ensuring backward compatibility throughout the refactoring.
