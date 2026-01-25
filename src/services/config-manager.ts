@@ -45,4 +45,24 @@ export class ConfigManager {
 
 		return parseConfig;
 	}
+
+	enableWorkspace(workspacePath: string, config: WorkspaceConfig): Result<void, Error> {
+		// Find workspace by path
+		const workspace = config.workspaces.find((item) => item.path === workspacePath);
+
+		// Early return if workspace not found
+		if (!workspace) {
+			return Result.error(new Error(`Workspace not found at path: ${workspacePath}`));
+		}
+
+		// Early return if already active
+		if (workspace.active) {
+			return Result.ok();
+		}
+
+		// Enable the workspace
+		workspace.active = true;
+
+		return Result.ok();
+	}
 }
