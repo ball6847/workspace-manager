@@ -2,9 +2,7 @@ import { createMutex, type Mutex } from "@117/mutex";
 import { Result } from "typescript-result";
 import { wrapError, wrapErrorResult } from "./errors.ts";
 
-export interface GitManagerFactory {
-	create(path: string): GitManager;
-}
+export type GitManagerFactory = (path: string) => GitManager;
 
 // Registry to share mutexes by cwd
 const mutexRegistry = new Map<string, Mutex>();

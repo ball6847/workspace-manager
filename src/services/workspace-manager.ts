@@ -1,31 +1,18 @@
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { wrapErrorResult } from "../libs/errors.ts";
-import { GitManager, GitManagerFactory } from "../libs/git.ts";
+import { GitManagerFactory } from "../libs/git.ts";
 import { GoWork, GoWorkFactory } from "../libs/go.ts";
 
 export class WorkspaceManager {
-	private readonly goWorkFactory: GoWorkFactory;
-	private readonly gitManagerFactory: GitManagerFactory;
-	private readonly workspaceRoot: string;
-
 	constructor(
-		workspaceRoot: string,
-		goWorkFactory?: GoWorkFactory,
-		gitManagerFactory?: GitManagerFactory,
-	) {
-		this.workspaceRoot = workspaceRoot;
-		// Default factory if none provided
-		this.goWorkFactory = goWorkFactory ?? {
-			create: (path: string) => new GoWork(path),
-		};
-		this.gitManagerFactory = gitManagerFactory ?? {
-			create: (path: string) => new GitManager(path),
-		};
-	}
+		private readonly _workspaceRoot: string,
+		private readonly _goWorkFactory: GoWorkFactory,
+		private readonly _gitManagerFactory: GitManagerFactory,
+	) {}
 
 	async checkoutWorkspace(url: string, workspacePath: string, branch: string): Promise<Result<void, Error>> {
-		const git = this.gitManagerFactory.create(this.workspaceRoot);
+		const git = this._gitManagerFactory(this._workspaceRoot);
 
 		// Add submodule with specified branch
 		const addResult = await git.submoduleAdd(url, workspacePath, branch);
@@ -34,8 +21,8 @@ export class WorkspaceManager {
 		}
 
 		// Check out the submodule to the specified branch
-		const fullSubmodulePath = path.join(this.workspaceRoot, workspacePath);
-		const submoduleGit = this.gitManagerFactory.create(fullSubmodulePath);
+		const fullSubmodulePath = path.join(this._workspaceRoot, workspacePath);
+		const submoduleGit = this._gitManagerFactory(fullSubmodulePath);
 		const checkoutResult = await submoduleGit.checkoutBranch(branch);
 		if (!checkoutResult.ok) {
 			return wrapErrorResult(`Failed to checkout submodule at ${workspacePath} to branch ${branch}`, checkoutResult.error);
@@ -51,7 +38,7 @@ export class WorkspaceManager {
 	}
 
 	async setupGoWorkspace(add: string[], remove: string[]): Promise<Result<void, Error>> {
-		const goWork = this.goWorkFactory.create(this.workspaceRoot);
+		const goWork = this._goWorkFactory(this._workspaceRoot);
 
 		// Check if Go is available
 		const goAvailable = await GoWork.isAvailable();

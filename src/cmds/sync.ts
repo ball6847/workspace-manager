@@ -6,6 +6,7 @@ import { CommandErrorHandler } from "../libs/command-error-handler.ts";
 import { processConcurrently } from "../libs/concurrent.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
+import { GoWork } from "../libs/go.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
@@ -76,7 +77,11 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		}
 	}
 
-	const workspaceManager = new WorkspaceManager(workspaceRoot);
+	const workspaceManager = new WorkspaceManager(
+		workspaceRoot,
+		(path: string) => new GoWork(path),
+		(path: string) => new GitManager(path),
+	);
 
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));

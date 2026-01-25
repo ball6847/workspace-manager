@@ -1,9 +1,7 @@
 import { Result } from "typescript-result";
 import { wrapErrorResult } from "./errors.ts";
 
-export interface GoWorkFactory {
-	create(path: string): GoWork;
-}
+export type GoWorkFactory = (path: string) => GoWork;
 
 export interface GoAvailabilityChecker {
 	check(): Promise<Result<boolean, Error>>;

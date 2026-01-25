@@ -3,6 +3,8 @@ import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
+import { GitManager } from "../libs/git.ts";
+import { GoWork } from "../libs/go.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
@@ -51,7 +53,11 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 
 	// Initialize managers
 	const configManager = new ConfigManager(configFile);
-	const workspaceManager = new WorkspaceManager(workspaceRoot);
+	const workspaceManager = new WorkspaceManager(
+		workspaceRoot,
+		(path: string) => new GoWork(path),
+		(path: string) => new GitManager(path),
+	);
 	const interactivePrompt = new InteractivePrompt();
 
 	// Parse config
