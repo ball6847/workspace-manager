@@ -97,17 +97,20 @@ export class WorkspaceDiscovery {
 	 * Check if a config file exists at a specific path
 	 */
 	async configExistsAt(path: string): Promise<Result<boolean, Error>> {
-		const result = await Result.fromAsyncCatching(async () => {
-			const configPath = join(path, this.configFile);
-			const stat = await Deno.stat(configPath);
-			return stat.isFile;
-		});
+		const configPath = join(path, this.configFile);
 
-		if (!result.ok) {
-			return wrapErrorResult<boolean>("Failed to check if config file exists", result.error as Error);
+		const stat = await Result.fromAsyncCatching(() => Deno.stat(configPath));
+
+		if (!stat.ok) {
+			// File doesn't exist - this is an expected case, return false
+			if (stat.error instanceof Deno.errors.NotFound) {
+				return Result.ok(false);
+			}
+			// Real error (permission denied, etc.) - wrap and return
+			return wrapErrorResult<boolean>("Failed to check if config file exists", stat.error as Error);
 		}
 
-		return result;
+		return Result.ok(stat.value.isFile);
 	}
 
 	/**
