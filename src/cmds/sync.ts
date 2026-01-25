@@ -6,9 +6,8 @@ import { CommandErrorHandler } from "../libs/command-error-handler.ts";
 import { processConcurrently } from "../libs/concurrent.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
-import { GoWorkspaceManager } from "../libs/go-workspace-manager.ts";
-import { WorkspaceCheckoutManager } from "../libs/workspace-checkout-manager.ts";
-import { WorkspaceConfigManager } from "../libs/workspace-config-manager.ts";
+import { ConfigManager } from "../services/config-manager.ts";
+import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
 
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
@@ -25,7 +24,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		console.log(blue("🐛 Debug mode enabled"));
 	}
 
-	const configManager = new WorkspaceConfigManager(configFile);
+	const configManager = new ConfigManager(configFile);
 	const configResult = await configManager.getWorkspaceConfig(workspaceRoot);
 	if (!configResult.ok) {
 		console.log(red("❌ Failed to read workspace config"), `(${configResult.error.message})`);
@@ -77,9 +76,10 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		}
 	}
 
+	const workspaceManager = new WorkspaceManager(workspaceRoot);
+
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));
-		const checkoutManager = new WorkspaceCheckoutManager(workspaceRoot);
 
 		const syncResult = await processConcurrently(
 			activeWorkspaces,
@@ -90,7 +90,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 				const dir = await isDir(workspacePath);
 				if (!dir.ok) {
 					console.log(yellow(`📥 Checking out workspace: ${workspace.path}`));
-					const checkout = await checkoutManager.checkoutWorkspace(
+					const checkout = await workspaceManager.checkoutWorkspace(
 						workspace.url,
 						workspace.path,
 						workspace.branch,
@@ -214,8 +214,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	// Setup go workspace
 	console.log(blue("🚀 Setting up Go workspace..."));
-	const goManager = new GoWorkspaceManager(workspaceRoot);
-	const goWorkResult = await goManager.setupWorkspace(
+	const goWorkResult = await workspaceManager.setupGoWorkspace(
 		activeWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
 		inactiveWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
 	);

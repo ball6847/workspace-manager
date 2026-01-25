@@ -1,8 +1,8 @@
 import { Result } from "typescript-result";
-import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "./config.ts";
-import { ErrorWithCause } from "./errors.ts";
+import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "../libs/config.ts";
+import { ErrorWithCause } from "../libs/errors.ts";
 
-export class WorkspaceConfigManager {
+export class ConfigManager {
 	constructor(private readonly configFile: string) {}
 
 	async parseConfig(): Promise<Result<WorkspaceConfig, Error>> {

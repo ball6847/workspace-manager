@@ -1,15 +1,24 @@
-import { GitManager, GitManagerFactory } from "./git.ts";
+import { GoWork, GoWorkFactory } from "../libs/go.ts";
+import { GitManager, GitManagerFactory } from "../libs/git.ts";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "./errors.ts";
+import { ErrorWithCause } from "../libs/errors.ts";
 import * as path from "@std/path";
 
-export class WorkspaceCheckoutManager {
+export class WorkspaceManager {
+	private readonly goWorkFactory: GoWorkFactory;
 	private readonly gitManagerFactory: GitManagerFactory;
 	private readonly workspaceRoot: string;
 
-	constructor(workspaceRoot: string, gitManagerFactory?: GitManagerFactory) {
+	constructor(
+		workspaceRoot: string,
+		goWorkFactory?: GoWorkFactory,
+		gitManagerFactory?: GitManagerFactory,
+	) {
 		this.workspaceRoot = workspaceRoot;
 		// Default factory if none provided
+		this.goWorkFactory = goWorkFactory ?? {
+			create: (path: string) => new GoWork(path),
+		};
 		this.gitManagerFactory = gitManagerFactory ?? {
 			create: (path: string) => new GitManager(path),
 		};
@@ -46,6 +55,40 @@ export class WorkspaceCheckoutManager {
 					pullResult.error,
 				),
 			);
+		}
+
+		return Result.ok();
+	}
+
+	async setupGoWorkspace(add: string[], remove: string[]): Promise<Result<void, Error>> {
+		const goWork = this.goWorkFactory.create(this.workspaceRoot);
+
+		// Check if Go is available
+		const goAvailable = await GoWork.isAvailable();
+		if (!goAvailable) {
+			return Result.error(new Error("Go is not available."));
+		}
+
+		// Initialize go workspace if it doesn't exist
+		const initResult = await goWork.init();
+		if (!initResult.ok) {
+			return Result.error(initResult.error);
+		}
+
+		// Remove inactive Go modules
+		if (remove.length > 0) {
+			const removeResult = await goWork.remove(remove);
+			if (!removeResult.ok) {
+				return Result.error(removeResult.error);
+			}
+		}
+
+		// Add active Go modules
+		if (add.length > 0) {
+			const addResult = await goWork.use(add);
+			if (!addResult.ok) {
+				return Result.error(addResult.error);
+			}
 		}
 
 		return Result.ok();

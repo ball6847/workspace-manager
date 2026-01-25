@@ -1,6 +1,6 @@
 import { Checkbox, Confirm, Input, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "./errors.ts";
+import { ErrorWithCause } from "../libs/errors.ts";
 
 export type PromptMessages = {
 	repo: string;
@@ -28,7 +28,7 @@ export const defaultPromptMessages: PromptMessages = {
 	cancel: "Cancel",
 };
 
-export class InteractivePromptManager {
+export class InteractivePrompt {
 	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
 	private handleError(error: unknown, context: string): ErrorWithCause {
