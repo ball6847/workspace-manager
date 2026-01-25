@@ -7,10 +7,7 @@ export class WorkspaceCheckoutManager {
 	private readonly gitManagerFactory: GitManagerFactory;
 	private readonly workspaceRoot: string;
 
-	constructor(
-		workspaceRoot: string,
-		gitManagerFactory?: GitManagerFactory,
-	) {
+	constructor(workspaceRoot: string, gitManagerFactory?: GitManagerFactory) {
 		this.workspaceRoot = workspaceRoot;
 		// Default factory if none provided
 		this.gitManagerFactory = gitManagerFactory ?? {
@@ -18,11 +15,7 @@ export class WorkspaceCheckoutManager {
 		};
 	}
 
-	async checkoutWorkspace(
-		url: string,
-		workspacePath: string,
-		branch: string,
-	): Promise<Result<void, Error>> {
+	async checkoutWorkspace(url: string, workspacePath: string, branch: string): Promise<Result<void, Error>> {
 		const git = this.gitManagerFactory.create(this.workspaceRoot);
 
 		// Add submodule with specified branch

@@ -2,70 +2,36 @@ import { Checkbox, Confirm, Input, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
 import { ErrorWithCause } from "./errors.ts";
 
-export interface PromptMessageProvider {
-	getRepoMessage(): string;
-	getPathMessage(): string;
-	getBranchMessage(): string;
-	getBranchSuggestions(): string[];
-	getGoMessage(): string;
-	getContinueMessage(): string;
-	getSyncMessage(): string;
-	getWorkspaceSelectionMessage(): string;
-	getWorkspaceOpenMessage(): string;
-	getCancelLabel(): string;
-}
+export type PromptMessages = {
+	repo: string;
+	path: string;
+	branch: string;
+	branchSuggestions: string[];
+	go: string;
+	continue: string;
+	sync: string;
+	workspaceSelection: string;
+	workspaceOpen: string;
+	cancel: string;
+};
 
-export class DefaultPromptMessageProvider implements PromptMessageProvider {
-	getRepoMessage(): string {
-		return "Repository URL:";
-	}
-
-	getPathMessage(): string {
-		return "Local path:";
-	}
-
-	getBranchMessage(): string {
-		return "Branch:";
-	}
-
-	getBranchSuggestions(): string[] {
-		return ["main", "master", "develop", "staging"];
-	}
-
-	getGoMessage(): string {
-		return "Is this a Go module?";
-	}
-
-	getContinueMessage(): string {
-		return "Do you want to add another workspace?";
-	}
-
-	getSyncMessage(): string {
-		return "Do you want to sync now?";
-	}
-
-	getWorkspaceSelectionMessage(): string {
-		return "Select workspaces to enable (use space to toggle, enter to confirm):";
-	}
-
-	getWorkspaceOpenMessage(): string {
-		return "Select workspace to open:";
-	}
-
-	getCancelLabel(): string {
-		return "Cancel";
-	}
-}
+export const defaultPromptMessages: PromptMessages = {
+	repo: "Repository URL:",
+	path: "Local path:",
+	branch: "Branch:",
+	branchSuggestions: ["main", "master", "develop", "staging"],
+	go: "Is this a Go module?",
+	continue: "Do you want to add another workspace?",
+	sync: "Do you want to sync now?",
+	workspaceSelection: "Select workspaces to enable (use space to toggle, enter to confirm):",
+	workspaceOpen: "Select workspace to open:",
+	cancel: "Cancel",
+};
 
 export class InteractivePromptManager {
-	constructor(
-		private readonly messageProvider: PromptMessageProvider = new DefaultPromptMessageProvider(),
-	) {}
+	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
-	private wrapPrompt<T>(
-		promptFn: () => Promise<T>,
-		errorContext: string,
-	): Promise<Result<T, Error>> {
+	private wrapPrompt<T>(promptFn: () => Promise<T>, errorContext: string): Promise<Result<T, Error>> {
 		return Result.wrap(
 			() => promptFn(),
 			(error) => {
@@ -77,11 +43,11 @@ export class InteractivePromptManager {
 		)();
 	}
 
-	async promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
+	promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Input.prompt({
-					message: this.messageProvider.getRepoMessage(),
+					message: this.messages.repo,
 					default: defaultRepo,
 					validate: (value) => {
 						if (!value || value.trim() === "") {
@@ -94,65 +60,63 @@ export class InteractivePromptManager {
 		);
 	}
 
-	async promptForPath(defaultPath: string): Promise<Result<string, Error>> {
+	promptForPath(defaultPath: string): Promise<Result<string, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Input.prompt({
-					message: this.messageProvider.getPathMessage(),
+					message: this.messages.path,
 					default: defaultPath,
 				}),
 			"Failed to prompt for path",
 		);
 	}
 
-	async promptForBranch(): Promise<Result<string, Error>> {
+	promptForBranch(): Promise<Result<string, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Input.prompt({
-					message: this.messageProvider.getBranchMessage(),
+					message: this.messages.branch,
 					default: "main",
-					suggestions: this.messageProvider.getBranchSuggestions(),
+					suggestions: this.messages.branchSuggestions,
 				}),
 			"Failed to prompt for branch",
 		);
 	}
 
-	async promptForGo(): Promise<Result<boolean, Error>> {
+	promptForGo(): Promise<Result<boolean, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Confirm.prompt({
-					message: this.messageProvider.getGoMessage(),
+					message: this.messages.go,
 					default: false,
 				}),
 			"Failed to prompt for Go workspace setting",
 		);
 	}
 
-	async promptForContinue(): Promise<Result<boolean, Error>> {
+	promptForContinue(): Promise<Result<boolean, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Confirm.prompt({
-					message: this.messageProvider.getContinueMessage(),
+					message: this.messages.continue,
 					default: false,
 				}),
 			"Failed to prompt for continue",
 		);
 	}
 
-	async promptForSync(): Promise<Result<boolean, Error>> {
+	promptForSync(): Promise<Result<boolean, Error>> {
 		return this.wrapPrompt(
 			() =>
 				Confirm.prompt({
-					message: this.messageProvider.getSyncMessage(),
+					message: this.messages.sync,
 					default: true,
 				}),
 			"Failed to prompt for sync confirmation",
 		);
 	}
 
-	async promptForWorkspaceSelection(
-		workspaces: Array<{ path: string; url: string; active: boolean }>,
-	): Promise<Result<string[], Error>> {
+	promptForWorkspaceSelection(workspaces: Array<{ path: string; url: string; active: boolean }>): Promise<Result<string[], Error>> {
 		const options = workspaces.map((workspace) => ({
 			name: `${workspace.path} (${workspace.url})`,
 			value: workspace.path,
@@ -162,7 +126,7 @@ export class InteractivePromptManager {
 		return this.wrapPrompt(
 			() =>
 				Checkbox.prompt({
-					message: this.messageProvider.getWorkspaceSelectionMessage(),
+					message: this.messages.workspaceSelection,
 					search: true,
 					options,
 				}),
@@ -170,32 +134,29 @@ export class InteractivePromptManager {
 		);
 	}
 
-	async promptForWorkspaceSelectionSingle(
-		workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>,
-	): Promise<Result<string | null, Error>> {
+	async promptForWorkspaceSelectionSingle(workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>): Promise<Result<string | null, Error>> {
 		const options = workspaces.map((workspace) => ({
 			name: `${workspace.active ? "◉" : "○"} ${workspace.path} (${workspace.branch})`,
 			value: workspace.path,
 		}));
 
 		options.push({
-			name: this.messageProvider.getCancelLabel(),
+			name: this.messages.cancel,
 			value: "cancel",
 		});
 
-		return this.wrapPrompt(
+		const result = await this.wrapPrompt(
 			() =>
 				Select.prompt({
-					message: this.messageProvider.getWorkspaceOpenMessage(),
+					message: this.messages.workspaceOpen,
 					options: options,
 					search: true,
 				}),
 			"Failed to prompt for workspace selection",
-		).then((result) => {
-			if (result.ok && result.value === "cancel") {
-				return Result.ok(null);
-			}
-			return result;
-		});
+		);
+		if (result.ok && result.value === "cancel") {
+			return Result.ok(null);
+		}
+		return result;
 	}
 }

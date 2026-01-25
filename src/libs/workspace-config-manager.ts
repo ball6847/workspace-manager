@@ -1,6 +1,5 @@
-import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "./config.ts";
-import { isDir } from "./file.ts";
 import { Result } from "typescript-result";
+import { parseConfigFile, type WorkspaceConfig, type WorkspaceConfigItem, writeConfigFile } from "./config.ts";
 import { ErrorWithCause } from "./errors.ts";
 
 export class WorkspaceConfigManager {
