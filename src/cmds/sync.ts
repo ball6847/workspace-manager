@@ -246,9 +246,7 @@ export const command = new Command()
 		const result = await syncCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
-			concurrency: typeof options.concurrency === "string"
-				? parseInt(options.concurrency, 10)
-				: options.concurrency,
+			concurrency: typeof options.concurrency === "string" ? parseInt(options.concurrency, 10) : options.concurrency,
 			debug: options.debug,
 		});
 		CommandErrorHandler.withExit(result, "Sync");

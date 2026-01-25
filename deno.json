@@ -36,7 +36,7 @@
       "**/*.ts"
     ],
     "indentWidth": 4,
-    "lineWidth": 120,
+    "lineWidth": 200,
     "proseWrap": "preserve",
     "singleQuote": false,
     "useTabs": true

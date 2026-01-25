@@ -6,11 +6,7 @@ export class GoWorkspaceManager {
 	private readonly availabilityChecker: GoAvailabilityChecker;
 	private readonly workspaceRoot: string;
 
-	constructor(
-		workspaceRoot: string,
-		goWorkFactory?: GoWorkFactory,
-		availabilityChecker?: GoAvailabilityChecker,
-	) {
+	constructor(workspaceRoot: string, goWorkFactory?: GoWorkFactory, availabilityChecker?: GoAvailabilityChecker) {
 		this.workspaceRoot = workspaceRoot;
 		// Default factory if none provided
 		this.goWorkFactory = goWorkFactory ?? {

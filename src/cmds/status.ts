@@ -226,10 +226,7 @@ function outputJson(repositories: RepositoryStatus[]) {
 		clean: repositories.filter((r) => r.exists && r.isClean).length,
 		modified: repositories.filter((r) => r.exists && !r.isClean).length,
 		missing: repositories.filter((r) => !r.exists).length,
-		onWrongBranch:
-			repositories.filter((r) =>
-				r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
-			).length,
+		onWrongBranch: repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length,
 		goModules: repositories.filter((r) => r.isGoModule).length,
 	};
 
@@ -275,10 +272,7 @@ function outputTable(repositories: RepositoryStatus[], verbose: boolean) {
 	const clean = repositories.filter((r) => r.exists && r.isClean).length;
 	const modified = repositories.filter((r) => r.exists && !r.isClean).length;
 	const missing = repositories.filter((r) => !r.exists).length;
-	const wrongBranch =
-		repositories.filter((r) =>
-			r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch
-		).length;
+	const wrongBranch = repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length;
 
 	console.log("");
 	console.log(blue(`📊 Workspace Status - ${repositories.length} active repositories`));
