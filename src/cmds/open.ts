@@ -121,7 +121,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 		}
 
 		// Enable the workspace
-		const enableResult = await configManager.enableWorkspace(selected.path, config);
+		const enableResult = configManager.enableWorkspace(selected.path, config);
 		if (!enableResult.ok) {
 			return enableResult;
 		}
