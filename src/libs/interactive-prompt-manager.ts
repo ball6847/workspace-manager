@@ -31,20 +31,15 @@ export const defaultPromptMessages: PromptMessages = {
 export class InteractivePromptManager {
 	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
-	private wrapPrompt<T>(promptFn: () => Promise<T>, errorContext: string): Promise<Result<T, Error>> {
-		return Result.wrap(
-			() => promptFn(),
-			(error) => {
-				if (error instanceof Error && error.message.includes("cancelled")) {
-					return new ErrorWithCause("Operation cancelled", error);
-				}
-				return new ErrorWithCause(errorContext, error as Error);
-			},
-		)();
+	private handleError(error: unknown, context: string): ErrorWithCause {
+		if (error instanceof Error && error.message.includes("cancelled")) {
+			return new ErrorWithCause("Operation cancelled", error);
+		}
+		return new ErrorWithCause(context, error as Error);
 	}
 
 	promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Input.prompt({
 					message: this.messages.repo,
@@ -56,64 +51,64 @@ export class InteractivePromptManager {
 						return true;
 					},
 				}),
-			"Failed to prompt for repository URL",
-		);
+			(error) => this.handleError(error, "Failed to prompt for repository URL"),
+		)();
 	}
 
 	promptForPath(defaultPath: string): Promise<Result<string, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Input.prompt({
 					message: this.messages.path,
 					default: defaultPath,
 				}),
-			"Failed to prompt for path",
-		);
+			(error) => this.handleError(error, "Failed to prompt for path"),
+		)();
 	}
 
 	promptForBranch(): Promise<Result<string, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Input.prompt({
 					message: this.messages.branch,
 					default: "main",
 					suggestions: this.messages.branchSuggestions,
 				}),
-			"Failed to prompt for branch",
-		);
+			(error) => this.handleError(error, "Failed to prompt for branch"),
+		)();
 	}
 
 	promptForGo(): Promise<Result<boolean, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Confirm.prompt({
 					message: this.messages.go,
 					default: false,
 				}),
-			"Failed to prompt for Go workspace setting",
-		);
+			(error) => this.handleError(error, "Failed to prompt for Go workspace setting"),
+		)();
 	}
 
 	promptForContinue(): Promise<Result<boolean, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Confirm.prompt({
 					message: this.messages.continue,
 					default: false,
 				}),
-			"Failed to prompt for continue",
-		);
+			(error) => this.handleError(error, "Failed to prompt for continue"),
+		)();
 	}
 
 	promptForSync(): Promise<Result<boolean, Error>> {
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Confirm.prompt({
 					message: this.messages.sync,
 					default: true,
 				}),
-			"Failed to prompt for sync confirmation",
-		);
+			(error) => this.handleError(error, "Failed to prompt for sync confirmation"),
+		)();
 	}
 
 	promptForWorkspaceSelection(workspaces: Array<{ path: string; url: string; active: boolean }>): Promise<Result<string[], Error>> {
@@ -123,15 +118,15 @@ export class InteractivePromptManager {
 			checked: workspace.active,
 		}));
 
-		return this.wrapPrompt(
+		return Result.wrap(
 			() =>
 				Checkbox.prompt({
 					message: this.messages.workspaceSelection,
 					search: true,
 					options,
 				}),
-			"Failed to prompt for workspace selection",
-		);
+			(error) => this.handleError(error, "Failed to prompt for workspace selection"),
+		)();
 	}
 
 	async promptForWorkspaceSelectionSingle(workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>): Promise<Result<string | null, Error>> {
@@ -145,15 +140,16 @@ export class InteractivePromptManager {
 			value: "cancel",
 		});
 
-		const result = await this.wrapPrompt(
+		const result = await Result.wrap(
 			() =>
 				Select.prompt({
 					message: this.messages.workspaceOpen,
 					options: options,
 					search: true,
 				}),
-			"Failed to prompt for workspace selection",
-		);
+			(error) => this.handleError(error, "Failed to prompt for workspace selection"),
+		)();
+
 		if (result.ok && result.value === "cancel") {
 			return Result.ok(null);
 		}
