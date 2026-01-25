@@ -1,7 +1,7 @@
 import { Checkbox } from "@cliffy/prompt/checkbox";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
@@ -118,9 +118,9 @@ async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: Con
 			}),
 		(error) => {
 			if (error instanceof Error && error.message.includes("cancelled")) {
-				return new ErrorWithCause("Operation cancelled", error);
+				return wrapError("Operation cancelled", error);
 			}
-			return new ErrorWithCause("Failed to prompt for workspace selection", error as Error);
+			return wrapError("Failed to prompt for workspace selection", error as Error);
 		},
 	)();
 

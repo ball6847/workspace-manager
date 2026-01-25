@@ -1,6 +1,6 @@
 import { parse, stringify } from "@std/yaml";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapErrorResult } from "../libs/errors.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
 export class ConfigManager {
@@ -23,9 +23,7 @@ export class ConfigManager {
 		// Check if file mtime changed (invalidate cache if needed)
 		const statResult = await Result.fromAsyncCatching(() => Deno.stat(this.configFile));
 		if (!statResult.ok) {
-			return Result.error(
-				new ErrorWithCause(`Unable to stat config file`, statResult.error),
-			);
+			return wrapErrorResult<WorkspaceConfig>(`Unable to stat config file`, statResult.error);
 		}
 
 		const currentMtime = statResult.value.mtime?.getTime() ?? null;
@@ -58,9 +56,7 @@ export class ConfigManager {
 		});
 
 		if (!result.ok) {
-			return Result.error(
-				new ErrorWithCause(`Unable to read or parse config file`, result.error as Error),
-			);
+			return wrapErrorResult<WorkspaceConfig>(`Unable to read or parse config file`, result.error as Error);
 		}
 
 		return Result.ok(result.value);
@@ -76,7 +72,7 @@ export class ConfigManager {
 		});
 
 		if (!result.ok) {
-			return Result.error(new ErrorWithCause(`Unable to write config file`, result.error as Error));
+			return wrapErrorResult(`Unable to write config file`, result.error as Error);
 		}
 
 		// Clear cache and update mtime after successful write
@@ -92,7 +88,7 @@ export class ConfigManager {
 	async validateWorkspaceDir(workspaceRoot: string): Promise<Result<void, Error>> {
 		const stat = await Result.fromAsyncCatching(() => Deno.stat(workspaceRoot));
 		if (!stat.ok) {
-			return Result.error(new ErrorWithCause(`Workspace directory is not a directory`, stat.error));
+			return wrapErrorResult(`Workspace directory is not a directory`, stat.error);
 		}
 		if (!stat.value.isDirectory) {
 			return Result.error(new Error(`Workspace directory is not a directory`));

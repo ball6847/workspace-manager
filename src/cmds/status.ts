@@ -3,7 +3,7 @@ import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { ConfigManager } from "../services/config-manager.ts";
@@ -220,7 +220,7 @@ async function getFileStatus(cwd: string): Promise<Result<{ modified: number; un
 		}
 
 		return { modified, untracked };
-	}).mapError((error) => new ErrorWithCause("Failed to get file status", error));
+	}).mapError((error) => wrapError("Failed to get file status", error));
 }
 
 function outputJson(repositories: RepositoryStatus[]) {

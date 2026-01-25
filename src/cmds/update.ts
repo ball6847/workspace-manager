@@ -2,7 +2,7 @@ import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { processConcurrently } from "../libs/concurrent.ts";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapErrorResult } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { ConfigManager } from "../services/config-manager.ts";
@@ -193,7 +193,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 async function validateWorkspaceDir(path: string) {
 	const stat = await Result.fromAsyncCatching(() => Deno.stat(path));
 	if (!stat.ok) {
-		return Result.error(new ErrorWithCause(`Workspace directory is not a directory`, stat.error));
+		return wrapErrorResult(`Workspace directory is not a directory`, stat.error);
 	}
 	if (!stat.value.isDirectory) {
 		return Result.error(new Error(`Workspace directory is not a directory`));

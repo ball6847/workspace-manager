@@ -1,10 +1,10 @@
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "./errors.ts";
+import { wrapError, wrapErrorResult } from "./errors.ts";
 
 export async function isDir(path: string): Promise<Result<void, Error>> {
 	const stat = await Result.fromAsyncCatching(() => Deno.stat(path));
 	if (!stat.ok) {
-		return Result.error(new ErrorWithCause(`directory is not exist: ${path}`, stat.error));
+		return wrapErrorResult(`directory is not exist: ${path}`, stat.error);
 	}
 	if (!stat.value.isDirectory) {
 		return Result.error(new Error(`not a directory: ${path}`));
@@ -26,5 +26,5 @@ export async function isDirectoryEmpty(dirPath: string): Promise<Result<boolean,
 			}
 		}
 		return true; // No non-hidden files found, directory is empty
-	}).mapError((error) => new ErrorWithCause(`Failed to check if directory is empty`, error));
+	}).mapError((error) => wrapError(`Failed to check if directory is empty`, error));
 }

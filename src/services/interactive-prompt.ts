@@ -1,6 +1,6 @@
 import { Checkbox, Confirm, Input, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 
 export type PromptMessages = {
 	repo: string;
@@ -33,11 +33,11 @@ export const defaultPromptMessages: PromptMessages = {
 export class InteractivePrompt {
 	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
-	private _handleError(error: unknown, context: string): ErrorWithCause {
+	private _handleError(error: unknown, context: string): Error {
 		if (error instanceof Error && error.message.includes("cancelled")) {
-			return new ErrorWithCause("Operation cancelled", error);
+			return wrapError("Operation cancelled", error);
 		}
-		return new ErrorWithCause(context, error as Error);
+		return wrapError(context, error as Error);
 	}
 
 	promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {

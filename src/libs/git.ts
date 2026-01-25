@@ -1,6 +1,6 @@
-import { Result } from "typescript-result";
-import { ErrorWithCause } from "./errors.ts";
 import { createMutex, type Mutex } from "@117/mutex";
+import { Result } from "typescript-result";
+import { wrapError, wrapErrorResult } from "./errors.ts";
 
 export interface GitManagerFactory {
 	create(path: string): GitManager;
@@ -113,7 +113,7 @@ export class GitManager {
 			}
 			return new TextDecoder().decode(result.value.stdout).trim();
 		}).mapError(
-			(error) => new ErrorWithCause(`Failed to get current branch`, error),
+			(error) => wrapError(`Failed to get current branch`, error),
 		);
 	}
 
@@ -139,13 +139,7 @@ export class GitManager {
 				throw result.error;
 			}
 			return result.value.success;
-		}).mapError(
-			(error) =>
-				new ErrorWithCause(
-					`Failed to check if directory is a git repository`,
-					error,
-				),
-		);
+		}).mapError((error) => wrapError(`Failed to check if directory is a git repository`, error));
 	}
 
 	async isWorkingDirectoryClean(): Promise<Result<boolean, Error>> {
@@ -157,7 +151,7 @@ export class GitManager {
 			const output = new TextDecoder().decode(result.value.stdout).trim();
 			return output.length === 0;
 		}).mapError(
-			(error) => new ErrorWithCause(`Failed to check git status`, error),
+			(error) => wrapError(`Failed to check git status`, error),
 		);
 	}
 
@@ -200,7 +194,7 @@ export class GitManager {
 	): Promise<Result<void, Error>> {
 		const result = await this.runCommand(args);
 		if (!result.ok) {
-			return Result.error(new ErrorWithCause(context, result.error));
+			return wrapErrorResult(context, result.error);
 		}
 		return Result.ok(undefined);
 	}

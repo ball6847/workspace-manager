@@ -1,7 +1,7 @@
 import { blue, green, red } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
@@ -274,5 +274,5 @@ async function openInEditor(dir: string, editor: string, debug: boolean): Promis
 		if (!status.success) {
 			throw new Error(`Editor exited with code ${status.code}`);
 		}
-	}).mapError((error) => new ErrorWithCause(`Failed to open editor for ${dir}`, error));
+	}).mapError((error) => wrapError(`Failed to open editor for ${dir}`, error));
 }

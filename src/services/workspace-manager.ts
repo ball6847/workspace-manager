@@ -1,6 +1,6 @@
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { ErrorWithCause } from "../libs/errors.ts";
+import { wrapErrorResult } from "../libs/errors.ts";
 import { GitManager, GitManagerFactory } from "../libs/git.ts";
 import { GoWork, GoWorkFactory } from "../libs/go.ts";
 
@@ -38,23 +38,13 @@ export class WorkspaceManager {
 		const submoduleGit = this.gitManagerFactory.create(fullSubmodulePath);
 		const checkoutResult = await submoduleGit.checkoutBranch(branch);
 		if (!checkoutResult.ok) {
-			return Result.error(
-				new ErrorWithCause(
-					`Failed to checkout submodule at ${workspacePath} to branch ${branch}`,
-					checkoutResult.error,
-				),
-			);
+			return wrapErrorResult(`Failed to checkout submodule at ${workspacePath} to branch ${branch}`, checkoutResult.error);
 		}
 
 		// Pull the latest changes from the specified branch
 		const pullResult = await submoduleGit.pullOriginBranch(branch);
 		if (!pullResult.ok) {
-			return Result.error(
-				new ErrorWithCause(
-					`Failed to pull latest changes for submodule at ${workspacePath} from branch ${branch}`,
-					pullResult.error,
-				),
-			);
+			return wrapErrorResult(`Failed to pull latest changes for submodule at ${workspacePath} from branch ${branch}`, pullResult.error);
 		}
 
 		return Result.ok();
