@@ -1,6 +1,6 @@
 # Post-Sync Hooks
 
-> ⚠️ **This is a planned feature** - not yet implemented.
+> ✅ **Implemented** - This feature is fully implemented and ready to use.
 
 Workspace Manager supports post-sync hooks to execute custom commands after synchronization. Complex automation should be delegated to shell scripts.
 
@@ -200,10 +200,10 @@ workspaces:
 
 ## Implementation Roadmap
 
-- [ ] Add global hook configuration parsing
-- [ ] Implement global hook execution after sync
-- [ ] Add variable substitution (`{root}`, `{path}`)
-- [ ] Add workspace-specific hook parsing
-- [ ] Implement workspace hook execution
-- [ ] Add working directory and timeout support
-- [ ] Environment variable support
+- [x] Add global hook configuration parsing
+- [x] Implement global hook execution after sync
+- [x] Add variable substitution (`{root}`, `{path}`)
+- [x] Add workspace-specific hook parsing
+- [x] Implement workspace hook execution
+- [x] Add working directory and timeout support
+- [x] Environment variable support

@@ -7,6 +7,7 @@ import { processConcurrently } from "../libs/concurrent.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { GoWork } from "../libs/go.ts";
+import { HookExecutor } from "../libs/hooks.ts";
 import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
@@ -246,6 +247,70 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 	}
 
 	console.log(green("🎉 Sync complete!"));
+
+	// Execute post-sync hooks
+	const hookExecutor = new HookExecutor(debug);
+
+	// Execute global hooks
+	if (config.hooks?.postSyncHooks?.length) {
+		console.log(blue(`🔧 Executing ${config.hooks.postSyncHooks.length} global post-sync hooks...`));
+		const globalHooksResult = await hookExecutor.executeHooks(config.hooks.postSyncHooks, {
+			root: workspaceRoot,
+			path: workspaceRoot,
+		});
+
+		if (!globalHooksResult.ok) {
+			console.log(red("❌ Global post-sync hooks failed:"), globalHooksResult.error.message);
+			return Result.error(globalHooksResult.error);
+		}
+
+		for (const result of globalHooksResult.value) {
+			if (!result.success) {
+				console.log(yellow(`⚠️  Global hook failed with exit code ${result.exitCode}`));
+				if (result.stderr) console.log(yellow(`stderr: ${result.stderr}`));
+			} else {
+				console.log(green(`✅ Global hook completed in ${result.duration}ms`));
+			}
+		}
+	}
+
+	// Execute workspace-specific hooks
+	const workspacesWithHooks = activeWorkspaces.filter((w) => w.postSyncHooks?.length);
+	if (workspacesWithHooks.length) {
+		console.log(blue(`🔧 Executing workspace-specific post-sync hooks for ${workspacesWithHooks.length} workspaces...`));
+
+		const workspaceHooksResult = await processConcurrently(
+			workspacesWithHooks,
+			async (workspace) => {
+				console.log(blue(`🔧 Executing ${workspace.postSyncHooks!.length} hooks for ${workspace.path}...`));
+
+				const result = await hookExecutor.executeHooks(workspace.postSyncHooks!, {
+					root: workspaceRoot,
+					path: workspace.path,
+				});
+
+				if (!result.ok) {
+					console.log(red(`❌ Post-sync hooks failed for ${workspace.path}:`), result.error.message);
+					return Result.error(result.error);
+				}
+
+				for (const hookResult of result.value) {
+					if (!hookResult.success) {
+						console.log(yellow(`⚠️  Hook failed for ${workspace.path} with exit code ${hookResult.exitCode}`));
+						if (hookResult.stderr) console.log(yellow(`stderr: ${hookResult.stderr}`));
+					} else {
+						console.log(green(`✅ Hook completed for ${workspace.path} in ${hookResult.duration}ms`));
+					}
+				}
+
+				return Result.ok();
+			},
+		);
+
+		if (!workspaceHooksResult.ok) {
+			return Result.error(workspaceHooksResult.error);
+		}
+	}
 
 	return Result.ok();
 }

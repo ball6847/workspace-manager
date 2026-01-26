@@ -1,5 +1,18 @@
 editor: "nvim"
 
+# Global hooks that run after all workspace syncs complete
+hooks:
+  postSyncHooks:
+    - cmd: ["echo", "All workspaces synced successfully!"]
+      description: "Notification hook"
+      timeout: 5000
+    - cmd: ["deno", "task", "build"]
+      description: "Build project after sync"
+      workDir: "{root}"
+      timeout: 120000
+      env:
+        NODE_ENV: "development"
+
 workspaces:
   - url: 'git@example.com:org1/repo1.git'
     path: projects/repo1
@@ -11,6 +24,17 @@ workspaces:
     branch: develop
     isGolang: true
     active: true
+    postSyncHooks:
+      - cmd: ["go", "mod", "tidy"]
+        description: "Clean up Go dependencies"
+        workDir: "{path}"
+        timeout: 30000
+      - cmd: ["go", "test", "./..."]
+        description: "Run Go tests"
+        workDir: "{path}"
+        timeout: 60000
+        env:
+          GOFLAGS: "-v"
   - url: 'git@fake-domain.net:team-a/k8s-config.git'
     path: deployments/k8s-config
     branch: stable
