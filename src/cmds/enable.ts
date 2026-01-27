@@ -90,33 +90,6 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 }
 
 /**
- * Handle checkbox prompt errors
- *
- * @param error Error from checkbox prompt
- * @returns Wrapped error with context
- */
-function handleCheckboxError(error: unknown): Error {
-	if (error instanceof Error && error.message.includes("cancelled")) {
-		return wrapError("Operation cancelled", error);
-	}
-	return wrapError("Failed to prompt for workspace selection", error as Error);
-}
-
-/**
- * Prompt user to select workspaces via checkbox
- *
- * @param options Checkbox options
- * @returns Promise that resolves to selected workspace paths
- */
-function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Promise<string[]> {
-	return Checkbox.prompt({
-		message: "Select workspaces to enable (use space to toggle, enter to confirm):",
-		search: true,
-		options,
-	});
-}
-
-/**
  * Toggle active states for workspaces using multi-select
  *
  * @param config Workspace configuration
@@ -124,7 +97,6 @@ function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Pr
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-
 async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: ConfigManager, debug: boolean): Promise<Result<void, Error>> {
 	if (config.workspaces.length === 0) {
 		console.log(yellow("⚠️  No workspaces found"));
@@ -180,6 +152,33 @@ async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: Con
 
 	console.log(green("✅ Workspace states updated successfully"));
 	return Result.ok();
+}
+
+/**
+ * Prompt user to select workspaces via checkbox
+ *
+ * @param options Checkbox options
+ * @returns Promise that resolves to selected workspace paths
+ */
+function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Promise<string[]> {
+	return Checkbox.prompt({
+		message: "Select workspaces to enable (use space to toggle, enter to confirm):",
+		search: true,
+		options,
+	});
+}
+
+/**
+ * Handle checkbox prompt errors
+ *
+ * @param error Error from checkbox prompt
+ * @returns Wrapped error with context
+ */
+function handleCheckboxError(error: unknown): Error {
+	if (error instanceof Error && error.message.includes("cancelled")) {
+		return wrapError("Operation cancelled", error);
+	}
+	return wrapError("Failed to prompt for workspace selection", error as Error);
 }
 
 /**
