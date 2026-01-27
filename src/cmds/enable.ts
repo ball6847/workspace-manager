@@ -1,4 +1,4 @@
-import { Checkbox } from "@cliffy/prompt/checkbox";
+import { Checkbox, type CheckboxOption } from "@cliffy/prompt/checkbox";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { wrapError } from "../libs/errors.ts";
@@ -81,18 +81,39 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(
-		autoSync,
-		configPath,
-		workspaceRoot,
-		debug,
-		option.concurrency ?? 4,
-	);
+	const syncResult = await handleSyncConfirmation(autoSync, configPath, workspaceRoot, debug, option.concurrency ?? 4);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
 
 	return Result.ok();
+}
+
+/**
+ * Handle checkbox prompt errors
+ *
+ * @param error Error from checkbox prompt
+ * @returns Wrapped error with context
+ */
+function handleCheckboxError(error: unknown): Error {
+	if (error instanceof Error && error.message.includes("cancelled")) {
+		return wrapError("Operation cancelled", error);
+	}
+	return wrapError("Failed to prompt for workspace selection", error as Error);
+}
+
+/**
+ * Prompt user to select workspaces via checkbox
+ *
+ * @param options Checkbox options
+ * @returns Promise that resolves to selected workspace paths
+ */
+function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Promise<string[]> {
+	return Checkbox.prompt({
+		message: "Select workspaces to enable (use space to toggle, enter to confirm):",
+		search: true,
+		options,
+	});
 }
 
 /**
@@ -103,6 +124,7 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
+
 async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: ConfigManager, debug: boolean): Promise<Result<void, Error>> {
 	if (config.workspaces.length === 0) {
 		console.log(yellow("⚠️  No workspaces found"));
@@ -121,20 +143,7 @@ async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: Con
 	}));
 
 	// Prompt user to select workspaces to enable (multi-select)
-	const selectedPathsResult = await Result.wrap(
-		() =>
-			Checkbox.prompt({
-				message: "Select workspaces to enable (use space to toggle, enter to confirm):",
-				search: true,
-				options,
-			}),
-		(error) => {
-			if (error instanceof Error && error.message.includes("cancelled")) {
-				return wrapError("Operation cancelled", error);
-			}
-			return wrapError("Failed to prompt for workspace selection", error as Error);
-		},
-	)();
+	const selectedPathsResult = await Result.wrap(() => promptForWorkspaceSelection(options), handleCheckboxError)();
 
 	if (!selectedPathsResult.ok) {
 		if (selectedPathsResult.error.message.includes("cancelled")) {
@@ -153,9 +162,7 @@ async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: Con
 		workspace.active = selectedPaths.includes(workspace.path);
 		if (wasActive !== workspace.active) {
 			changed = true;
-			console.log(
-				workspace.active ? green(`✅ Enabled: ${workspace.path}`) : yellow(`⏸️  Disabled: ${workspace.path}`),
-			);
+			console.log(workspace.active ? green(`✅ Enabled: ${workspace.path}`) : yellow(`⏸️  Disabled: ${workspace.path}`));
 		}
 	}
 
@@ -185,26 +192,15 @@ async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: Con
  * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
-async function handleSyncConfirmation(
-	autoSync: boolean,
-	configFile: string,
-	workspaceRoot: string,
-	debug: boolean,
-	concurrency: number,
-): Promise<Result<void, Error>> {
+async function handleSyncConfirmation(autoSync: boolean, configFile: string, workspaceRoot: string, debug: boolean, concurrency: number): Promise<Result<void, Error>> {
 	// Prompt for sync if not auto-sync
 	if (!autoSync) {
-		const interactivePrompt = new InteractivePrompt();
-		const syncResult = await interactivePrompt.promptForSyncWithInput();
-		if (!syncResult.ok) {
-			// User cancelled or other error, tell user to run sync manually
-			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
-			return Result.ok();
+		const shouldSyncResult = await promptForSync();
+		if (!shouldSyncResult.ok) {
+			return shouldSyncResult;
 		}
 
-		const shouldSync = syncResult.value;
-		if (shouldSync.toLowerCase() === "n" || shouldSync.toLowerCase() === "no") {
-			// User selected not to sync, early return
+		if (!shouldSyncResult.value) {
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
 			return Result.ok();
 		}
@@ -224,4 +220,25 @@ async function handleSyncConfirmation(
 	}
 
 	return Result.ok();
+}
+
+/**
+ * Prompt user for sync confirmation
+ *
+ * @returns Result with boolean indicating whether to sync
+ */
+async function promptForSync(): Promise<Result<boolean, Error>> {
+	const interactivePrompt = new InteractivePrompt();
+	const syncResult = await interactivePrompt.promptForSyncWithInput();
+	if (!syncResult.ok) {
+		// User cancelled or other error
+		return Result.ok(false);
+	}
+
+	const shouldSync = syncResult.value;
+	if (shouldSync.toLowerCase() === "n" || shouldSync.toLowerCase() === "no") {
+		return Result.ok(false);
+	}
+
+	return Result.ok(true);
 }

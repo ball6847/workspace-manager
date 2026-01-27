@@ -39,6 +39,33 @@ const result = await someService.performOperation(
 );
 ```
 
+### Exception: Object Parameters with 3+ Properties
+
+When passing an object literal as a function argument with **3 or more properties**, format it across multiple lines (one property per line) for readability.
+
+```typescript
+// ✅ CORRECT - 1-2 properties: keep inline
+await someFunc({ key1, key2 });
+const options = items.map((item) => ({ name: item.name, value: item.id }));
+
+// ✅ CORRECT - 3+ properties: multi-line
+await syncCommand({
+    config: configFile,
+    workspaceRoot,
+    debug,
+    concurrency,
+});
+
+const options = items.map((item) => ({
+    name: item.name,
+    value: item.id,
+    checked: item.active,
+}));
+
+// ❌ WRONG - 3+ properties on single line (hard to read)
+await syncCommand({ config: configFile, workspaceRoot, debug, concurrency });
+```
+
 ## 3. Early-Return and Early-Continue Patterns
 
 Use early-return and early-continue patterns to reduce nesting and improve readability. However, avoid careless returns in the middle of complex functions. Instead, extract such logic into dedicated helper functions.
@@ -79,6 +106,56 @@ async function mainCommand(): Promise<Result<void, Error>> {
 Extract complex conditional logic into focused helper functions. This enables proper early-return patterns while maintaining clarity and correctness.
 
 **Important**: Avoid over-extraction. Functions should have meaningful logic, not just wrap a single operation or add unnecessary abstraction layers.
+
+### 4.1 Inline Arrow Functions with Control Flow
+
+When an inline arrow function contains control flow statements (like `if`), extract it into a named function for readability.
+
+```typescript
+// ✅ CORRECT - Extracted error handler with control flow
+function handleCheckboxError(error: unknown): Error {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+        return wrapError("Operation cancelled", error);
+    }
+    return wrapError("Failed to prompt", error as Error);
+}
+
+const result = await Result.wrap(() => doSomething(), handleCheckboxError)();
+
+// ❌ WRONG - Inline arrow with control flow (hard to read)
+const result = await Result.wrap(() => doSomething(), (error) => {
+    if (error instanceof Error && error.message.includes("cancelled")) {
+        return wrapError("Operation cancelled", error);
+    }
+    return wrapError("Failed to prompt", error as Error);
+})();
+```
+
+### 4.2 Complex Callback Logic
+
+When a callback wraps complex logic (e.g., function calls with multi-line object parameters), extract it into a named function.
+
+```typescript
+// ✅ CORRECT - Extracted callback function
+function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Promise<string[]> {
+    return Checkbox.prompt({
+        message: "Select workspaces to enable:",
+        search: true,
+        options,
+    });
+}
+
+const result = await Result.wrap(() => promptForWorkspaceSelection(options), handleError)();
+
+// ❌ WRONG - Complex inline callback
+const result = await Result.wrap(() => Checkbox.prompt({
+    message: "Select workspaces to enable:",
+    search: true,
+    options,
+}), handleError)();
+```
+
+### 4.3 Meaningful Extraction Guidelines
 
 ```typescript
 // ✅ CORRECT - Extracted helper with meaningful logic
@@ -160,8 +237,9 @@ async function syncSingleWorkspace(
 |------|-------------|
 | Curly Braces | All `if`, `for`, `while` statements must have curly braces |
 | Single-Line | Keep non-control-flow statements on one logical line |
+| Object Parameters | 3+ properties → multi-line; 1-2 properties → inline |
 | Early-Return | Use in dedicated functions, not carelessly in main flow |
-| Function Extraction | Extract meaningful logic, avoid thin wrappers |
+| Function Extraction | Extract meaningful logic, avoid thin wrappers, inline arrows with control flow; extract complex callbacks |
 | Type Safety | No `any` types - use proper TypeScript types |
 | Clean Parameters | Remove unused parameters from function signatures |
 | IDE Formatting | Let the IDE handle line breaks and width-based formatting |
