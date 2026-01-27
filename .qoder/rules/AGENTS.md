@@ -1,23 +1,7 @@
 ---
 trigger: always_on
 ---
-
-# Workspace Manager - AI Agent Guide
-
-## Project Overview
-
-Workspace Manager is a command-line tool for managing workspaces with Git submodules and Go workspace integration. It provides automated synchronization, updating, and management of multiple Git repositories within a unified workspace structure.
-
-**Key Features:**
-- Sync workspace with remote repositories
-- Manage Git submodules automatically
-- Go workspace integration with `go.work` file management
-- **Status monitoring** with branch tracking and dirty state detection
-- **Interactive workspace selection** with fuzzy search
-- YAML-based configuration
-- Concurrent operations with configurable parallelism
-- Debug mode support
-- Functional error handling without exceptions
+# Workspace Manager - Technical Constraints
 
 ## Technology Stack
 
@@ -44,9 +28,9 @@ The codebase strictly follows SOLID principles with clean separation of concerns
 - 4-space indentation with tabs
 - 200 character line width (from deno.json)
 - Double quotes for strings
-- Format on save enabled in VSCode
+- **Format on save enabled in VSCode
 
-## Project Structure
+## Project Structure & Organization
 
 ```
 /home/ball6847/Projects/personal/workspace-manager/
@@ -94,69 +78,9 @@ workspaces:
 ```
 
 ### Deno Configuration (`deno.json`)
-- **Tasks**: check, fmt, fmt:check, lint, build, local-install
 - **Imports**: JSR packages (@cliffy, @std) + npm packages (typescript-result, zod - imported but not used)
 - **Formatter**: 4-space tabs, 200 width, double quotes
 - **Linter**: Recommended rules only
-
-## Build & Development Commands
-
-### Development Tasks
-```bash
-# Format code
-deno task fmt
-
-# Check formatting
-deno task fmt:check
-
-# Lint code
-deno task lint
-
-# Type check
-deno task check
-
-# Build bundled executable
-deno task build
-
-# Install locally for testing
-deno task local-install
-```
-
-### Direct Execution
-```bash
-# Run from source (development)
-deno run --allow-all main.ts [command] [options]
-
-# Run compiled version
-deno run --allow-all build/cli.js [command] [options]
-```
-
-## CLI Commands
-
-### Core Commands
-- **sync**: Synchronize workspace with remote repositories
-- **update**: Update all submodules to latest tracking branches
-- **enable**: Enable disabled workspace repositories
-- **add**: Add new repositories to workspace configuration
-- **save**: Save current workspace state to configuration file
-- **status**: Show workspace status with branch tracking and dirty detection
-- **open**: Open workspace in editor via interactive selection
-- **completions**: Generate shell completions (bash, fish, zsh)
-
-### Common Options (All Commands)
-- `-c, --config <file>`: Workspace config file (auto-discovers if not specified)
-- `-w, --workspace-root <path>`: Workspace root directory (auto-discovers if not specified)
-- `-d, --debug`: Enable debug mode
-- `-j, --concurrency <number>`: Concurrent operations (default: 4)
-
-### Command-Specific Options
-| Command | Unique Options |
-|---------|---------------|
-| sync | `-y, --yes` - Accept all changes |
-| enable | `-y, --yes` - Skip sync confirmation |
-| add | `-b, --branch <branch>`, `--go`, `--sync`, `-y, --yes` |
-| status | `--json`, `-v, --verbose` |
-| open | `-e, --editor <editor>`, `--workspace <path>` |
 
 ## Error Handling Strategy
 
@@ -252,7 +176,7 @@ function processValueBad(value: string | null): string {
 }
 ```
 
-## Workspace Discovery
+## Workspace Discovery Constraint
 
 The `workspace-discovery.ts` module provides intelligent config file discovery:
 
@@ -278,47 +202,14 @@ const result = await discovery.discover();
 3. If only workspaceRoot provided → look for config file there
 4. If neither provided → discover workspace.yml in current and parent directories
 
-## Testing Strategy
+## Deno Permission Requirements
 
-**Current Status**: No automated tests implemented
-
-**Testing Approach**: Manual testing with example workspace configurations
-- Use `example/workspace.yml` for testing various scenarios
-- Test with both SSH and HTTPS Git URLs
-- Verify Go workspace integration with `go.work` files
-- Test concurrent operations with different concurrency levels
-
-## Security Considerations
-
-### Permission Requirements
-The CLI requires extensive Deno permissions:
+The CLI requires the following Deno permissions:
 - `--allow-run`: Execute Git and Go commands
 - `--allow-write`: Create/modify files and directories
 - `--allow-read`: Read configuration and workspace files
 - `--allow-env`: Access environment variables
 - `--allow-net`: Network access for Git operations
-
-### Security Practices
-- Input validation for repository URLs and paths
-- Safe Git operations with proper error handling
-- No shell injection vulnerabilities (uses Deno.Command)
-- Configuration files are read-only after validation
-
-## Deployment Process
-
-### Global Installation
-```bash
-# Install from JSR (recommended)
-deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net jsr:@ball6847/workspace-manager@VERSION
-```
-
-### Local Development
-```bash
-# Clone and run locally
-git clone <repository-url>
-cd workspace-manager
-deno run --allow-all main.ts [command]
-```
 
 ## Development Workflow
 
@@ -336,7 +227,6 @@ deno run --allow-all main.ts [command]
 3. Use `ErrorWithCause` for error wrapping
 4. **Apply early-return pattern** - Check error conditions and return early
 5. Follow functional programming patterns
-6. Add JSDoc comments for public functions
 
 ### Workspace Discovery Integration
 When adding new commands, use `WorkspaceDiscovery` for config/workspaceRoot handling:
@@ -360,49 +250,12 @@ async function myCommand(options: MyOptions): Result<void, Error> {
 }
 ```
 
-## Dependencies
+## Dependency Constraints
 
 ### JSR Packages (Preferred)
 - `@cliffy/*`: CLI framework components (command, prompt, table, ansi, keycode, internal)
 - `@std/*`: Standard library modules (yaml, path, fmt, text, dotenv)
 
 ### NPM Packages (When JSR unavailable)
-- `typescript-result`: Functional error handling
-- `zod`: **Imported but not used** (schema validation available but not implemented)
-
-## Known Limitations
-
-1. **No schema validation**: Zod is imported in deno.json but not used for config validation
-2. **No transaction support**: No rollback on partial failures
-3. **Git stderr suppressed**: Limited error reporting from Git commands
-
-## Future Enhancements
-
-### High Priority
-- Add Zod schema validation for workspace configuration
-- Implement `--yes` option for sync command (not yet implemented)
-- Add confirmation prompts before destructive operations
-
-### Medium Priority
-- Improve Git error reporting with stderr capture
-- Add input validation for workspace URLs and paths
-- Scan for nested `go.mod` files in repositories
-
-### Low Priority
-- Add transaction-like behavior for rollback support
-- Implement progress spinners for long operations
-- Auto-generate `.env` file distribution across submodules
-
-## Implementation Status Summary
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| sync | ✅ Implemented | Full functionality with concurrent operations |
-| update | ✅ Implemented | Pulls latest on tracking branches |
-| enable | ✅ Implemented | Interactive multi-select with sync option |
-| add | ✅ Implemented | Interactive and non-interactive modes |
-| save | ✅ Implemented | Persists current branch state to config |
-| status | ✅ Implemented | Branch tracking, dirty status, JSON output |
-| open | ✅ Implemented | Interactive editor selection |
-| completions | ✅ Implemented | Bash, fish, zsh support |
-| go.work | ✅ Implemented | Automatic go module management |
+- `typescript-result`: Functional error handling (MANDATORY - no try-catch blocks allowed)
+- `zod`: Import available but not currently used

@@ -1,5 +1,6 @@
 ---
-trigger: always_on
+trigger: model_decision
+description: Use this when you need to follow project constraint to not use try-catch in the codeblock and explicitly handle error using if-else with the help of typescript-result package
 ---
 
 # TypeScript Result Pattern Guide
