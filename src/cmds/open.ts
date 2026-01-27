@@ -1,10 +1,11 @@
-import { blue, green, red } from "@std/fmt/colors";
+import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { GoWork } from "../libs/go.ts";
+import { type HookExecutionResult, HookExecutor } from "../libs/hooks.ts";
 import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
@@ -46,6 +47,34 @@ type WorkspaceSelection = {
 
 const createGoWork = (path: string) => new GoWork(path);
 const createGitManager = (path: string) => new GitManager(path);
+
+// Helper function to process hook results with early-return pattern
+function processHookResult(hookResult: HookExecutionResult, workspacePath: string): void {
+	if (hookResult.success) {
+		console.log(green(`✅ Hook completed for ${workspacePath} in ${hookResult.duration}ms`));
+		return;
+	}
+
+	// Hook failed
+	console.log(yellow(`⚠️  Hook failed for ${workspacePath} with exit code ${hookResult.exitCode}`));
+	if (hookResult.stderr) {
+		console.log(yellow(`stderr: ${hookResult.stderr}`));
+	}
+}
+
+// Helper function to process global hook results
+function processGlobalHookResult(hookResult: HookExecutionResult): void {
+	if (hookResult.success) {
+		console.log(green(`✅ Global hook completed in ${hookResult.duration}ms`));
+		return;
+	}
+
+	// Hook failed
+	console.log(yellow(`⚠️  Global hook failed with exit code ${hookResult.exitCode}`));
+	if (hookResult.stderr) {
+		console.log(yellow(`stderr: ${hookResult.stderr}`));
+	}
+}
 
 /**
  * Open workspace submodule in configured editor via interactive selection
@@ -158,6 +187,41 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 
 		// Update the selected directory to reflect the new state
 		selected.isActive = true;
+
+		// Execute post-sync hooks after successful checkout
+		const hookExecutor = new HookExecutor(debug);
+		const hookContext = { root: workspaceRoot, path: selected.path };
+
+		// Execute global hooks
+		if (config.hooks?.postSyncHooks?.length) {
+			console.log(blue(`🔧 Executing ${config.hooks.postSyncHooks.length} global post-sync hooks...`));
+			const globalHooksResult = await hookExecutor.executeHooks(config.hooks.postSyncHooks, hookContext);
+
+			if (!globalHooksResult.ok) {
+				console.log(red("❌ Global post-sync hooks failed:"), globalHooksResult.error.message);
+				return Result.error(globalHooksResult.error);
+			}
+
+			for (const result of globalHooksResult.value) {
+				processGlobalHookResult(result);
+			}
+		}
+
+		// Execute workspace-specific hooks
+		const workspaceConfig = config.workspaces.find((w) => w.path === selected.path);
+		if (workspaceConfig?.postSyncHooks?.length) {
+			console.log(blue(`🔧 Executing ${workspaceConfig.postSyncHooks.length} hooks for ${selected.path}...`));
+			const workspaceHooksResult = await hookExecutor.executeHooks(workspaceConfig.postSyncHooks, hookContext);
+
+			if (!workspaceHooksResult.ok) {
+				console.log(red(`❌ Post-sync hooks failed for ${selected.path}:`), workspaceHooksResult.error.message);
+				return Result.error(workspaceHooksResult.error);
+			}
+
+			for (const result of workspaceHooksResult.value) {
+				processHookResult(result, selected.path);
+			}
+		}
 	}
 
 	// Open selected workspace in editor
