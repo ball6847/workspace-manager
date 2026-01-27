@@ -17,6 +17,8 @@
         "deinit",
         "dropuse",
         "idempotently",
-        "opencode"
+        "opencode",
+        "unstash",
+        "Unstashed"
     ]
 }

@@ -17,10 +17,7 @@ const createGoWork = (path: string) => new GoWork(path);
 const createGitManager = (path: string) => new GitManager(path);
 
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
-	const discovery = new WorkspaceDiscovery({
-		config: options.config,
-		workspaceRoot: options.workspaceRoot,
-	});
+	const discovery = new WorkspaceDiscovery({ config: options.config, workspaceRoot: options.workspaceRoot });
 
 	const discoverResult = await discovery.discover();
 
@@ -62,171 +59,123 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	if (inactiveWorkspaces.length > 0) {
 		console.log(yellow("Removing inactive workspaces..."));
-		const removeResult = await processConcurrently(
-			inactiveWorkspaces,
-			async (workspace) => {
-				const workspacePath = path.join(workspaceRoot, workspace.path);
-				const git = new GitManager(workspaceRoot);
-				const dir = await isDir(workspacePath);
-				if (!dir.ok) {
-					return Result.ok(); // Skip if directory doesn't exist
-				}
+		const removeResult = await processConcurrently(inactiveWorkspaces, async (workspace) => {
+			const workspacePath = path.join(workspaceRoot, workspace.path);
+			const git = new GitManager(workspaceRoot);
+			const dir = await isDir(workspacePath);
+			if (!dir.ok) {
+				return Result.ok(); // Skip if directory doesn't exist
+			}
 
-				console.log(yellow(`🗑️  Removing inactive workspace: ${workspace.path}`));
+			console.log(yellow(`🗑️  Removing inactive workspace: ${workspace.path}`));
 
-				const remove = await git.submoduleRemove(workspace.path);
-				if (!remove.ok) {
-					console.log(
-						red(`❌ Failed to remove inactive workspace: ${workspace.path}`),
-						`(${remove.error.message})`,
-					);
-					return Result.error(remove.error);
-				}
+			const remove = await git.submoduleRemove(workspace.path);
+			if (!remove.ok) {
+				console.log(red(`❌ Failed to remove inactive workspace: ${workspace.path}`), `(${remove.error.message})`);
+				return Result.error(remove.error);
+			}
 
-				console.log(green(`✅ Successfully removed inactive workspace: ${workspace.path}`));
-				return Result.ok();
-			},
-		);
+			console.log(green(`✅ Successfully removed inactive workspace: ${workspace.path}`));
+			return Result.ok();
+		});
 
 		if (!removeResult.ok) {
 			return Result.error(removeResult.error);
 		}
 	}
 
-	const workspaceManager = new WorkspaceManager(
-		workspaceRoot,
-		createGoWork,
-		createGitManager,
-	);
+	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
 
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));
 
-		const syncResult = await processConcurrently(
-			activeWorkspaces,
-			async (workspace) => {
-				const workspacePath = path.join(workspaceRoot, workspace.path);
+		const syncResult = await processConcurrently(activeWorkspaces, async (workspace) => {
+			const workspacePath = path.join(workspaceRoot, workspace.path);
 
-				// Check if submodule exists
-				const dir = await isDir(workspacePath);
-				if (!dir.ok) {
-					console.log(yellow(`📥 Checking out workspace: ${workspace.path}`));
-					const checkout = await workspaceManager.checkoutWorkspace(
-						workspace.url,
-						workspace.path,
-						workspace.branch,
-					);
-					if (!checkout.ok) {
-						console.log(
-							red(`❌ Failed to check out workspace: ${workspace.path}`),
-							`(${checkout.error.message})`,
-						);
-						return Result.error(checkout.error);
-					}
-					console.log(green(`✅ Successfully checked out workspace: ${workspace.path}`));
-					return Result.ok();
+			// Check if submodule exists
+			const dir = await isDir(workspacePath);
+			if (!dir.ok) {
+				console.log(yellow(`📥 Checking out workspace: ${workspace.path}`));
+				const checkout = await workspaceManager.checkoutWorkspace(workspace.url, workspace.path, workspace.branch);
+				if (!checkout.ok) {
+					console.log(red(`❌ Failed to check out workspace: ${workspace.path}`), `(${checkout.error.message})`);
+					return Result.error(checkout.error);
 				}
+				console.log(green(`✅ Successfully checked out workspace: ${workspace.path}`));
+				return Result.ok();
+			}
 
-				// Check if it's a git repository
-				const subGit = new GitManager(workspacePath);
-				const isGitRepo = await subGit.isRepository();
-				if (!isGitRepo.ok) {
-					console.log(
-						red(`❌ Failed to check git repository: ${workspace.path}`),
-						`(${isGitRepo.error.message})`,
-					);
-					return Result.error(isGitRepo.error);
-				}
-				if (!isGitRepo.value) {
-					console.log(red(`❌ Not a git repository: ${workspace.path}`));
-					return Result.error(new Error(`Not a git repository: ${workspace.path}`));
-				}
+			// Check if it's a git repository
+			const subGit = new GitManager(workspacePath);
+			const isGitRepo = await subGit.isRepository();
+			if (!isGitRepo.ok) {
+				console.log(red(`❌ Failed to check git repository: ${workspace.path}`), `(${isGitRepo.error.message})`);
+				return Result.error(isGitRepo.error);
+			}
+			if (!isGitRepo.value) {
+				console.log(red(`❌ Not a git repository: ${workspace.path}`));
+				return Result.error(new Error(`Not a git repository: ${workspace.path}`));
+			}
 
-				// Check if on correct branch
-				const currentBranch = await subGit.getCurrentBranch();
-				if (!currentBranch.ok) {
-					console.log(
-						red(`❌ Failed to get current branch: ${workspace.path}`),
-						`(${currentBranch.error.message})`,
-					);
-					return Result.error(currentBranch.error);
+			// Check if on correct branch
+			const currentBranch = await subGit.getCurrentBranch();
+			if (!currentBranch.ok) {
+				console.log(red(`❌ Failed to get current branch: ${workspace.path}`), `(${currentBranch.error.message})`);
+				return Result.error(currentBranch.error);
+			}
+			if (currentBranch.value !== workspace.branch) {
+				console.log(yellow(`🔄 Switching branch for ${workspace.path} from ${currentBranch.value} to ${workspace.branch}`));
+				const checkout = await subGit.checkoutBranch(workspace.branch);
+				if (!checkout.ok) {
+					console.log(red(`❌ Failed to switch branch for ${workspace.path}`), `(${checkout.error.message})`);
+					return Result.error(checkout.error);
 				}
-				if (currentBranch.value !== workspace.branch) {
-					console.log(
-						yellow(
-							`🔄 Switching branch for ${workspace.path} from ${currentBranch.value} to ${workspace.branch}`,
-						),
-					);
-					const checkout = await subGit.checkoutBranch(workspace.branch);
-					if (!checkout.ok) {
-						console.log(
-							red(`❌ Failed to switch branch for ${workspace.path}`),
-							`(${checkout.error.message})`,
-						);
-						return Result.error(checkout.error);
-					}
+			}
+
+			// Check if local has uncommitted changes
+			const isClean = await subGit.isWorkingDirectoryClean();
+			if (!isClean.ok) {
+				console.log(red(`❌ Failed to check working directory: ${workspace.path}`), `(${isClean.error.message})`);
+				return Result.error(isClean.error);
+			}
+			if (!isClean.value) {
+				console.log(yellow(`⚠️  Workspace has uncommitted changes: ${workspace.path}`));
+				// Stash changes with a message that includes the workspace path
+				const stash = await subGit.stash(`workspace-manager: sync ${workspace.path}`);
+				if (!stash.ok) {
+					console.log(red(`❌ Failed to stash changes: ${workspace.path}`), `(${stash.error.message})`);
+					return Result.error(stash.error);
 				}
+				console.log(yellow(`✅ Stashed changes for: ${workspace.path}`));
 
-				// Check if local has uncommitted changes
-				const isClean = await subGit.isWorkingDirectoryClean();
-				if (!isClean.ok) {
-					console.log(
-						red(`❌ Failed to check working directory: ${workspace.path}`),
-						`(${isClean.error.message})`,
-					);
-					return Result.error(isClean.error);
-				}
-				if (!isClean.value) {
-					console.log(yellow(`⚠️  Workspace has uncommitted changes: ${workspace.path}`));
-					// Stash changes with a message that includes the workspace path
-					const stash = await subGit.stash(`workspace-manager: sync ${workspace.path}`);
-					if (!stash.ok) {
-						console.log(
-							red(`❌ Failed to stash changes: ${workspace.path}`),
-							`(${stash.error.message})`,
-						);
-						return Result.error(stash.error);
-					}
-					console.log(yellow(`✅ Stashed changes for: ${workspace.path}`));
-
-					// Pull latest from remote
-					const pull = await subGit.pullOriginBranch(workspace.branch);
-					if (!pull.ok) {
-						console.log(
-							red(`❌ Failed to pull latest changes: ${workspace.path}`),
-							`(${pull.error.message})`,
-						);
-						return Result.error(pull.error);
-					}
-					console.log(green(`✅ Successfully pulled latest changes: ${workspace.path}`));
-
-					// Apply stash back
-					const unstash = await subGit.stashPop();
-					if (!unstash.ok) {
-						console.log(
-							red(`❌ Failed to unstash changes: ${workspace.path}`),
-							`(${unstash.error.message})`,
-						);
-						return Result.error(unstash.error);
-					}
-					console.log(yellow(`✅ Unstashed changes for: ${workspace.path}`));
-					return Result.ok();
-				}
-
-				// Clean working directory, just pull latest
+				// Pull latest from remote
 				const pull = await subGit.pullOriginBranch(workspace.branch);
 				if (!pull.ok) {
-					console.log(
-						red(`❌ Failed to pull latest changes: ${workspace.path}`),
-						`(${pull.error.message})`,
-					);
+					console.log(red(`❌ Failed to pull latest changes: ${workspace.path}`), `(${pull.error.message})`);
 					return Result.error(pull.error);
 				}
 				console.log(green(`✅ Successfully pulled latest changes: ${workspace.path}`));
 
+				// Apply stash back
+				const unstash = await subGit.stashPop();
+				if (!unstash.ok) {
+					console.log(red(`❌ Failed to unstash changes: ${workspace.path}`), `(${unstash.error.message})`);
+					return Result.error(unstash.error);
+				}
+				console.log(yellow(`✅ Unstashed changes for: ${workspace.path}`));
 				return Result.ok();
-			},
-		);
+			}
+
+			// Clean working directory, just pull latest
+			const pull = await subGit.pullOriginBranch(workspace.branch);
+			if (!pull.ok) {
+				console.log(red(`❌ Failed to pull latest changes: ${workspace.path}`), `(${pull.error.message})`);
+				return Result.error(pull.error);
+			}
+			console.log(green(`✅ Successfully pulled latest changes: ${workspace.path}`));
+
+			return Result.ok();
+		});
 
 		if (!syncResult.ok) {
 			return Result.error(syncResult.error);
@@ -254,10 +203,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 	// Execute global hooks
 	if (config.hooks?.postSyncHooks?.length) {
 		console.log(blue(`🔧 Executing ${config.hooks.postSyncHooks.length} global post-sync hooks...`));
-		const globalHooksResult = await hookExecutor.executeHooks(config.hooks.postSyncHooks, {
-			root: workspaceRoot,
-			path: workspaceRoot,
-		});
+		const globalHooksResult = await hookExecutor.executeHooks(config.hooks.postSyncHooks, { root: workspaceRoot, path: workspaceRoot });
 
 		if (!globalHooksResult.ok) {
 			console.log(red("❌ Global post-sync hooks failed:"), globalHooksResult.error.message);
@@ -267,7 +213,9 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		for (const result of globalHooksResult.value) {
 			if (!result.success) {
 				console.log(yellow(`⚠️  Global hook failed with exit code ${result.exitCode}`));
-				if (result.stderr) console.log(yellow(`stderr: ${result.stderr}`));
+				if (result.stderr) {
+					console.log(yellow(`stderr: ${result.stderr}`));
+				}
 			} else {
 				console.log(green(`✅ Global hook completed in ${result.duration}ms`));
 			}
@@ -279,33 +227,31 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 	if (workspacesWithHooks.length) {
 		console.log(blue(`🔧 Executing workspace-specific post-sync hooks for ${workspacesWithHooks.length} workspaces...`));
 
-		const workspaceHooksResult = await processConcurrently(
-			workspacesWithHooks,
-			async (workspace) => {
-				console.log(blue(`🔧 Executing ${workspace.postSyncHooks!.length} hooks for ${workspace.path}...`));
+		const workspaceHooksResult = await processConcurrently(workspacesWithHooks, async (workspace) => {
+			console.log(blue(`🔧 Executing ${workspace.postSyncHooks!.length} hooks for ${workspace.path}...`));
 
-				const result = await hookExecutor.executeHooks(workspace.postSyncHooks!, {
-					root: workspaceRoot,
-					path: workspace.path,
-				});
+			const result = await hookExecutor.executeHooks(workspace.postSyncHooks!, { root: workspaceRoot, path: workspace.path });
 
-				if (!result.ok) {
-					console.log(red(`❌ Post-sync hooks failed for ${workspace.path}:`), result.error.message);
-					return Result.error(result.error);
+			if (!result.ok) {
+				console.log(red(`❌ Post-sync hooks failed for ${workspace.path}:`), result.error.message);
+				return Result.error(result.error);
+			}
+
+			for (const hookResult of result.value) {
+				if (hookResult.success) {
+					console.log(green(`✅ Hook completed for ${workspace.path} in ${hookResult.duration}ms`));
+					continue;
 				}
 
-				for (const hookResult of result.value) {
-					if (!hookResult.success) {
-						console.log(yellow(`⚠️  Hook failed for ${workspace.path} with exit code ${hookResult.exitCode}`));
-						if (hookResult.stderr) console.log(yellow(`stderr: ${hookResult.stderr}`));
-					} else {
-						console.log(green(`✅ Hook completed for ${workspace.path} in ${hookResult.duration}ms`));
-					}
+				// Hook failed
+				console.log(yellow(`⚠️  Hook failed for ${workspace.path} with exit code ${hookResult.exitCode}`));
+				if (hookResult.stderr) {
+					console.log(yellow(`stderr: ${hookResult.stderr}`));
 				}
+			}
 
-				return Result.ok();
-			},
-		);
+			return Result.ok();
+		});
 
 		if (!workspaceHooksResult.ok) {
 			return Result.error(workspaceHooksResult.error);
