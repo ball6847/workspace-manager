@@ -41,6 +41,7 @@ type WorkspaceSelection = {
 	isActive: boolean;
 	isGolang: boolean;
 	directory: string;
+	displayName: string;
 };
 
 const createGoWork = (path: string) => new GoWork(path);
@@ -78,7 +79,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	const config = configResult.value;
 
 	// Build workspace selection list
-	const workspaces = await buildWorkspaceList(config, workspaceRoot, debug);
+	const workspaces = await buildWorkspaceList(config, workspaceRoot);
 
 	if (workspaces.length === 0) {
 		return Result.error(new Error("No workspaces found in configuration"));
@@ -87,11 +88,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	// Check editor - CLI option overrides config, which overrides environment
 	const editor = resolveEditor(config, option.editor);
 	if (!editor) {
-		return Result.error(
-			new Error(
-				"No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable",
-			),
-		);
+		return Result.error(new Error("No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable"));
 	}
 
 	if (debug) {
@@ -153,10 +150,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 		// Sync the workspace
 		const checkoutResult = await workspaceManager.checkoutWorkspace(selected.url, selected.path, selected.branch);
 		if (!checkoutResult.ok) {
-			console.log(
-				red(`❌ Failed to checkout workspace: ${selected.path}`),
-				`(${checkoutResult.error.message})`,
-			);
+			console.log(red(`❌ Failed to checkout workspace: ${selected.path}`), `(${checkoutResult.error.message})`);
 			return Result.error(checkoutResult.error);
 		}
 
@@ -170,11 +164,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	return openInEditor(selected.directory, editor, debug);
 }
 
-async function buildWorkspaceList(
-	config: WorkspaceConfig,
-	workspaceRoot: string,
-	_debug: boolean,
-): Promise<WorkspaceSelection[]> {
+async function buildWorkspaceList(config: WorkspaceConfig, workspaceRoot: string): Promise<WorkspaceSelection[]> {
 	const result: WorkspaceSelection[] = [];
 
 	for (const workspace of config.workspaces) {
@@ -204,8 +194,6 @@ async function buildWorkspaceList(
 			isActive: workspace.active,
 			isGolang: workspace.isGolang,
 			directory: workspaceDir,
-			// Store display name for selector
-			// @ts-ignore - custom field
 			displayName: `${workspace.active ? "◉" : "○"} ${workspace.path} (${workspace.branch})${status}`,
 		});
 	}
@@ -213,9 +201,7 @@ async function buildWorkspaceList(
 	return result;
 }
 
-async function presentWorkspaceSelector(
-	workspaces: WorkspaceSelection[],
-): Promise<WorkspaceSelection | null> {
+async function presentWorkspaceSelector(workspaces: WorkspaceSelection[]): Promise<WorkspaceSelection | null> {
 	const interactivePrompt = new InteractivePrompt();
 
 	// Map to format expected by promptForWorkspaceSelectionSingle
@@ -264,7 +250,7 @@ function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | nu
 }
 
 async function openInEditor(dir: string, editor: string, debug: boolean): Promise<Result<void, Error>> {
-	return await Result.fromAsyncCatching(async () => {
+	const open = async () => {
 		// Parse editor command (support spaces in command path)
 		const parts = editor.split(" ").filter((p) => p.length > 0);
 		const editorCmd = parts[0];
@@ -290,5 +276,6 @@ async function openInEditor(dir: string, editor: string, debug: boolean): Promis
 		if (!status.success) {
 			throw new Error(`Editor exited with code ${status.code}`);
 		}
-	}).mapError((error) => wrapError(`Failed to open editor for ${dir}`, error));
+	};
+	return await Result.fromAsyncCatching(open).mapError((error) => wrapError(`Failed to open editor for ${dir}`, error));
 }
