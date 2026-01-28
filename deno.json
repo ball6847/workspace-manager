@@ -1,6 +1,6 @@
 {
   "name": "@ball6847/workspace-manager",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "exports": "./main.ts",
   "tasks": {
     "check": "deno check **/*.ts",
@@ -27,14 +27,8 @@
     "zod": "npm:zod@^3.25.67"
   },
   "fmt": {
-    "exclude": [
-      "node_modules",
-      "dist",
-      "build"
-    ],
-    "include": [
-      "**/*.ts"
-    ],
+    "exclude": ["node_modules", "dist", "build"],
+    "include": ["**/*.ts"],
     "indentWidth": 4,
     "lineWidth": 200,
     "proseWrap": "preserve",
@@ -42,22 +36,10 @@
     "useTabs": true
   },
   "lint": {
-    "exclude": [
-      "node_modules",
-      "dist",
-      "build",
-      "generated"
-    ],
-    "include": [
-      "**/*.ts",
-      "**/*.tsx",
-      "**/*.js",
-      "**/*.jsx"
-    ],
+    "exclude": ["node_modules", "dist", "build", "generated"],
+    "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
     "rules": {
-      "tags": [
-        "recommended"
-      ]
+      "tags": ["recommended"]
     }
   },
   "nodeModulesDir": "auto"
