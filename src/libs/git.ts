@@ -233,14 +233,18 @@ export class GitManager {
 	private async runCommand(
 		args: string[],
 	): Promise<Result<Deno.CommandOutput, Error>> {
-		return await Result.fromAsyncCatching(() =>
-			new Deno.Command("git", {
+		return await Result.fromAsyncCatching(async () => {
+			const output = await new Deno.Command("git", {
 				args,
 				cwd: this.cwd,
 				// TODO: Capture stderr for better error reporting instead of suppressing it
 				stderr: "null",
-			}).output()
-		);
+			}).output();
+			if (!output.success) {
+				throw new Error(`Git command failed with exit code ${output.code}: git ${args.join(" ")}`);
+			}
+			return output;
+		});
 	}
 
 	private async runCommandWithErrorContext(
