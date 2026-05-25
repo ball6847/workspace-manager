@@ -2,8 +2,9 @@ import { Command } from "@cliffy/command";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import { AggregateError } from "../libs/errors.ts";
 import { CommandErrorHandler } from "../libs/command-error-handler.ts";
-import { processConcurrently } from "../libs/concurrent.ts";
+import { processConcurrently, processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { GoWork } from "../libs/go.ts";
@@ -46,7 +47,7 @@ function processGlobalHookResult(hookResult: HookExecutionResult): void {
 }
 
 // Helper function to sync a single workspace with early-return patterns
-async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string, workspaceManager: WorkspaceManager): Promise<Result<void, Error>> {
+export async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string, workspaceManager: WorkspaceManager): Promise<Result<void, Error>> {
 	const workspacePath = path.join(workspaceRoot, workspace.path);
 
 	// Check if submodule exists
@@ -74,32 +75,27 @@ async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot
 		return Result.error(new Error(`Not a git repository: ${workspace.path}`));
 	}
 
-	// Check if on correct branch
-	const currentBranch = await subGit.getCurrentBranch();
-	if (!currentBranch.ok) {
-		console.log(red(`❌ Failed to get current branch: ${workspace.path}`), `(${currentBranch.error.message})`);
-		return Result.error(currentBranch.error);
-	}
-	if (currentBranch.value !== workspace.branch) {
-		console.log(yellow(`🔄 Switching branch for ${workspace.path} from ${currentBranch.value} to ${workspace.branch}`));
-		const checkout = await subGit.checkoutBranch(workspace.branch);
-		if (!checkout.ok) {
-			console.log(red(`❌ Failed to switch branch for ${workspace.path}`), `(${checkout.error.message})`);
-			return Result.error(checkout.error);
-		}
+	// Always checkout the configured branch - PRD requirement
+	console.log(yellow(`🔄 Switching to configured branch: ${workspace.branch}`));
+	const checkout = await subGit.checkoutBranch(workspace.branch);
+	if (!checkout.ok) {
+		console.log(red(`❌ Failed to checkout branch for ${workspace.path}`), `(${checkout.error.message})`);
+		return Result.error(checkout.error);
 	}
 
 	// Check if local has uncommitted changes
 	const isClean = await subGit.isWorkingDirectoryClean();
 	if (!isClean.ok) {
-		console.log(red(`❌ Failed to check working directory: ${workspace.path}`), `(${isClean.error.message})`);
-		return Result.error(isClean.error);
-	}
-	if (!isClean.value) {
-		return await handleDirtyWorkspace(subGit, workspace);
+		console.log(yellow(`⚠️  Could not check clean state for ${workspace.path}: ${isClean.error.message}`));
+		// Continue to pull - PRD requires always pull
+	} else if (!isClean.value) {
+		const stashResult = await handleDirtyWorkspace(subGit, workspace);
+		if (!stashResult.ok) {
+			return stashResult;
+		}
 	}
 
-	// Clean working directory, just pull latest
+	// Always pull after checkout - PRD requirement
 	const pull = await subGit.pullOriginBranch(workspace.branch);
 	if (!pull.ok) {
 		console.log(red(`❌ Failed to pull latest changes: ${workspace.path}`), `(${pull.error.message})`);
@@ -142,7 +138,7 @@ async function handleDirtyWorkspace(subGit: GitManager, workspace: WorkspaceConf
 }
 
 // Helper function to remove inactive workspace with early-return patterns
-async function removeInactiveWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string): Promise<Result<void, Error>> {
+export async function removeInactiveWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string): Promise<Result<void, Error>> {
 	const workspacePath = path.join(workspaceRoot, workspace.path);
 	const git = new GitManager(workspaceRoot);
 	const dir = await isDir(workspacePath);
@@ -161,23 +157,6 @@ async function removeInactiveWorkspace(workspace: WorkspaceConfigItem, workspace
 
 	console.log(green(`✅ Successfully removed inactive workspace: ${workspace.path}`));
 	return Result.ok();
-}
-
-// Helper function to setup Go workspace with early-return pattern
-async function setupGoWorkspace(workspaceManager: WorkspaceManager, activeWorkspaces: WorkspaceConfigItem[], inactiveWorkspaces: WorkspaceConfigItem[]): Promise<void> {
-	console.log(blue("🚀 Setting up Go workspace..."));
-	const goWorkResult = await workspaceManager.setupGoWorkspace(
-		activeWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
-		inactiveWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
-	);
-
-	if (goWorkResult.ok) {
-		console.log(green("✅ Go workspace setup successful"));
-		return;
-	}
-
-	// Go workspace setup failed
-	console.log(yellow("⚠️  Go workspace setup failed"), `(${goWorkResult.error.message})`);
 }
 
 export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
@@ -221,31 +200,50 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 	console.log(blue(`✅ Active workspaces: ${activeWorkspaces.length}`));
 	console.log(blue(`❌ Inactive workspaces: ${inactiveWorkspaces.length}`));
 
+	// TIERED ERROR HANDLING:
+	// Phase errors (removal, sync, go setup) are collected and continue to next phase
+	// Workspace errors continue with other workspaces
+	const allErrors: Error[] = [];
+
+	// Phase 1: Remove inactive workspaces
 	if (inactiveWorkspaces.length > 0) {
 		console.log(yellow("Removing inactive workspaces..."));
-		const removeResult = await processConcurrently(inactiveWorkspaces, (workspace) => removeInactiveWorkspace(workspace, workspaceRoot));
-
-		if (!removeResult.ok) {
-			return Result.error(removeResult.error);
+		const removeResults = await processConcurrentlyWithResults(inactiveWorkspaces, (workspace) => removeInactiveWorkspace(workspace, workspaceRoot));
+		const removeErrors = removeResults.filter((r) => !r.ok).map((r) => r.error);
+		if (removeErrors.length > 0) {
+			console.log(red(`❌ Inactive workspace removal completed with ${removeErrors.length} errors`));
+			allErrors.push(...removeErrors);
 		}
 	}
 
 	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
 
+	// Phase 2: Sync active workspaces
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));
-		const syncResult = await processConcurrently(activeWorkspaces, (workspace) => syncSingleWorkspace(workspace, workspaceRoot, workspaceManager));
-		if (!syncResult.ok) {
-			return Result.error(syncResult.error);
+		const syncResults = await processConcurrentlyWithResults(activeWorkspaces, (workspace) => syncSingleWorkspace(workspace, workspaceRoot, workspaceManager));
+		const syncErrors = syncResults.filter((r) => !r.ok).map((r) => r.error);
+		if (syncErrors.length > 0) {
+			console.log(red(`❌ Sync completed with ${syncErrors.length} errors`));
+			allErrors.push(...syncErrors);
 		}
 	}
 
-	// Setup go workspace
-	await setupGoWorkspace(workspaceManager, activeWorkspaces, inactiveWorkspaces);
+	// Phase 3: Setup go workspace - continue even if there are errors from previous phases
+	const goWorkResult = await workspaceManager.setupGoWorkspace(
+		activeWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
+		inactiveWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
+	);
+	if (!goWorkResult.ok) {
+		console.log(yellow("⚠️  Go workspace setup failed"), `(${goWorkResult.error.message})`);
+		allErrors.push(goWorkResult.error);
+	} else {
+		console.log(green("✅ Go workspace setup successful"));
+	}
 
 	console.log(green("🎉 Sync complete!"));
 
-	// Execute post-sync hooks
+	// Phase 4: Execute post-sync hooks - collect all hook errors
 	const hookExecutor = new HookExecutor(debug);
 
 	// Execute global hooks
@@ -255,11 +253,11 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 		if (!globalHooksResult.ok) {
 			console.log(red("❌ Global post-sync hooks failed:"), globalHooksResult.error.message);
-			return Result.error(globalHooksResult.error);
-		}
-
-		for (const result of globalHooksResult.value) {
-			processGlobalHookResult(result);
+			allErrors.push(globalHooksResult.error);
+		} else {
+			for (const result of globalHooksResult.value) {
+				processGlobalHookResult(result);
+			}
 		}
 	}
 
@@ -286,8 +284,14 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		});
 
 		if (!workspaceHooksResult.ok) {
-			return Result.error(workspaceHooksResult.error);
+			allErrors.push(workspaceHooksResult.error);
 		}
+	}
+
+	// Report all collected errors at the end
+	if (allErrors.length > 0) {
+		console.log(red(`\n❌ Sync completed with ${allErrors.length} total errors`));
+		return Result.error(new AggregateError(allErrors, "Sync completed with errors"));
 	}
 
 	return Result.ok();

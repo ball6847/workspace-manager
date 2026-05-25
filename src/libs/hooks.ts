@@ -1,5 +1,6 @@
 import { cyan } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import { AggregateError } from "./errors.ts";
 import type { PostSyncHook } from "../types/config.ts";
 
 export type HookExecutionResult = {
@@ -93,13 +94,21 @@ export class HookExecutor {
 
 	async executeHooks(hooks: PostSyncHook[], context: HookContext): Promise<Result<HookExecutionResult[], Error>> {
 		const results: HookExecutionResult[] = [];
+		const hookErrors: Error[] = [];
 
 		for (const hook of hooks) {
 			const result = await this.executeHook(hook, context);
 			if (!result.ok) {
-				return Result.error(result.error);
+				// Collect error and continue with next hook
+				hookErrors.push(result.error);
+			} else {
+				results.push(result.value);
 			}
-			results.push(result.value);
+		}
+
+		// Return AggregateError if any hooks failed
+		if (hookErrors.length > 0) {
+			return Result.error(new AggregateError(hookErrors, `Hook execution failed: ${hookErrors.length} hooks failed`));
 		}
 
 		return Result.ok(results);

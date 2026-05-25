@@ -100,76 +100,20 @@ export class GitManager {
 	}
 
 	async getCurrentBranch(): Promise<Result<string, Error>> {
-		// Check if the improved branch detection is enabled via feature flag
-		// This handles worktree scenarios where submodules are in detached HEAD state
-		// Set WM_USE_NAME_REV=1 to enable
-		const useNameRev = Deno.env.get("WM_USE_NAME_REV") === "1";
+		// Try git symbolic-ref --short HEAD first (fails if HEAD is detached)
+		const symbolicRefResult = await this.runCommand([
+			"symbolic-ref",
+			"--short",
+			"HEAD",
+		]);
 
-		if (useNameRev) {
-			return await this.getCurrentBranchWithNameRev();
+		if (symbolicRefResult.ok && symbolicRefResult.value.success) {
+			// We're on an actual branch
+			return Result.ok(new TextDecoder().decode(symbolicRefResult.value.stdout).trim());
 		}
 
-		// Original behavior: use rev-parse --abbrev-ref HEAD
-		return await Result.fromAsyncCatching(async () => {
-			const result = await this.runCommand([
-				"rev-parse",
-				"--abbrev-ref",
-				"HEAD",
-			]);
-			if (!result.ok) {
-				throw result.error;
-			}
-			return new TextDecoder().decode(result.value.stdout).trim();
-		}).mapError(
-			(error) => wrapError(`Failed to get current branch`, error),
-		);
-	}
-
-	/**
-	 * Enhanced branch detection that uses git name-rev for detached HEAD scenarios.
-	 * This is useful in worktrees where submodules may be in detached HEAD state.
-	 * Enable via WM_USE_NAME_REV=1 environment variable.
-	 */
-	private async getCurrentBranchWithNameRev(): Promise<Result<string, Error>> {
-		return await Result.fromAsyncCatching(async () => {
-			// Try git symbolic-ref --short HEAD first (fails if HEAD is detached)
-			const symbolicRefResult = await this.runCommand([
-				"symbolic-ref",
-				"--short",
-				"HEAD",
-			]);
-
-			if (symbolicRefResult.ok && symbolicRefResult.value.success) {
-				return new TextDecoder().decode(symbolicRefResult.value.stdout).trim();
-			}
-
-			// If HEAD is detached, try git name-rev to find the closest branch/tag
-			const nameRevResult = await this.runCommand([
-				"name-rev",
-				"--name-only",
-				"HEAD",
-			]);
-
-			if (nameRevResult.ok && nameRevResult.value.success) {
-				const branchName = new TextDecoder().decode(nameRevResult.value.stdout).trim();
-				if (branchName) {
-					return branchName;
-				}
-			}
-
-			// Fallback to rev-parse --abbrev-ref HEAD (will return "HEAD" if detached)
-			const result = await this.runCommand([
-				"rev-parse",
-				"--abbrev-ref",
-				"HEAD",
-			]);
-			if (!result.ok) {
-				throw result.error;
-			}
-			return new TextDecoder().decode(result.value.stdout).trim();
-		}).mapError(
-			(error) => wrapError(`Failed to get current branch`, error),
-		);
+		// Fallback: we're in detached HEAD - return "HEAD"
+		return Result.ok("HEAD");
 	}
 
 	async pullOriginBranch(branch: string): Promise<Result<void, Error>> {

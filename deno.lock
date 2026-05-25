@@ -12,15 +12,18 @@
     "jsr:@cliffy/prompt@^1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/table@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@cliffy/table@^1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@std/assert@^1.0.7": "1.0.13",
     "jsr:@std/assert@~1.0.6": "1.0.13",
     "jsr:@std/dotenv@~0.225.5": "0.225.5",
     "jsr:@std/encoding@~1.0.5": "1.0.10",
     "jsr:@std/fmt@^1.0.8": "1.0.8",
     "jsr:@std/fmt@~1.0.2": "1.0.8",
+    "jsr:@std/internal@^1.0.6": "1.0.10",
     "jsr:@std/internal@^1.0.9": "1.0.10",
     "jsr:@std/io@~0.224.9": "0.224.9",
     "jsr:@std/path@^1.1.1": "1.1.1",
     "jsr:@std/path@~1.0.6": "1.0.9",
+    "jsr:@std/testing@0.225": "0.225.3",
     "jsr:@std/text@^1.0.15": "1.0.15",
     "jsr:@std/text@~1.0.7": "1.0.15",
     "jsr:@std/yaml@^1.0.8": "1.0.9",
@@ -73,7 +76,7 @@
         "jsr:@cliffy/ansi",
         "jsr:@cliffy/internal",
         "jsr:@cliffy/keycode@1.0.0-rc.8",
-        "jsr:@std/assert",
+        "jsr:@std/assert@~1.0.6",
         "jsr:@std/fmt@~1.0.2",
         "jsr:@std/io",
         "jsr:@std/path@~1.0.6",
@@ -87,7 +90,10 @@
       ]
     },
     "@std/assert@1.0.13": {
-      "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29"
+      "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.6"
+      ]
     },
     "@std/dotenv@0.225.5": {
       "integrity": "9ce6f9d0ec3311f74a32535aa1b8c62ed88b1ab91b7f0815797d77a6f60c922f"
@@ -110,8 +116,11 @@
     "@std/path@1.1.1": {
       "integrity": "fe00026bd3a7e6a27f73709b83c607798be40e20c81dde655ce34052fd82ec76",
       "dependencies": [
-        "jsr:@std/internal"
+        "jsr:@std/internal@^1.0.9"
       ]
+    },
+    "@std/testing@0.225.3": {
+      "integrity": "348c24d0479d44ab3dbb4f26170f242e19f24051b45935d4a9e7ca0ab7e37780"
     },
     "@std/text@1.0.15": {
       "integrity": "91f5cc1e12779a3d95f1be34e763f9c28a75a078b7360e6fcaef0d8d9b1e3e7f"
@@ -168,9 +177,11 @@
       "jsr:@cliffy/keycode@^1.0.0-rc.8",
       "jsr:@cliffy/prompt@^1.0.0-rc.8",
       "jsr:@cliffy/table@^1.0.0-rc.8",
+      "jsr:@std/assert@^1.0.7",
       "jsr:@std/dotenv@~0.225.5",
       "jsr:@std/fmt@^1.0.8",
       "jsr:@std/path@^1.1.1",
+      "jsr:@std/testing@0.225",
       "jsr:@std/text@^1.0.15",
       "jsr:@std/yaml@^1.0.8",
       "npm:typescript-result@^3.5.1",

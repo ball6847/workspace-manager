@@ -17,3 +17,11 @@ export function wrapError(context: string, cause: Error): ErrorWithCause {
 export function wrapErrorResult<T = void>(context: string, cause: Error): Result<T, ErrorWithCause> {
 	return Result.error(new ErrorWithCause(context, cause));
 }
+
+/** AggregateError to collect multiple errors */
+export class AggregateError extends Error {
+	constructor(public readonly errors: Error[], message: string) {
+		super(message);
+		this.name = "AggregateError";
+	}
+}
