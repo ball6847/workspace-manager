@@ -2,6 +2,7 @@ import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import { red } from "@std/fmt/colors";
 import meta from "../deno.json" with { type: "json" };
+import { ConsoleLogger } from "./libs/logger.ts";
 import { addCommand } from "./cmds/add.ts";
 import { enableCommand } from "./cmds/enable.ts";
 import { openCommand } from "./cmds/open.ts";
@@ -31,12 +32,13 @@ cli
 	)
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
+		const logger = new ConsoleLogger();
 		const result = await syncCommand({
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 			concurrency: options.concurrency,
-		});
+		}, logger);
 		if (!result.ok) {
 			console.log(red("❌ Sync failed:"), result.error.message);
 			Deno.exit(1);

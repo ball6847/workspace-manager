@@ -8,7 +8,12 @@
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
     "build": "deno bundle --platform=deno main.ts -o build/cli.js",
-    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager-local ./build/cli.js"
+    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager-local ./build/cli.js",
+    "test": "deno test --allow-run --allow-write --allow-read --allow-env --allow-net",
+    "test:git": "deno test --allow-run --allow-write --allow-read --allow-env --allow-net tests/git/",
+    "test:sync": "deno test --allow-run --allow-write --allow-read --allow-env --allow-net tests/sync/",
+    "test:coverage": "deno test --allow-run --allow-write --allow-read --allow-env --allow-net --coverage=cov_profile",
+    "test:watch": "deno test --allow-run --allow-write --allow-read --allow-env --allow-net --watch"
   },
   "imports": {
     "@117/mutex": "jsr:@117/mutex@^1.0.8",
