@@ -1,6 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
 import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
-import { Result } from "typescript-result";
 import { GitManager } from "../../src/libs/git.ts";
 import { cleanupTestRepos, GitTestFixture } from "../sync/git_fixtures.ts";
 

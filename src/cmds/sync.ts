@@ -1,5 +1,5 @@
 import { Command } from "@cliffy/command";
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
 import { AggregateError } from "../libs/errors.ts";

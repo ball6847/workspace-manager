@@ -22,15 +22,15 @@ function assertStringContains(actual: string, expected: string[]): void {
 
 // Mock GoWork for testing
 class MockGoWork {
-	constructor(private cwd?: string) {}
-	async init(): Promise<Result<void, Error>> {
-		return Result.ok();
+	constructor(private _cwd?: string) {}
+	init(): Promise<Result<void, Error>> {
+		return Promise.resolve(Result.ok());
 	}
-	async use(paths: string[]): Promise<Result<void, Error>> {
-		return Result.ok();
+	use(_paths: string[]): Promise<Result<void, Error>> {
+		return Promise.resolve(Result.ok());
 	}
-	async remove(paths: string[]): Promise<Result<void, Error>> {
-		return Result.ok();
+	remove(_paths: string[]): Promise<Result<void, Error>> {
+		return Promise.resolve(Result.ok());
 	}
 }
 
@@ -84,7 +84,6 @@ async function createWorkspaceRoot(path: string): Promise<void> {
 
 describe("Sync Command", () => {
 	let testRepoPath: string;
-	let gitManager: GitManager;
 
 	beforeAll(async () => {
 		testRepoPath = GitTestFixture.getTestRepoPath("sync-test");
@@ -95,7 +94,7 @@ describe("Sync Command", () => {
 			throw repoResult.error;
 		}
 
-		gitManager = new GitManager(testRepoPath);
+		new GitManager(testRepoPath);
 	});
 
 	afterAll(async () => {
@@ -372,7 +371,7 @@ describe("Sync Command", () => {
 		// Note: This is a simplified test - the actual concurrent processing is in syncCommand
 		// Here we just verify that the individual workspace sync works
 		for (const config of workspaceConfigs) {
-			const result = await syncSingleWorkspace(config, workspaceRoot, workspaceManager, new SilentLogger());
+			await syncSingleWorkspace(config, workspaceRoot, workspaceManager, new SilentLogger());
 			// Each sync might fail, but we're testing that they all execute
 			// In a real concurrent scenario, all errors would be collected
 		}
@@ -445,7 +444,6 @@ describe("Sync Command", () => {
 	// TC-SYNC-010: ConfigManager integration
 	it("TC-SYNC-010: should work with ConfigManager", async () => {
 		const configPath = GitTestFixture.getTestRepoPath("sync-010-config.yml");
-		const workspaceRoot = GitTestFixture.getTestRepoPath("sync-010");
 
 		// Create a workspace config file
 		const configContent = `

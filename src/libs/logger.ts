@@ -1,4 +1,4 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { green, red, yellow } from "@std/fmt/colors";
 
 /**
  * Logger type for abstracting console output
