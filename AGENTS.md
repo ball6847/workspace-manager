@@ -94,16 +94,16 @@ There is **no database, no HTTP API, no repository/ORM layer**. Persistence is Y
 main.ts
 src/
 ├── cli.ts                 # Cliffy registration + composition root hooks
+├── composition.ts         # Dependency injection: builds adapters + services
 ├── cmds/                  # Thin command actions (one file per command)
 ├── services/              # Use-case classes
 ├── domain/                # Pure types and rules
 ├── ports/                 # Port interfaces only
 ├── adapters/              # Concrete I/O (git, go, fs, config, hooks, logger)
+├── testing/               # Shared fakes for unit tests
 ├── types/                 # Shared DTOs / command option types (or fold into domain)
-└── libs/                  # Small pure utilities (concurrent batching, etc.) — no I/O policy
+└── libs/                  # Pure utils + shims + error helpers — no I/O policy
 ```
-
-Until migration completes, existing `libs/git.ts`, `libs/go.ts`, etc. are treated as **adapters** and must not grow new service-level orchestration.
 
 ---
 

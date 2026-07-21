@@ -55,7 +55,7 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 
 	const createConfigStore = (configPath: string) => new ConfigManager(configPath);
 	const createDiscovery = (opts: WorkspaceDiscoveryOptions) => new WorkspaceDiscovery({ ...opts, startDir: opts.startDir ?? startDir });
-	const createHookRunner = (hookDebug?: boolean) => new HookExecutor(hookDebug ?? debug);
+	const createHookRunner = (hookDebug?: boolean) => new HookExecutor(logger, hookDebug ?? debug);
 	const gitFactory: GitPortFactory = (cwd: string) => new GitManager(cwd);
 	const goWorkFactory: GoWorkPortFactory = (cwd: string) => new GoWork(cwd);
 

@@ -9,7 +9,7 @@ import type { WorkspaceConfigItem } from "../types/config.ts";
 export type AddServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
 	createConfigStore(configPath: string): ConfigStore;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type AddInput = {
@@ -59,12 +59,12 @@ export class AddService {
 		const isGolang = input.isGolang ?? false;
 
 		if (debug) {
-			this.deps.logger?.info(`Adding workspace: ${workspacePath} from ${input.repo}`, { workspaceRoot, configPath });
+			this.deps.logger.info(`Adding workspace: ${workspacePath} from ${input.repo}`, { workspaceRoot, configPath });
 		}
 
 		const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === input.repo);
 		if (existingWorkspace) {
-			this.deps.logger?.warn(`Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`);
+			this.deps.logger.warn(`Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`);
 			return Result.ok({
 				added: false,
 				workspacePath,
@@ -89,7 +89,7 @@ export class AddService {
 			return Result.error(writeResult.error);
 		}
 
-		this.deps.logger?.info(`Successfully added workspace: ${workspacePath}`);
+		this.deps.logger.info(`Successfully added workspace: ${workspacePath}`);
 		return Result.ok({
 			added: true,
 			workspacePath,

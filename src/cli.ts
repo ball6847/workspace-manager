@@ -39,7 +39,7 @@ cli
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		CommandErrorHandler.withExit(result, "Sync");
+		CommandErrorHandler.withExit(result, "Sync", { debug: options.debug });
 	});
 
 // Update command
@@ -66,7 +66,7 @@ cli
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		CommandErrorHandler.withExit(result, "Update");
+		CommandErrorHandler.withExit(result, "Update", { debug: options.debug });
 	});
 
 // Enable command
@@ -92,7 +92,7 @@ cli
 			concurrency: options.concurrency,
 			yes: options.yes,
 		});
-		CommandErrorHandler.withExit(result, "Enable");
+		CommandErrorHandler.withExit(result, "Enable", { debug: options.debug });
 	});
 
 // Save command
@@ -111,7 +111,7 @@ cli
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 		});
-		CommandErrorHandler.withExit(result, "Save");
+		CommandErrorHandler.withExit(result, "Save", { debug: options.debug });
 	});
 
 // Add command
@@ -158,7 +158,7 @@ cli
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		CommandErrorHandler.withExit(result, "Add");
+		CommandErrorHandler.withExit(result, "Add", { debug: options.debug });
 	});
 
 // Status command
@@ -187,7 +187,7 @@ cli
 			json: options.json,
 			verbose: options.verbose,
 		});
-		CommandErrorHandler.withExit(result, "Status");
+		CommandErrorHandler.withExit(result, "Status", { debug: options.debug });
 	});
 
 // Open command
@@ -208,7 +208,7 @@ cli
 			editor: options.editor,
 			workspace: options.workspace,
 		});
-		CommandErrorHandler.withExit(result, "Open");
+		CommandErrorHandler.withExit(result, "Open", { debug: options.debug });
 	});
 
 // Completions command

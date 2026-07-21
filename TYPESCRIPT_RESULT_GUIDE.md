@@ -1,8 +1,10 @@
 # TypeScript Result Pattern Guide
 
+> This guide is a companion to [`AGENTS.md`](./AGENTS.md) §4 (Error Handling). Architecture contracts — including the ban on `try/catch` in application code and the mandatory use of `AppError` + `Result` — are defined there. This document covers the *how* of using `typescript-result`.
+
 ## Overview
 
-This guide documents the strict requirements for using `npm:typescript-result` for all error handling in this codebase. **NO TRY-CATCH BLOCKS ARE ALLOWED ANYWHERE**.
+This guide documents the strict requirements for using `npm:typescript-result` for all error handling in this codebase. **NO TRY-CATCH BLOCKS ARE ALLOWED ANYWHERE** in application code (cmds, services, adapters, domain). All errors are `AppError` instances returned inside `Result`. See `AGENTS.md` §4 for the full policy.
 
 ## Core Functions
 

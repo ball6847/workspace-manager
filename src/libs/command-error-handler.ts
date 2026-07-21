@@ -1,52 +1,51 @@
-import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { AppError } from "./app-error.ts";
+import { presentCommandError } from "../cmds/present-error.ts";
 
 export interface ErrorHandler {
-	onError(error: Error, commandName: string): void;
+	onError(error: Error, commandName: string, options?: { debug?: boolean }): void;
 }
 
 export class ConsoleErrorHandler implements ErrorHandler {
-	onError(error: Error, commandName: string): void {
-		if (error instanceof AppError) {
-			console.log(red(`❌ ${commandName} failed [${error.code}]:`), error.message);
-		} else {
-			console.log(red(`❌ ${commandName} failed:`), error.message);
-		}
+	onError(error: Error, commandName: string, options?: { debug?: boolean }): void {
+		presentCommandError(commandName, error, options);
 	}
 }
 
 export class CommandErrorHandler {
 	constructor(private readonly errorHandler: ErrorHandler) {}
 
-	handle<T>(result: Result<T, Error>, commandName: string): T | null {
+	handle<T>(result: Result<T, Error>, commandName: string, options?: { debug?: boolean }): T | null {
 		if (!result.ok) {
-			this.errorHandler.onError(result.error, commandName);
+			this.errorHandler.onError(result.error, commandName, options);
 			return null;
 		}
 		return result.value as T | null;
 	}
 
-	async handleAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+	async handleAsync<T>(
+		promise: Promise<Result<T, Error>>,
+		commandName: string,
+		options?: { debug?: boolean },
+	): Promise<T | null> {
 		const result = await promise;
-		return this.handle(result, commandName);
+		return this.handle(result, commandName, options);
 	}
 
 	// Static factory methods for convenience
-	static withExit<T>(result: Result<T, Error>, commandName: string): T | null {
+	static withExit<T>(result: Result<T, Error>, commandName: string, options?: { debug?: boolean }): T | null {
 		if (!result.ok) {
-			if (result.error instanceof AppError) {
-				console.log(red(`❌ ${commandName} failed [${result.error.code}]:`), result.error.message);
-			} else {
-				console.log(red(`❌ ${commandName} failed:`), result.error.message);
-			}
+			presentCommandError(commandName, result.error, options);
 			Deno.exit(1);
 		}
 		return result.value as T | null;
 	}
 
-	static async withExitAsync<T>(promise: Promise<Result<T, Error>>, commandName: string): Promise<T | null> {
+	static async withExitAsync<T>(
+		promise: Promise<Result<T, Error>>,
+		commandName: string,
+		options?: { debug?: boolean },
+	): Promise<T | null> {
 		const result = await promise;
-		return this.withExit(result, commandName);
+		return this.withExit(result, commandName, options);
 	}
 }

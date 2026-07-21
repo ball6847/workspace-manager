@@ -46,7 +46,7 @@ export type OpenServiceDeps = {
 	goWorkFactory: GoWorkPortFactory;
 	fileSystem: FileSystemPort;
 	createHookRunner(debug?: boolean): HookRunner;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type OpenListInput = {

@@ -7,7 +7,7 @@ import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports
 export type EnableServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
 	createConfigStore(configPath: string): ConfigStore;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type EnableInput = {
@@ -60,7 +60,7 @@ export class EnableService {
 		}
 
 		if (debug) {
-			this.deps.logger?.info(`Updating active states for ${config.workspaces.length} workspaces`, {
+			this.deps.logger.info(`Updating active states for ${config.workspaces.length} workspaces`, {
 				workspaceRoot,
 				configPath,
 			});
@@ -98,7 +98,7 @@ export class EnableService {
 			return Result.error(writeResult.error);
 		}
 
-		this.deps.logger?.info("Workspace states updated successfully", {
+		this.deps.logger.info("Workspace states updated successfully", {
 			enabledCount: enabledPaths.length,
 			disabledCount: disabledPaths.length,
 		});

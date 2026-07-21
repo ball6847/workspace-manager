@@ -148,7 +148,8 @@ Deno.test("StatusService propagates discovery errors", async () => {
 	const createConfigStore = (_configPath: string): ConfigStore => new FakeConfigStore("/ws/workspace.yml", { workspaces: [] });
 	const fileSystem = new FakeFileSystem();
 	const gitFactory = (_cwd: string): GitPort => new FakeGit({ currentBranch: "main" });
-	const service = new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem });
+	const logger = new FakeLogger();
+	const service = new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem, logger });
 
 	const result = await service.run({});
 

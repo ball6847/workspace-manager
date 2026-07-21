@@ -34,7 +34,7 @@ export type StatusServiceDeps = {
 	createConfigStore(configPath: string): ConfigStore;
 	gitFactory: GitPortFactory;
 	fileSystem: FileSystemPort;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type StatusInput = {
@@ -74,7 +74,7 @@ export class StatusService {
 		const activeWorkspaces = getActiveWorkspaces(config);
 
 		if (debug) {
-			this.deps.logger?.info(`Checking status for ${activeWorkspaces.length} active repositories`, {
+			this.deps.logger.info(`Checking status for ${activeWorkspaces.length} active repositories`, {
 				workspaceRoot,
 				configPath,
 			});

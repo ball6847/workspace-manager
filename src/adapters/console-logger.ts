@@ -7,18 +7,33 @@ export class ConsoleLogger implements Logger {
 		if (!this._debugEnabled) {
 			return;
 		}
-		console.log(`[DEBUG] ${message}`, fields ?? "");
+		console.log(`[DEBUG] ${message}${formatFields(fields)}`);
 	}
 
 	info(message: string, fields?: LogFields): void {
-		console.log(`[INFO] ${message}`, fields ?? "");
+		console.log(`[INFO] ${message}${formatFields(fields)}`);
 	}
 
 	warn(message: string, fields?: LogFields): void {
-		console.warn(`[WARN] ${message}`, fields ?? "");
+		console.warn(`[WARN] ${message}${formatFields(fields)}`);
 	}
 
 	error(message: string, fields?: LogFields): void {
-		console.error(`[ERROR] ${message}`, fields ?? "");
+		console.error(`[ERROR] ${message}${formatFields(fields)}`);
 	}
+}
+
+function formatFields(fields?: LogFields): string {
+	if (!fields || Object.keys(fields).length === 0) {
+		return "";
+	}
+
+	const pairs = Object.entries(fields).map(([key, value]) => {
+		if (typeof value === "string") {
+			return `${key}=${value}`;
+		}
+		return `${key}=${JSON.stringify(value)}`;
+	});
+
+	return ` ${pairs.join(" ")}`;
 }

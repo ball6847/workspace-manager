@@ -13,7 +13,7 @@ export type UpdateServiceDeps = {
 	createConfigStore(configPath: string): ConfigStore;
 	gitFactory: GitPortFactory;
 	fileSystem: FileSystemPort;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type UpdateInput = {
@@ -51,7 +51,7 @@ export class UpdateService {
 		const activeWorkspaces = getActiveWorkspaces(config);
 
 		if (debug) {
-			this.deps.logger?.info(`Found ${activeWorkspaces.length} active workspaces to update`, { workspaceRoot, configPath });
+			this.deps.logger.info(`Found ${activeWorkspaces.length} active workspaces to update`, { workspaceRoot, configPath });
 		}
 
 		const updateResult = await processConcurrently(
@@ -62,25 +62,25 @@ export class UpdateService {
 
 				const dir = await this.deps.fileSystem.isDir(workspacePath);
 				if (!dir.ok) {
-					this.deps.logger?.warn(`Workspace directory does not exist, skipping: ${workspace.path}`);
+					this.deps.logger.warn(`Workspace directory does not exist, skipping: ${workspace.path}`);
 					return Result.ok();
 				}
 
-				this.deps.logger?.info(`Updating workspace: ${workspace.path} (branch: ${workspace.branch})`);
+				this.deps.logger.info(`Updating workspace: ${workspace.path} (branch: ${workspace.branch})`);
 
 				const checkoutResult = await git.checkoutBranch(workspace.branch);
 				if (!checkoutResult.ok) {
-					this.deps.logger?.error(`Failed to checkout to branch ${workspace.branch} in ${workspace.path}: ${checkoutResult.error.message}`);
+					this.deps.logger.error(`Failed to checkout to branch ${workspace.branch} in ${workspace.path}: ${checkoutResult.error.message}`);
 					return Result.error(checkoutResult.error);
 				}
 
 				if (debug) {
-					this.deps.logger?.debug(`Checked out to branch ${workspace.branch} in ${workspace.path}`);
+					this.deps.logger.debug(`Checked out to branch ${workspace.branch} in ${workspace.path}`);
 				}
 
 				const isCleanResult = await git.isWorkingDirectoryClean();
 				if (!isCleanResult.ok) {
-					this.deps.logger?.error(`Failed to check working directory status in ${workspace.path}: ${isCleanResult.error.message}`);
+					this.deps.logger.error(`Failed to check working directory status in ${workspace.path}: ${isCleanResult.error.message}`);
 					return Result.error(isCleanResult.error);
 				}
 
@@ -88,54 +88,54 @@ export class UpdateService {
 				let hasStashedChanges = false;
 
 				if (!isClean) {
-					this.deps.logger?.warn(`Working directory is dirty in ${workspace.path}, stashing changes...`);
+					this.deps.logger.warn(`Working directory is dirty in ${workspace.path}, stashing changes...`);
 					const stashResult = await git.stash(`workspace-manager auto-stash before update`);
 					if (!stashResult.ok) {
-						this.deps.logger?.error(`Failed to stash changes in ${workspace.path}: ${stashResult.error.message}`);
+						this.deps.logger.error(`Failed to stash changes in ${workspace.path}: ${stashResult.error.message}`);
 						return Result.error(stashResult.error);
 					}
 					hasStashedChanges = true;
 					if (debug) {
-						this.deps.logger?.debug(`Stashed changes in ${workspace.path}`);
+						this.deps.logger.debug(`Stashed changes in ${workspace.path}`);
 					}
 				}
 
 				const fetchResult = await git.fetch();
 				if (!fetchResult.ok) {
-					this.deps.logger?.error(`Failed to fetch latest changes from origin in ${workspace.path}: ${fetchResult.error.message}`);
+					this.deps.logger.error(`Failed to fetch latest changes from origin in ${workspace.path}: ${fetchResult.error.message}`);
 					return Result.error(fetchResult.error);
 				}
 
 				if (debug) {
-					this.deps.logger?.debug(`Fetched latest changes from origin in ${workspace.path}`);
+					this.deps.logger.debug(`Fetched latest changes from origin in ${workspace.path}`);
 				}
 
 				const pullResult = await git.pullOriginBranch(workspace.branch);
 				if (!pullResult.ok) {
-					this.deps.logger?.error(`Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}: ${pullResult.error.message}`);
+					this.deps.logger.error(`Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}: ${pullResult.error.message}`);
 					return Result.error(pullResult.error);
 				}
 
 				if (debug) {
-					this.deps.logger?.debug(`Pulled latest changes from origin/${workspace.branch} in ${workspace.path}`);
+					this.deps.logger.debug(`Pulled latest changes from origin/${workspace.branch} in ${workspace.path}`);
 				}
 
 				if (hasStashedChanges) {
-					this.deps.logger?.info(`Restoring stashed changes in ${workspace.path}...`);
+					this.deps.logger.info(`Restoring stashed changes in ${workspace.path}...`);
 					const popResult = await git.stashPop();
 					if (!popResult.ok) {
-						this.deps.logger?.warn(
+						this.deps.logger.warn(
 							`Warning: Failed to pop stash in ${workspace.path}. You may need to manually resolve conflicts. (${popResult.error.message})`,
 						);
-						this.deps.logger?.warn(`You can manually run 'git stash pop' in ${workspace.path} to restore your changes.`);
+						this.deps.logger.warn(`You can manually run 'git stash pop' in ${workspace.path} to restore your changes.`);
 					} else {
 						if (debug) {
-							this.deps.logger?.debug(`Restored stashed changes in ${workspace.path}`);
+							this.deps.logger.debug(`Restored stashed changes in ${workspace.path}`);
 						}
 					}
 				}
 
-				this.deps.logger?.info(`Successfully updated workspace: ${workspace.path}`);
+				this.deps.logger.info(`Successfully updated workspace: ${workspace.path}`);
 				return Result.ok();
 			},
 			concurrency,

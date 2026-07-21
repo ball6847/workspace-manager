@@ -1,13 +1,11 @@
-import { cyan } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
+import type { Logger } from "../ports/logger.ts";
 import type { PostSyncHook } from "../types/config.ts";
 
 export class HookExecutor implements HookRunner {
-	constructor(private _debug: boolean = false) {
-		this._debug = _debug;
-	}
+	constructor(private readonly _logger: Logger, private readonly _debug: boolean = false) {}
 
 	async executeHook(hook: PostSyncHook, context: HookContext): Promise<Result<HookExecutionResult, AppError>> {
 		const startTime = Date.now();
@@ -15,11 +13,10 @@ export class HookExecutor implements HookRunner {
 		const substitutedCmd = this._substituteVariables(hook.cmd, context);
 		const substitutedWorkDir = hook.workDir ? this._substituteVariables([hook.workDir], context)[0] : context.root;
 
-		// Always log hook execution
-		console.log(`[HOOK] ${cyan(substitutedCmd.join(" "))}`);
+		this._logger.info("Running hook", { cmd: substitutedCmd.join(" "), workDir: substitutedWorkDir });
 
 		if (this._debug) {
-			console.log(`[DEBUG] Working directory: ${substitutedWorkDir}`);
+			this._logger.debug("Hook working directory", { workDir: substitutedWorkDir });
 		}
 
 		const env = { ...Deno.env.toObject(), ...hook.env };
@@ -69,9 +66,13 @@ export class HookExecutor implements HookRunner {
 		const stderr = new TextDecoder().decode(output.stderr);
 
 		if (this._debug) {
-			console.log(`[DEBUG] Hook completed in ${duration}ms`);
-			if (stdout) console.log(`[DEBUG] stdout: ${stdout}`);
-			if (stderr) console.log(`[DEBUG] stderr: ${stderr}`);
+			this._logger.debug("Hook completed", { durationMs: duration });
+			if (stdout) {
+				this._logger.debug("Hook stdout", { stdout });
+			}
+			if (stderr) {
+				this._logger.debug("Hook stderr", { stderr });
+			}
 		}
 
 		const executionResult: HookExecutionResult = {
@@ -81,6 +82,10 @@ export class HookExecutor implements HookRunner {
 			stderr,
 			duration,
 		};
+
+		if (!output.success) {
+			this._logger.warn("Hook exited with non-zero status", { exitCode: output.code, stderr });
+		}
 
 		return Result.ok(executionResult);
 	}

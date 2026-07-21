@@ -3,6 +3,7 @@ import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPort } from "../ports/git.ts";
+import type { GoAvailabilityPort, GoWorkPort } from "../ports/go-work.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
 import type { LogFields, Logger } from "../ports/logger.ts";
 import type { DiscoveryResult, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
@@ -226,5 +227,35 @@ export class FakeHookRunner implements HookRunner {
 			});
 		}
 		return Promise.resolve(Result.ok(results));
+	}
+}
+
+export class FakeGoWork implements GoWorkPort, GoAvailabilityPort {
+	calls: { method: string; args: unknown[] }[] = [];
+	available = true;
+	failNext: string | undefined;
+
+	private record(method: string, args: unknown[]): void {
+		this.calls.push({ method, args });
+	}
+
+	init(): Promise<Result<void, AppError>> {
+		this.record("init", []);
+		return Promise.resolve(Result.ok());
+	}
+
+	use(paths: string[]): Promise<Result<void, AppError>> {
+		this.record("use", [paths]);
+		return Promise.resolve(Result.ok());
+	}
+
+	remove(paths: string[]): Promise<Result<void, AppError>> {
+		this.record("remove", [paths]);
+		return Promise.resolve(Result.ok());
+	}
+
+	isAvailable(): Promise<Result<boolean, AppError>> {
+		this.record("isAvailable", []);
+		return Promise.resolve(Result.ok(this.available));
 	}
 }

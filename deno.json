@@ -4,6 +4,7 @@
   "exports": "./main.ts",
   "tasks": {
     "check": "deno fmt --check && deno lint && deno test -A ./",
+    "test": "deno test -A src/",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",

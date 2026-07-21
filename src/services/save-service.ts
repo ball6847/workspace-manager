@@ -26,7 +26,7 @@ export type SaveServiceDeps = {
 	createConfigStore(configPath: string): ConfigStore;
 	gitFactory: GitPortFactory;
 	fileSystem: FileSystemPort;
-	logger?: Logger;
+	logger: Logger;
 };
 
 export type SaveInput = {
@@ -60,7 +60,7 @@ export class SaveService {
 		const config = parseResult.value;
 
 		if (debug) {
-			this.deps.logger?.info("Scanning active workspaces for current branches", { workspaceRoot, configPath });
+			this.deps.logger.info("Scanning active workspaces for current branches", { workspaceRoot, configPath });
 		}
 
 		const activeWorkspaces = getActiveWorkspaces(config);
@@ -81,7 +81,7 @@ export class SaveService {
 
 			const dirExists = await this.deps.fileSystem.isDir(workspacePath);
 			if (!dirExists.ok) {
-				this.deps.logger?.warn(`Workspace directory not found: ${workspace.path}`);
+				this.deps.logger.warn(`Workspace directory not found: ${workspace.path}`);
 				report.errorCount++;
 				continue;
 			}
@@ -90,14 +90,14 @@ export class SaveService {
 
 			const isRepo = await git.isRepository();
 			if (!isRepo.ok || !isRepo.value) {
-				this.deps.logger?.warn(`Not a git repository: ${workspace.path}`);
+				this.deps.logger.warn(`Not a git repository: ${workspace.path}`);
 				report.errorCount++;
 				continue;
 			}
 
 			const currentBranch = await git.getCurrentBranch();
 			if (!currentBranch.ok) {
-				this.deps.logger?.error(`Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`);
+				this.deps.logger.error(`Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`);
 				report.errorCount++;
 				continue;
 			}
@@ -107,14 +107,14 @@ export class SaveService {
 			if (workspace.branch !== newBranch) {
 				const oldBranch = workspace.branch;
 				if (debug) {
-					this.deps.logger?.debug(`Updating ${workspace.path}: ${oldBranch} → ${newBranch}`);
+					this.deps.logger.debug(`Updating ${workspace.path}: ${oldBranch} → ${newBranch}`);
 				}
 				workspace.branch = newBranch;
 				report.updatedCount++;
 				report.changes.push({ path: workspace.path, oldBranch, newBranch });
 			} else {
 				if (debug) {
-					this.deps.logger?.debug(`${workspace.path}: ${workspace.branch} (no change)`);
+					this.deps.logger.debug(`${workspace.path}: ${workspace.branch} (no change)`);
 				}
 			}
 		}
