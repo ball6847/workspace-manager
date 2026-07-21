@@ -56,3 +56,18 @@ Deno.test("presentCommandError skips debug output when debug is false", () => {
 		restore();
 	}
 });
+
+Deno.test("presentCommandError prints JSON when json option is true", () => {
+	const capture = new ConsoleCapture();
+	const restore = capture.attach();
+	try {
+		const error = new AppError(AppErrorCode.GIT_FAILED, "clone failed");
+		presentCommandError("Status", error, { json: true });
+		assertEquals(capture.logs.length, 1);
+		const parsed = JSON.parse(capture.logs[0]);
+		assertEquals(parsed.error.code, "GIT_FAILED");
+		assertEquals(parsed.error.message, "clone failed");
+	} finally {
+		restore();
+	}
+});

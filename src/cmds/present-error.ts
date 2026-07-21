@@ -3,10 +3,17 @@ import { isAppError } from "../libs/app-error.ts";
 
 export type PresentErrorOptions = {
 	debug?: boolean;
+	json?: boolean;
 };
 
 export function presentCommandError(commandName: string, error: Error, options?: PresentErrorOptions): void {
 	const debug = options?.debug ?? false;
+	const json = options?.json ?? false;
+
+	if (json && isAppError(error)) {
+		console.log(JSON.stringify({ error: { code: error.code, message: error.message } }, null, 2));
+		return;
+	}
 
 	if (isAppError(error)) {
 		console.log(red(`❌ ${commandName} failed [${error.code}]:`), error.message);

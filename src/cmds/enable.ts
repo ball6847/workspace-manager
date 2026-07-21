@@ -1,5 +1,5 @@
 import { Checkbox } from "@cliffy/prompt/checkbox";
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
@@ -22,21 +22,18 @@ export async function enableCommand(ctx: AppContext, option: EnableCommandOption
 
 	const discoverResult = await discovery.discover();
 	if (!discoverResult.ok) {
-		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
 		return Result.error(discoverResult.error);
 	}
 
 	const { workspaceRoot, configPath } = discoverResult.value;
 	const validated = await ctx.fileSystem.isDir(workspaceRoot);
 	if (!validated.ok) {
-		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
 		return Result.error(validated.error);
 	}
 
 	const configStore = ctx.createConfigStore(configPath);
 	const parseResult = await configStore.getConfig();
 	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
 		return Result.error(parseResult.error);
 	}
 	const config = parseResult.value;
@@ -119,7 +116,6 @@ export async function enableCommand(ctx: AppContext, option: EnableCommandOption
 	});
 
 	if (!syncResult.ok) {
-		console.log(red("❌ Sync failed:"), syncResult.error.message);
 		return Result.error(syncResult.error);
 	}
 

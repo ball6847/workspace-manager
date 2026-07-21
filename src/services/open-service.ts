@@ -69,10 +69,11 @@ export class OpenService {
 	constructor(private readonly deps: OpenServiceDeps) {}
 
 	async listWorkspaces(input: OpenListInput): Promise<Result<OpenListReport, AppError>> {
-		const { workspaceRoot, configPath, config } = await this.loadConfig(input);
-		if (!workspaceRoot) {
-			return Result.error(config as AppError);
+		const loadResult = await this.loadConfig(input);
+		if (!loadResult.ok) {
+			return Result.error(loadResult.error);
 		}
+		const { workspaceRoot, configPath, config } = loadResult.value;
 
 		const workspaces: OpenWorkspaceInfo[] = [];
 
@@ -108,17 +109,16 @@ export class OpenService {
 	}
 
 	async prepareWorkspace(input: OpenPrepareInput): Promise<Result<OpenPrepareReport, AppError>> {
-		const loaded = await this.loadConfig(input);
-		if (!loaded.workspaceRoot) {
-			return Result.error(loaded.config as AppError);
+		const loadResult = await this.loadConfig(input);
+		if (!loadResult.ok) {
+			return Result.error(loadResult.error);
 		}
-
-		const { workspaceRoot, configPath, config } = loaded;
+		const { workspaceRoot, configPath, config } = loadResult.value;
 		const debug = input.debug ?? false;
 
 		const workspace = config.workspaces.find((w) => w.path === input.path);
 		if (!workspace) {
-			return Result.error(new AppError(AppErrorCode.INTERNAL, `Workspace not found: ${input.path}`));
+			return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, `Workspace not found: ${input.path}`, { context: { path: input.path } }));
 		}
 
 		const workspaceManager = new WorkspaceManager(workspaceRoot, this.deps.goWorkFactory, this.deps.gitFactory);
@@ -194,7 +194,7 @@ export class OpenService {
 
 	private async loadConfig(
 		input: { config?: string; workspaceRoot?: string },
-	): Promise<{ workspaceRoot: string; configPath: string; config: WorkspaceConfig } | { workspaceRoot: null; configPath: string; config: AppError }> {
+	): Promise<Result<{ workspaceRoot: string; configPath: string; config: WorkspaceConfig }, AppError>> {
 		const discovery = this.deps.createDiscovery({
 			config: input.config,
 			workspaceRoot: input.workspaceRoot,
@@ -202,16 +202,16 @@ export class OpenService {
 
 		const discoverResult = await discovery.discover();
 		if (!discoverResult.ok) {
-			return { workspaceRoot: null, configPath: "", config: discoverResult.error };
+			return Result.error(discoverResult.error);
 		}
 
 		const { workspaceRoot, configPath } = discoverResult.value;
 		const configStore = this.deps.createConfigStore(configPath);
 		const configResult = await configStore.getWorkspaceConfig(workspaceRoot);
 		if (!configResult.ok) {
-			return { workspaceRoot: null, configPath, config: configResult.error };
+			return Result.error(configResult.error);
 		}
 
-		return { workspaceRoot, configPath, config: configResult.value };
+		return Result.ok({ workspaceRoot, configPath, config: configResult.value });
 	}
 }

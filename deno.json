@@ -8,8 +8,7 @@
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
-    "build": "deno bundle --platform=deno main.ts -o build/cli.js",
-    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager-local ./build/cli.js"
+    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager-local ./main.ts"
   },
   "imports": {
     "@117/mutex": "jsr:@117/mutex@^1.0.8",
@@ -29,7 +28,7 @@
     "zod": "npm:zod@^3.25.67"
   },
   "fmt": {
-    "exclude": ["node_modules", "dist", "build"],
+    "exclude": ["node_modules", "dist"],
     "include": ["**/*.ts"],
     "indentWidth": 4,
     "lineWidth": 200,
@@ -38,7 +37,7 @@
     "useTabs": true
   },
   "lint": {
-    "exclude": ["node_modules", "dist", "build", "generated"],
+    "exclude": ["node_modules", "dist", "generated"],
     "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
     "rules": {
       "tags": ["recommended"]

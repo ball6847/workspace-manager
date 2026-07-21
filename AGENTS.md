@@ -157,6 +157,7 @@ Suggested codes (extend as needed):
 | `HOOK_FAILED`     | post-sync hook non-zero exit                 |
 | `PATH_INVALID`    | bad/unsafe path                              |
 | `CANCELLED`       | user cancelled interactive prompt            |
+| `INVALID_INPUT`   | invalid CLI argument or required input missing |
 | `INTERNAL`        | unexpected / unclassified                    |
 
 - CLI presentation maps `AppError.code` → user-facing message (and optional debug dump of `context` / `cause` when `--debug`).

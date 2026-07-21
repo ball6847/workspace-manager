@@ -1,4 +1,4 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
@@ -17,7 +17,6 @@ export async function syncCommand(ctx: AppContext, options: SyncCommandOption): 
 	});
 
 	if (!result.ok) {
-		console.log(red("❌ Failed to sync workspaces:"), result.error.message);
 		return Result.error(result.error);
 	}
 
@@ -27,7 +26,6 @@ export async function syncCommand(ctx: AppContext, options: SyncCommandOption): 
 }
 
 function presentSyncReport(report: SyncReport, debug: boolean): void {
-	console.log(blue("🔄 Starting workspace sync..."));
 	console.log(blue(`📄 Config file: ${report.configPath}`));
 	console.log(blue(`📁 Workspace root: ${report.workspaceRoot}`));
 

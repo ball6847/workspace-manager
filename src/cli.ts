@@ -187,7 +187,7 @@ cli
 			json: options.json,
 			verbose: options.verbose,
 		});
-		CommandErrorHandler.withExit(result, "Status", { debug: options.debug });
+		CommandErrorHandler.withExit(result, "Status", { debug: options.debug, json: options.json });
 	});
 
 // Open command

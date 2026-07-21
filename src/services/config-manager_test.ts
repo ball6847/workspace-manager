@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { AppErrorCode, isAppError } from "../libs/app-error.ts";
-import { ConfigManager } from "./config-manager.ts";
+import { ConfigManager } from "../adapters/config-store.ts";
 
 Deno.test("ConfigManager returns CONFIG_NOT_FOUND when config file is missing", async () => {
 	const manager = new ConfigManager("/non/existent/workspace.yml");

@@ -24,7 +24,6 @@ export async function statusCommand(ctx: AppContext, option: StatusCommandOption
 	});
 
 	if (!result.ok) {
-		presentError(result.error, option.json ?? false);
 		return Result.error(result.error);
 	}
 
@@ -37,14 +36,6 @@ export async function statusCommand(ctx: AppContext, option: StatusCommandOption
 	}
 
 	return Result.ok();
-}
-
-function presentError(error: AppError, json: boolean): void {
-	if (json) {
-		console.log(JSON.stringify({ error: error.message }, null, 2));
-		return;
-	}
-	console.log(red("❌ Failed to get status:"), error.message);
 }
 
 function outputJson(repositories: StatusRepository[]) {

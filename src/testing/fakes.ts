@@ -140,7 +140,7 @@ export class FakeConfigStore implements ConfigStore {
 	enableWorkspace(workspacePath: string, config: WorkspaceConfig): Result<void, AppError> {
 		const workspace = config.workspaces.find((item) => item.path === workspacePath);
 		if (!workspace) {
-			return Result.error(new AppError(AppErrorCode.INTERNAL, `Workspace not found at path: ${workspacePath}`));
+			return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, `Workspace not found at path: ${workspacePath}`));
 		}
 		workspace.active = true;
 		return Result.ok();

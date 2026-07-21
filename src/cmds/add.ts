@@ -1,4 +1,4 @@
-import { blue, red, yellow } from "@std/fmt/colors";
+import { blue, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
@@ -28,8 +28,7 @@ export async function addCommand(ctx: AppContext, option: AddCommandOption): Pro
 
 async function runNonInteractiveMode(ctx: AppContext, option: AddCommandOption): Promise<Result<void, AppError>> {
 	if (!option.repo) {
-		console.log(red("❌ Repository URL is required in non-interactive mode (-y)"));
-		return Result.error(new AppError(AppErrorCode.INTERNAL, "Repository URL is required in non-interactive mode"));
+		return Result.error(new AppError(AppErrorCode.INVALID_INPUT, "Repository URL is required in non-interactive mode"));
 	}
 
 	const addResult = await ctx.addService.add({
@@ -54,7 +53,6 @@ async function runNonInteractiveMode(ctx: AppContext, option: AddCommandOption):
 			concurrency: option.concurrency,
 		});
 		if (!syncResult.ok) {
-			console.log(red("❌ Sync failed:"), syncResult.error.message);
 			return Result.error(syncResult.error);
 		}
 	}
@@ -164,7 +162,6 @@ async function runInteractiveMode(ctx: AppContext, option: AddCommandOption): Pr
 				concurrency: option.concurrency,
 			});
 			if (!performSyncResult.ok) {
-				console.log(red("❌ Sync failed:"), performSyncResult.error.message);
 				return Result.error(performSyncResult.error);
 			}
 		} else {

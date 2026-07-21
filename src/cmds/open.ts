@@ -1,4 +1,4 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
@@ -30,13 +30,13 @@ export async function openCommand(ctx: AppContext, option: OpenCommandOption): P
 	const { workspaces, editor } = listResult.value;
 
 	if (workspaces.length === 0) {
-		return Result.error(new AppError(AppErrorCode.INTERNAL, "No workspaces found in configuration"));
+		return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, "No workspaces found in configuration"));
 	}
 
 	if (!editor) {
 		return Result.error(
 			new AppError(
-				AppErrorCode.INTERNAL,
+				AppErrorCode.CONFIG_INVALID,
 				"No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable",
 			),
 		);
@@ -51,7 +51,7 @@ export async function openCommand(ctx: AppContext, option: OpenCommandOption): P
 	if (option.workspace) {
 		const found = workspaces.find((w) => w.path === option.workspace);
 		if (!found) {
-			return Result.error(new AppError(AppErrorCode.INTERNAL, `Workspace not found: ${option.workspace}`));
+			return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, `Workspace not found: ${option.workspace}`, { context: { path: option.workspace } }));
 		}
 		selected = found;
 	} else {
@@ -90,7 +90,6 @@ export async function openCommand(ctx: AppContext, option: OpenCommandOption): P
 	});
 
 	if (!prepareResult.ok) {
-		console.log(red("❌ Failed to prepare workspace:"), prepareResult.error.message);
 		return Result.error(prepareResult.error);
 	}
 

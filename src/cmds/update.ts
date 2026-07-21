@@ -1,4 +1,4 @@
-import { green, red } from "@std/fmt/colors";
+import { green } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
@@ -19,7 +19,6 @@ export async function updateCommand(ctx: AppContext, option: UpdateCommandOption
 	});
 
 	if (!result.ok) {
-		console.log(red("❌ Failed to update workspaces:"), result.error.message);
 		return Result.error(result.error);
 	}
 

@@ -26,13 +26,13 @@ export class WorkspaceManager {
 		const submoduleGit = this._gitManagerFactory(fullSubmodulePath);
 		const checkoutResult = await submoduleGit.checkoutBranch(branch);
 		if (!checkoutResult.ok) {
-			return wrapErrorResult(`Failed to checkout submodule at ${workspacePath} to branch ${branch}`, checkoutResult.error);
+			return wrapErrorResult(`Failed to checkout submodule at ${workspacePath} to branch ${branch}`, checkoutResult.error, AppErrorCode.CHECKOUT_FAILED);
 		}
 
 		// Pull the latest changes from the specified branch
 		const pullResult = await submoduleGit.pullOriginBranch(branch);
 		if (!pullResult.ok) {
-			return wrapErrorResult(`Failed to pull latest changes for submodule at ${workspacePath} from branch ${branch}`, pullResult.error);
+			return wrapErrorResult(`Failed to pull latest changes for submodule at ${workspacePath} from branch ${branch}`, pullResult.error, AppErrorCode.CHECKOUT_FAILED);
 		}
 
 		return Result.ok();

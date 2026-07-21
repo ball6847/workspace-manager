@@ -1,7 +1,7 @@
 import { assertEquals, assertFalse } from "@std/assert";
 import { AppErrorCode } from "../libs/app-error.ts";
 import { GitManager } from "../adapters/git.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import { ConfigManager } from "../adapters/config-store.ts";
 import { FakeConfigStore, FakeGit, FakeLogger } from "./fakes.ts";
 import type { GitPort } from "../ports/git.ts";
 import type { ConfigStore } from "../ports/config-store.ts";

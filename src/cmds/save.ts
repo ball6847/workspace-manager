@@ -1,4 +1,4 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
@@ -17,7 +17,6 @@ export async function saveCommand(ctx: AppContext, option: SaveCommandOption): P
 	});
 
 	if (!result.ok) {
-		console.log(red("❌ Failed to save workspace state:"), result.error.message);
 		return Result.error(result.error);
 	}
 
