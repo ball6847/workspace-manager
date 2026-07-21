@@ -12,13 +12,13 @@ import type { GoAvailabilityPort, GoWorkPortFactory } from "./ports/go-work.ts";
 import type { HookRunner } from "./ports/hook-runner.ts";
 import type { Logger } from "./ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "./ports/workspace-discovery.ts";
-import { AddService } from "./services/add-service.ts";
-import { EnableService } from "./services/enable-service.ts";
-import { OpenService } from "./services/open-service.ts";
-import { SaveService } from "./services/save-service.ts";
-import { StatusService } from "./services/status-service.ts";
-import { SyncService } from "./services/sync-service.ts";
-import { UpdateService } from "./services/update-service.ts";
+import { AddService } from "./services/add.ts";
+import { EnableService } from "./services/enable.ts";
+import { OpenService } from "./services/open.ts";
+import { SaveService } from "./services/save.ts";
+import { StatusService } from "./services/status.ts";
+import { SyncService } from "./services/sync.ts";
+import { UpdateService } from "./services/update.ts";
 
 export type BootstrapOptions = {
 	debug?: boolean;

@@ -9,7 +9,7 @@ import type { HookRunner } from "../ports/hook-runner.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeGoWork, FakeHookRunner, FakeLogger } from "../testing/fakes.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
-import { SyncService } from "./sync-service.ts";
+import { SyncService } from "./sync.ts";
 
 const workspaceRoot = "/ws";
 const configPath = "/ws/workspace.yml";

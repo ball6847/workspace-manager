@@ -3,7 +3,7 @@ import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
 import type { HookExecutionResult } from "../ports/hook-runner.ts";
-import type { SyncReport } from "../services/sync-service.ts";
+import type { SyncReport } from "../services/sync.ts";
 import type { ConcurrentCommandOptions } from "../types/command-options.ts";
 
 export type SyncCommandOption = ConcurrentCommandOptions;

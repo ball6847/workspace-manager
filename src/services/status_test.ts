@@ -6,7 +6,7 @@ import type { GitPort, GitPortFactory } from "../ports/git.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeLogger } from "../testing/fakes.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
-import { StatusService } from "./status-service.ts";
+import { StatusService } from "./status.ts";
 
 function createTestContext({
 	config,

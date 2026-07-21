@@ -3,7 +3,7 @@ import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
-import type { StatusRepository } from "../services/status-service.ts";
+import type { StatusRepository } from "../services/status.ts";
 
 export type StatusCommandOption = {
 	config?: string;
