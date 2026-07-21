@@ -1,11 +1,9 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import type { AppContext } from "../composition.ts";
+import type { AppError } from "../libs/app-error.ts";
 import { processConcurrently } from "../libs/concurrent.ts";
-import { isDir } from "../libs/file.ts";
-import { GitManager } from "../libs/git.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
 
 export type UpdateCommandOption = {
 	/**
@@ -31,12 +29,13 @@ export type UpdateCommandOption = {
 /**
  * Update all submodules by checking out to their tracking branches and pulling latest changes
  *
- * @param option
+ * @param ctx Application context with injected ports
+ * @param option Command options
  * @returns Result indicating success or failure
  */
-export async function updateCommand(option: UpdateCommandOption): Promise<Result<void, Error>> {
+export async function updateCommand(ctx: AppContext, option: UpdateCommandOption): Promise<Result<void, AppError>> {
 	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+	const discovery = ctx.createDiscovery({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
 	});
@@ -53,7 +52,7 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 	const concurrency = option.concurrency ?? 4;
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configPath);
+	const configManager = ctx.createConfigStore(configPath);
 
 	// parse config file
 	const parseResult = await configManager.getConfig();
@@ -75,10 +74,10 @@ export async function updateCommand(option: UpdateCommandOption): Promise<Result
 		activeWorkspaces,
 		async (workspace) => {
 			const workspacePath = path.join(workspaceRoot, workspace.path);
-			const git = new GitManager(workspacePath);
+			const git = ctx.gitFactory(workspacePath);
 
 			// check if directory exists
-			const dir = await isDir(workspacePath);
+			const dir = await ctx.fileSystem.isDir(workspacePath);
 			if (!dir.ok) {
 				console.log(yellow(`⚠️  Workspace directory does not exist, skipping: ${workspace.path}`));
 				return Result.ok();

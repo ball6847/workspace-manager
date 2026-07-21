@@ -7,7 +7,7 @@ export type GoWorkPort = {
 	remove(paths: string[]): Promise<Result<void, AppError>>;
 };
 
-export type GoWorkPortFactory = (cwd: string) => GoWorkPort;
+export type GoWorkPortFactory = (cwd: string) => GoWorkPort & GoAvailabilityPort;
 
 export type GoAvailabilityPort = {
 	isAvailable(): Promise<Result<boolean, AppError>>;

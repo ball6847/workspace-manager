@@ -1,10 +1,10 @@
 import { Checkbox, type CheckboxOption } from "@cliffy/prompt/checkbox";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import type { AppContext } from "../composition.ts";
+import type { AppError } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import type { ConfigStore } from "../ports/config-store.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 import { syncCommand } from "./sync.ts";
@@ -35,12 +35,13 @@ export type EnableCommandOption = {
 /**
  * Enable a disabled workspace repository
  *
+ * @param ctx Application context with injected ports
  * @param option Command options
  * @returns Result indicating success or failure
  */
-export async function enableCommand(option: EnableCommandOption): Promise<Result<void, Error>> {
+export async function enableCommand(ctx: AppContext, option: EnableCommandOption): Promise<Result<void, AppError>> {
 	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+	const discovery = ctx.createDiscovery({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
 	});
@@ -57,14 +58,14 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	const autoSync = option.yes ?? false;
 
 	// Validate workspace directory
-	const validated = await isDir(workspaceRoot);
+	const validated = await ctx.fileSystem.isDir(workspaceRoot);
 	if (!validated.ok) {
 		console.log(red("❌ Invalid workspace directory: "), workspaceRoot, `(${validated.error.message})`);
 		return Result.error(validated.error);
 	}
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configPath);
+	const configManager = ctx.createConfigStore(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
@@ -75,13 +76,13 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 	const config = parseResult.value;
 
 	// Toggle workspace states
-	const enableResult = await toggleWorkspaceStates(config, configManager, debug);
+	const enableResult = await toggleWorkspaceStates(ctx, config, configManager, debug);
 	if (!enableResult.ok) {
 		return Result.error(enableResult.error);
 	}
 
 	// Handle sync confirmation
-	const syncResult = await handleSyncConfirmation(autoSync, configPath, workspaceRoot, debug, option.concurrency ?? 4);
+	const syncResult = await handleSyncConfirmation(ctx, autoSync, configPath, workspaceRoot, debug, option.concurrency ?? 4);
 	if (!syncResult.ok) {
 		return Result.error(syncResult.error);
 	}
@@ -92,12 +93,18 @@ export async function enableCommand(option: EnableCommandOption): Promise<Result
 /**
  * Toggle active states for workspaces using multi-select
  *
+ * @param ctx Application context with injected ports
  * @param config Workspace configuration
- * @param configManager ConfigManager instance
+ * @param configManager ConfigStore instance
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-async function toggleWorkspaceStates(config: WorkspaceConfig, configManager: ConfigManager, debug: boolean): Promise<Result<void, Error>> {
+async function toggleWorkspaceStates(
+	_ctx: AppContext,
+	config: WorkspaceConfig,
+	configManager: ConfigStore,
+	debug: boolean,
+): Promise<Result<void, AppError>> {
 	if (config.workspaces.length === 0) {
 		console.log(yellow("⚠️  No workspaces found"));
 		return Result.ok();
@@ -174,7 +181,7 @@ function promptForWorkspaceSelection(options: Array<CheckboxOption<string>>): Pr
  * @param error Error from checkbox prompt
  * @returns Wrapped error with context
  */
-function handleCheckboxError(error: unknown): Error {
+function handleCheckboxError(error: unknown): AppError {
 	if (error instanceof Error && error.message.includes("cancelled")) {
 		return wrapError("Operation cancelled", error);
 	}
@@ -184,6 +191,7 @@ function handleCheckboxError(error: unknown): Error {
 /**
  * Handle sync confirmation and execution
  *
+ * @param ctx Application context with injected ports
  * @param autoSync Whether auto-sync is enabled
  * @param configFile Path to config file
  * @param workspaceRoot Path to workspace root directory
@@ -191,7 +199,14 @@ function handleCheckboxError(error: unknown): Error {
  * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
-async function handleSyncConfirmation(autoSync: boolean, configFile: string, workspaceRoot: string, debug: boolean, concurrency: number): Promise<Result<void, Error>> {
+async function handleSyncConfirmation(
+	ctx: AppContext,
+	autoSync: boolean,
+	configFile: string,
+	workspaceRoot: string,
+	debug: boolean,
+	concurrency: number,
+): Promise<Result<void, AppError>> {
 	// Prompt for sync if not auto-sync
 	if (!autoSync) {
 		const shouldSyncResult = await promptForSync();
@@ -206,7 +221,7 @@ async function handleSyncConfirmation(autoSync: boolean, configFile: string, wor
 	}
 
 	// Sync here - either auto-sync is enabled or user confirmed sync
-	const syncResult = await syncCommand({
+	const syncResult = await syncCommand(ctx, {
 		config: configFile,
 		workspaceRoot,
 		debug,
@@ -226,7 +241,7 @@ async function handleSyncConfirmation(autoSync: boolean, configFile: string, wor
  *
  * @returns Result with boolean indicating whether to sync
  */
-async function promptForSync(): Promise<Result<boolean, Error>> {
+async function promptForSync(): Promise<Result<boolean, AppError>> {
 	const interactivePrompt = new InteractivePrompt();
 	const syncResult = await interactivePrompt.promptForSyncWithInput();
 	if (!syncResult.ok) {

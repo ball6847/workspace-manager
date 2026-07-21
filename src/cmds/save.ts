@@ -1,10 +1,8 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
-import { isDir } from "../libs/file.ts";
-import { GitManager } from "../libs/git.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import type { AppContext } from "../composition.ts";
+import type { AppError } from "../libs/app-error.ts";
 
 export type SaveCommandOption = {
 	/**
@@ -25,12 +23,13 @@ export type SaveCommandOption = {
  * Save current workspace state by updating workspace.yml with current tracking branches
  * This is the opposite of sync/update - trusting the environment state over configuration
  *
+ * @param ctx Application context with injected ports
  * @param option Command options
  * @returns Result indicating success or failure
  */
-export async function saveCommand(option: SaveCommandOption): Promise<Result<void, Error>> {
+export async function saveCommand(ctx: AppContext, option: SaveCommandOption): Promise<Result<void, AppError>> {
 	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+	const discovery = ctx.createDiscovery({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
 	});
@@ -46,7 +45,7 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 	const debug = option.debug ?? false;
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configPath);
+	const configManager = ctx.createConfigStore(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
@@ -76,14 +75,14 @@ export async function saveCommand(option: SaveCommandOption): Promise<Result<voi
 		const workspacePath = path.join(workspaceRoot, workspace.path);
 
 		// Check if workspace directory exists
-		const dirExists = await isDir(workspacePath);
+		const dirExists = await ctx.fileSystem.isDir(workspacePath);
 		if (!dirExists.ok) {
 			console.log(yellow(`⚠️  Workspace directory not found: ${workspace.path}`));
 			errorCount++;
 			continue;
 		}
 
-		const git = new GitManager(workspacePath);
+		const git = ctx.gitFactory(workspacePath);
 
 		// Check if it's a git repository
 		const isRepo = await git.isRepository();

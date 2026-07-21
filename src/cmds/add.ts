@@ -1,8 +1,9 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import type { AppContext } from "../composition.ts";
+import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
+import type { ConfigStore } from "../ports/config-store.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 import { syncCommand } from "./sync.ts";
 
@@ -52,12 +53,13 @@ export type AddCommandOption = {
 /**
  * Add a new repository to the workspace configuration
  *
+ * @param ctx Application context with injected ports
  * @param option Command options
  * @returns Result indicating success or failure
  */
-export async function addCommand(option: AddCommandOption): Promise<Result<void, Error>> {
+export async function addCommand(ctx: AppContext, option: AddCommandOption): Promise<Result<void, AppError>> {
 	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+	const discovery = ctx.createDiscovery({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
 	});
@@ -73,7 +75,7 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 	const debug = option.debug ?? false;
 
 	// Initialize ConfigManager
-	const configManager = new ConfigManager(configPath);
+	const configManager = ctx.createConfigStore(configPath);
 
 	// Parse config file
 	const parseResult = await configManager.getConfig();
@@ -90,24 +92,24 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 		// Non-interactive mode: use provided arguments
 		if (!option.repo) {
 			console.log(red("❌ Repository URL is required in non-interactive mode (-y)"));
-			return Result.error(new Error("Repository URL is required in non-interactive mode"));
+			return Result.error(new AppError(AppErrorCode.INTERNAL, "Repository URL is required in non-interactive mode"));
 		}
 
-		const addResult = await addSingleWorkspace(config, configManager, option, debug);
+		const addResult = await addSingleWorkspace(ctx, config, configManager, option, debug);
 		if (!addResult.ok) {
 			return Result.error(addResult.error);
 		}
 
 		// Handle sync if requested
 		if (option.sync) {
-			const syncResult = await performSync(configPath, workspaceRoot, debug, option.concurrency ?? 4);
+			const syncResult = await performSync(ctx, configPath, workspaceRoot, debug, option.concurrency ?? 4);
 			if (!syncResult.ok) {
 				return Result.error(syncResult.error);
 			}
 		}
 	} else {
 		// Interactive mode: prompt for input (may use provided repo as default)
-		const interactiveResult = await runInteractiveMode(config, configManager, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
+		const interactiveResult = await runInteractiveMode(ctx, config, configManager, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
 		if (!interactiveResult.ok) {
 			return Result.error(interactiveResult.error);
 		}
@@ -119,13 +121,20 @@ export async function addCommand(option: AddCommandOption): Promise<Result<void,
 /**
  * Add a single workspace to the configuration
  *
+ * @param ctx Application context with injected ports
  * @param config Current workspace configuration
- * @param configManager ConfigManager instance
+ * @param configManager ConfigStore instance
  * @param option Command options containing workspace details
  * @param debug Whether to show debug information
  * @returns Result indicating success or failure
  */
-async function addSingleWorkspace(config: WorkspaceConfig, configManager: ConfigManager, option: AddCommandOption, debug: boolean): Promise<Result<void, Error>> {
+async function addSingleWorkspace(
+	_ctx: AppContext,
+	config: WorkspaceConfig,
+	configManager: ConfigStore,
+	option: AddCommandOption,
+	debug: boolean,
+): Promise<Result<void, AppError>> {
 	const repo = option.repo!;
 	const defaultPath = extractRepoName(repo);
 	const workspacePath = option.path ?? defaultPath;
@@ -169,8 +178,9 @@ async function addSingleWorkspace(config: WorkspaceConfig, configManager: Config
 /**
  * Run interactive mode to add multiple workspaces
  *
+ * @param ctx Application context with injected ports
  * @param config Current workspace configuration
- * @param configManager ConfigManager instance
+ * @param configManager ConfigStore instance
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
@@ -178,13 +188,14 @@ async function addSingleWorkspace(config: WorkspaceConfig, configManager: Config
  * @returns Result indicating success or failure
  */
 async function runInteractiveMode(
+	ctx: AppContext,
 	config: WorkspaceConfig,
-	configManager: ConfigManager,
+	configManager: ConfigStore,
 	workspaceRoot: string,
 	debug: boolean,
 	concurrency: number,
 	defaultRepo?: string,
-): Promise<Result<void, Error>> {
+): Promise<Result<void, AppError>> {
 	const interactivePrompt = new InteractivePrompt();
 	let hasAddedWorkspaces = false;
 
@@ -296,7 +307,7 @@ async function runInteractiveMode(
 		}
 
 		if (syncResult.value) {
-			const performSyncResult = await performSync(configManager.configPath, workspaceRoot, debug, concurrency);
+			const performSyncResult = await performSync(ctx, configManager.configPath, workspaceRoot, debug, concurrency);
 			if (!performSyncResult.ok) {
 				return Result.error(performSyncResult.error);
 			}
@@ -337,14 +348,21 @@ function extractRepoName(repoUrl: string): string {
 /**
  * Perform sync operation
  *
+ * @param ctx Application context with injected ports
  * @param configPath Path to config file
  * @param workspaceRoot Path to workspace root directory
  * @param debug Whether to show debug information
  * @param concurrency Number of concurrent operations
  * @returns Result indicating success or failure
  */
-async function performSync(configPath: string, workspaceRoot: string, debug: boolean, concurrency: number): Promise<Result<void, Error>> {
-	const syncResult = await syncCommand({
+async function performSync(
+	ctx: AppContext,
+	configPath: string,
+	workspaceRoot: string,
+	debug: boolean,
+	concurrency: number,
+): Promise<Result<void, AppError>> {
+	const syncResult = await syncCommand(ctx, {
 		config: configPath,
 		workspaceRoot,
 		debug,

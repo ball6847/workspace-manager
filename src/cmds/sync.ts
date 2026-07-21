@@ -2,20 +2,15 @@ import { Command } from "@cliffy/command";
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import type { AppContext } from "../composition.ts";
+import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { CommandErrorHandler } from "../libs/command-error-handler.ts";
 import { processConcurrently } from "../libs/concurrent.ts";
-import { isDir } from "../libs/file.ts";
-import { GitManager } from "../libs/git.ts";
-import { GoWork } from "../libs/go.ts";
-import { type HookExecutionResult, HookExecutor } from "../libs/hooks.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import { type HookExecutionResult } from "../libs/hooks.ts";
+import type { GitPort } from "../ports/git.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import { type ConcurrentCommandOptions } from "../types/command-options.ts";
 import { type WorkspaceConfigItem } from "../types/config.ts";
-
-const createGoWork = (path: string) => new GoWork(path);
-const createGitManager = (path: string) => new GitManager(path);
 
 // Helper function to process hook results with early-return pattern
 function processHookResult(hookResult: HookExecutionResult, workspacePath: string): void {
@@ -46,11 +41,16 @@ function processGlobalHookResult(hookResult: HookExecutionResult): void {
 }
 
 // Helper function to sync a single workspace with early-return patterns
-async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string, workspaceManager: WorkspaceManager): Promise<Result<void, Error>> {
+async function syncSingleWorkspace(
+	ctx: AppContext,
+	workspace: WorkspaceConfigItem,
+	workspaceRoot: string,
+	workspaceManager: WorkspaceManager,
+): Promise<Result<void, AppError>> {
 	const workspacePath = path.join(workspaceRoot, workspace.path);
 
 	// Check if submodule exists
-	const dir = await isDir(workspacePath);
+	const dir = await ctx.fileSystem.isDir(workspacePath);
 	if (!dir.ok) {
 		console.log(yellow(`📥 Checking out workspace: ${workspace.path}`));
 		const checkout = await workspaceManager.checkoutWorkspace(workspace.url, workspace.path, workspace.branch);
@@ -63,7 +63,7 @@ async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot
 	}
 
 	// Check if it's a git repository
-	const subGit = new GitManager(workspacePath);
+	const subGit = ctx.gitFactory(workspacePath);
 	const isGitRepo = await subGit.isRepository();
 	if (!isGitRepo.ok) {
 		console.log(red(`❌ Failed to check git repository: ${workspace.path}`), `(${isGitRepo.error.message})`);
@@ -71,7 +71,7 @@ async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot
 	}
 	if (!isGitRepo.value) {
 		console.log(red(`❌ Not a git repository: ${workspace.path}`));
-		return Result.error(new Error(`Not a git repository: ${workspace.path}`));
+		return Result.error(new AppError(AppErrorCode.NOT_A_GIT_REPO, `Not a git repository: ${workspace.path}`));
 	}
 
 	// Check if on correct branch
@@ -111,7 +111,7 @@ async function syncSingleWorkspace(workspace: WorkspaceConfigItem, workspaceRoot
 }
 
 // Helper function to handle dirty workspace with early-return patterns
-async function handleDirtyWorkspace(subGit: GitManager, workspace: WorkspaceConfigItem): Promise<Result<void, Error>> {
+async function handleDirtyWorkspace(subGit: GitPort, workspace: WorkspaceConfigItem): Promise<Result<void, AppError>> {
 	console.log(yellow(`⚠️  Workspace has uncommitted changes: ${workspace.path}`));
 
 	// Stash changes with a message that includes the workspace path
@@ -142,10 +142,14 @@ async function handleDirtyWorkspace(subGit: GitManager, workspace: WorkspaceConf
 }
 
 // Helper function to remove inactive workspace with early-return patterns
-async function removeInactiveWorkspace(workspace: WorkspaceConfigItem, workspaceRoot: string): Promise<Result<void, Error>> {
+async function removeInactiveWorkspace(
+	ctx: AppContext,
+	workspace: WorkspaceConfigItem,
+	workspaceRoot: string,
+): Promise<Result<void, AppError>> {
 	const workspacePath = path.join(workspaceRoot, workspace.path);
-	const git = new GitManager(workspaceRoot);
-	const dir = await isDir(workspacePath);
+	const git = ctx.gitFactory(workspaceRoot);
+	const dir = await ctx.fileSystem.isDir(workspacePath);
 
 	if (!dir.ok) {
 		return Result.ok(); // Skip if directory doesn't exist
@@ -164,7 +168,11 @@ async function removeInactiveWorkspace(workspace: WorkspaceConfigItem, workspace
 }
 
 // Helper function to setup Go workspace with early-return pattern
-async function setupGoWorkspace(workspaceManager: WorkspaceManager, activeWorkspaces: WorkspaceConfigItem[], inactiveWorkspaces: WorkspaceConfigItem[]): Promise<void> {
+async function setupGoWorkspace(
+	workspaceManager: WorkspaceManager,
+	activeWorkspaces: WorkspaceConfigItem[],
+	inactiveWorkspaces: WorkspaceConfigItem[],
+): Promise<void> {
 	console.log(blue("🚀 Setting up Go workspace..."));
 	const goWorkResult = await workspaceManager.setupGoWorkspace(
 		activeWorkspaces.filter((w) => w.isGolang).map((w) => w.path),
@@ -180,8 +188,8 @@ async function setupGoWorkspace(workspaceManager: WorkspaceManager, activeWorksp
 	console.log(yellow("⚠️  Go workspace setup failed"), `(${goWorkResult.error.message})`);
 }
 
-export async function syncCommand(options: ConcurrentCommandOptions): Promise<Result<void, Error>> {
-	const discovery = new WorkspaceDiscovery({ config: options.config, workspaceRoot: options.workspaceRoot });
+export async function syncCommand(ctx: AppContext, options: ConcurrentCommandOptions): Promise<Result<void, AppError>> {
+	const discovery = ctx.createDiscovery({ config: options.config, workspaceRoot: options.workspaceRoot });
 
 	const discoverResult = await discovery.discover();
 
@@ -202,7 +210,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 		console.log(blue("🐛 Debug mode enabled"));
 	}
 
-	const configManager = new ConfigManager(configPath);
+	const configManager = ctx.createConfigStore(configPath);
 	const configResult = await configManager.getWorkspaceConfig(workspaceRoot);
 	if (!configResult.ok) {
 		console.log(red("❌ Failed to read workspace config"), `(${configResult.error.message})`);
@@ -223,18 +231,18 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 
 	if (inactiveWorkspaces.length > 0) {
 		console.log(yellow("Removing inactive workspaces..."));
-		const removeResult = await processConcurrently(inactiveWorkspaces, (workspace) => removeInactiveWorkspace(workspace, workspaceRoot));
+		const removeResult = await processConcurrently(inactiveWorkspaces, (workspace) => removeInactiveWorkspace(ctx, workspace, workspaceRoot));
 
 		if (!removeResult.ok) {
 			return Result.error(removeResult.error);
 		}
 	}
 
-	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
+	const workspaceManager = new WorkspaceManager(workspaceRoot, ctx.goWorkFactory, ctx.gitFactory);
 
 	if (activeWorkspaces.length > 0) {
 		console.log(yellow("Syncing active workspaces..."));
-		const syncResult = await processConcurrently(activeWorkspaces, (workspace) => syncSingleWorkspace(workspace, workspaceRoot, workspaceManager));
+		const syncResult = await processConcurrently(activeWorkspaces, (workspace) => syncSingleWorkspace(ctx, workspace, workspaceRoot, workspaceManager));
 		if (!syncResult.ok) {
 			return Result.error(syncResult.error);
 		}
@@ -246,7 +254,7 @@ export async function syncCommand(options: ConcurrentCommandOptions): Promise<Re
 	console.log(green("🎉 Sync complete!"));
 
 	// Execute post-sync hooks
-	const hookExecutor = new HookExecutor(debug);
+	const hookExecutor = ctx.createHookRunner(debug);
 
 	// Execute global hooks
 	if (config.hooks?.postSyncHooks?.length) {
@@ -301,7 +309,9 @@ export const command = new Command()
 	.option("-j, --concurrency <number>", "Number of concurrent operations", { default: 4 })
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.action(async (options) => {
-		const result = await syncCommand({
+		const { createAppContext } = await import("../composition.ts");
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await syncCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			concurrency: typeof options.concurrency === "string" ? parseInt(options.concurrency, 10) : options.concurrency,

@@ -1,13 +1,10 @@
 import { blue, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import type { AppContext } from "../composition.ts";
+import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
-import { GitManager } from "../libs/git.ts";
-import { GoWork } from "../libs/go.ts";
-import { type HookExecutionResult, HookExecutor } from "../libs/hooks.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
+import { type HookExecutionResult } from "../libs/hooks.ts";
 import { InteractivePrompt } from "../services/interactive-prompt.ts";
 import { WorkspaceManager } from "../services/workspace-manager.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
@@ -45,9 +42,6 @@ type WorkspaceSelection = {
 	displayName: string;
 };
 
-const createGoWork = (path: string) => new GoWork(path);
-const createGitManager = (path: string) => new GitManager(path);
-
 // Helper function to process hook results with early-return pattern
 function processHookResult(hookResult: HookExecutionResult, workspacePath: string): void {
 	if (hookResult.success) {
@@ -78,10 +72,14 @@ function processGlobalHookResult(hookResult: HookExecutionResult): void {
 
 /**
  * Open workspace submodule in configured editor via interactive selection
+ *
+ * @param ctx Application context with injected ports
+ * @param option Command options
+ * @returns Result indicating success or failure
  */
-export async function openCommand(option: OpenCommandOption): Promise<Result<void, Error>> {
+export async function openCommand(ctx: AppContext, option: OpenCommandOption): Promise<Result<void, AppError>> {
 	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+	const discovery = ctx.createDiscovery({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
 	});
@@ -96,8 +94,8 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	const debug = option.debug ?? false;
 
 	// Initialize managers
-	const configManager = new ConfigManager(configPath);
-	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
+	const configManager = ctx.createConfigStore(configPath);
+	const workspaceManager = new WorkspaceManager(workspaceRoot, ctx.goWorkFactory, ctx.gitFactory);
 	const interactivePrompt = new InteractivePrompt();
 
 	// Parse config
@@ -108,16 +106,21 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	const config = configResult.value;
 
 	// Build workspace selection list
-	const workspaces = await buildWorkspaceList(config, workspaceRoot);
+	const workspaces = await buildWorkspaceList(ctx, config, workspaceRoot);
 
 	if (workspaces.length === 0) {
-		return Result.error(new Error("No workspaces found in configuration"));
+		return Result.error(new AppError(AppErrorCode.INTERNAL, "No workspaces found in configuration"));
 	}
 
 	// Check editor - CLI option overrides config, which overrides environment
 	const editor = resolveEditor(config, option.editor);
 	if (!editor) {
-		return Result.error(new Error("No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable"));
+		return Result.error(
+			new AppError(
+				AppErrorCode.INTERNAL,
+				"No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable",
+			),
+		);
 	}
 
 	if (debug) {
@@ -131,7 +134,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	if (option.workspace) {
 		const found = workspaces.find((w) => w.path === option.workspace);
 		if (!found) {
-			return Result.error(new Error(`Workspace not found: ${option.workspace}`));
+			return Result.error(new AppError(AppErrorCode.INTERNAL, `Workspace not found: ${option.workspace}`));
 		}
 		selected = found;
 	} else {
@@ -189,7 +192,7 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 		selected.isActive = true;
 
 		// Execute post-sync hooks after successful checkout
-		const hookExecutor = new HookExecutor(debug);
+		const hookExecutor = ctx.createHookRunner(debug);
 		const hookContext = { root: workspaceRoot, path: selected.path };
 
 		// Execute global hooks
@@ -228,14 +231,14 @@ export async function openCommand(option: OpenCommandOption): Promise<Result<voi
 	return openInEditor(selected.directory, editor, debug);
 }
 
-async function buildWorkspaceList(config: WorkspaceConfig, workspaceRoot: string): Promise<WorkspaceSelection[]> {
+async function buildWorkspaceList(ctx: AppContext, config: WorkspaceConfig, workspaceRoot: string): Promise<WorkspaceSelection[]> {
 	const result: WorkspaceSelection[] = [];
 
 	for (const workspace of config.workspaces) {
 		const workspaceDir = path.join(workspaceRoot, workspace.path);
 
 		// Check if directory exists
-		const exists = await isDir(workspaceDir);
+		const exists = await ctx.fileSystem.isDir(workspaceDir);
 		const dirExists = exists.ok;
 
 		// Build display string with status indicators
@@ -313,7 +316,7 @@ function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | nu
 	return null;
 }
 
-async function openInEditor(dir: string, editor: string, debug: boolean): Promise<Result<void, Error>> {
+async function openInEditor(dir: string, editor: string, debug: boolean): Promise<Result<void, AppError>> {
 	const open = async () => {
 		// Parse editor command (support spaces in command path)
 		const parts = editor.split(" ").filter((p) => p.length > 0);
