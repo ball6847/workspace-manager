@@ -9,6 +9,7 @@ export type GitPort = {
 	pullOriginBranch(branch: string): Promise<Result<void, AppError>>;
 	isRepository(): Promise<Result<boolean, AppError>>;
 	isWorkingDirectoryClean(): Promise<Result<boolean, AppError>>;
+	getPorcelainStatus(): Promise<Result<{ modified: number; untracked: number }, AppError>>;
 	stash(message?: string): Promise<Result<void, AppError>>;
 	stashPop(): Promise<Result<void, AppError>>;
 	fetch(): Promise<Result<void, AppError>>;

@@ -12,6 +12,13 @@ import type { GoAvailabilityPort, GoWorkPortFactory } from "./ports/go-work.ts";
 import type { HookRunner } from "./ports/hook-runner.ts";
 import type { Logger } from "./ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "./ports/workspace-discovery.ts";
+import { AddService } from "./services/add-service.ts";
+import { EnableService } from "./services/enable-service.ts";
+import { OpenService } from "./services/open-service.ts";
+import { SaveService } from "./services/save-service.ts";
+import { StatusService } from "./services/status-service.ts";
+import { SyncService } from "./services/sync-service.ts";
+import { UpdateService } from "./services/update-service.ts";
 
 export type BootstrapOptions = {
 	debug?: boolean;
@@ -29,6 +36,13 @@ export type AppContext = {
 	createConfigStore: (configPath: string) => ConfigStore;
 	createDiscovery: (options: WorkspaceDiscoveryOptions) => WorkspaceDiscoveryPort;
 	createHookRunner: (debug?: boolean) => HookRunner;
+	statusService: StatusService;
+	saveService: SaveService;
+	updateService: UpdateService;
+	syncService: SyncService;
+	addService: AddService;
+	enableService: EnableService;
+	openService: OpenService;
 };
 
 export function createAppContext(options?: BootstrapOptions): AppContext {
@@ -39,15 +53,84 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 	const fileSystem = new DenoFileSystem();
 	const goAvailability = new GoWork();
 
+	const createConfigStore = (configPath: string) => new ConfigManager(configPath);
+	const createDiscovery = (opts: WorkspaceDiscoveryOptions) => new WorkspaceDiscovery({ ...opts, startDir: opts.startDir ?? startDir });
+	const createHookRunner = (hookDebug?: boolean) => new HookExecutor(hookDebug ?? debug);
+	const gitFactory: GitPortFactory = (cwd: string) => new GitManager(cwd);
+	const goWorkFactory: GoWorkPortFactory = (cwd: string) => new GoWork(cwd);
+
+	const statusService = new StatusService({
+		createDiscovery,
+		createConfigStore,
+		gitFactory,
+		fileSystem,
+		logger,
+	});
+
+	const saveService = new SaveService({
+		createDiscovery,
+		createConfigStore,
+		gitFactory,
+		fileSystem,
+		logger,
+	});
+
+	const updateService = new UpdateService({
+		createDiscovery,
+		createConfigStore,
+		gitFactory,
+		fileSystem,
+		logger,
+	});
+
+	const syncService = new SyncService({
+		createDiscovery,
+		createConfigStore,
+		gitFactory,
+		goWorkFactory,
+		fileSystem,
+		createHookRunner,
+		logger,
+	});
+
+	const addService = new AddService({
+		createDiscovery,
+		createConfigStore,
+		logger,
+	});
+
+	const enableService = new EnableService({
+		createDiscovery,
+		createConfigStore,
+		logger,
+	});
+
+	const openService = new OpenService({
+		createDiscovery,
+		createConfigStore,
+		gitFactory,
+		goWorkFactory,
+		fileSystem,
+		createHookRunner,
+		logger,
+	});
+
 	return {
 		debug,
 		logger,
 		fileSystem,
 		goAvailability,
-		gitFactory: (cwd: string) => new GitManager(cwd),
-		goWorkFactory: (cwd: string) => new GoWork(cwd),
-		createConfigStore: (configPath: string) => new ConfigManager(configPath),
-		createDiscovery: (opts: WorkspaceDiscoveryOptions) => new WorkspaceDiscovery({ ...opts, startDir: opts.startDir ?? startDir }),
-		createHookRunner: (hookDebug?: boolean) => new HookExecutor(hookDebug ?? debug),
+		gitFactory,
+		goWorkFactory,
+		createConfigStore,
+		createDiscovery,
+		createHookRunner,
+		statusService,
+		saveService,
+		updateService,
+		syncService,
+		addService,
+		enableService,
+		openService,
 	};
 }

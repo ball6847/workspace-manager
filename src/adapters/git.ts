@@ -210,6 +210,33 @@ export class GitManager implements GitPort {
 		);
 	}
 
+	async getPorcelainStatus(): Promise<Result<{ modified: number; untracked: number }, AppError>> {
+		return await Result.fromAsyncCatching(async () => {
+			const result = await this.runCommand(["status", "--porcelain"]);
+			if (!result.ok) {
+				throw result.error;
+			}
+			const output = new TextDecoder().decode(result.value.stdout).trim();
+			const lines = output.split("\n").filter((line) => line.length > 0);
+
+			let modified = 0;
+			let untracked = 0;
+
+			for (const line of lines) {
+				const status = line.substring(0, 2);
+				if (status === "??") {
+					untracked++;
+				} else if (status.includes("M") || status.includes("D") || status.includes("A")) {
+					modified++;
+				}
+			}
+
+			return { modified, untracked };
+		}).mapError(
+			(error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to get file status`, { cause: error }),
+		);
+	}
+
 	// Stash operations
 	async stash(message?: string): Promise<Result<void, AppError>> {
 		const args = ["stash", "push"];

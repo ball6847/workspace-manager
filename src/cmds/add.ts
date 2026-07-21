@@ -1,209 +1,75 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
+import { blue, red, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
-import { InteractivePrompt } from "../services/interactive-prompt.ts";
-import type { ConfigStore } from "../ports/config-store.ts";
-import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
-import { syncCommand } from "./sync.ts";
+import { extractRepoName } from "../domain/workspaces.ts";
+import { InteractivePrompt } from "./interactive-prompt.ts";
 
 export type AddCommandOption = {
-	/**
-	 * Repository URL to add
-	 */
 	repo?: string;
-	/**
-	 * Local path for the repository (defaults to repo name)
-	 */
 	path?: string;
-	/**
-	 * Git branch to checkout (defaults to main)
-	 */
 	branch?: string;
-	/**
-	 * Whether this is a Go module
-	 */
 	go?: boolean;
-	/**
-	 * Whether to sync after adding
-	 */
 	sync?: boolean;
-	/**
-	 * Skip interactive prompts and use non-interactive mode
-	 */
 	yes?: boolean;
-	/**
-	 * Path to workspace config file, default is workspace.yml
-	 */
 	config?: string;
-	/**
-	 * Path to workspace root directory, default is current directory
-	 */
 	workspaceRoot?: string;
-	/**
-	 * If true, print debug information
-	 */
 	debug?: boolean;
-	/**
-	 * Number of concurrent operations
-	 */
 	concurrency?: number;
 };
 
-/**
- * Add a new repository to the workspace configuration
- *
- * @param ctx Application context with injected ports
- * @param option Command options
- * @returns Result indicating success or failure
- */
 export async function addCommand(ctx: AppContext, option: AddCommandOption): Promise<Result<void, AppError>> {
-	// Discover workspace
-	const discovery = ctx.createDiscovery({
+	if (option.yes) {
+		return await runNonInteractiveMode(ctx, option);
+	}
+
+	return await runInteractiveMode(ctx, option);
+}
+
+async function runNonInteractiveMode(ctx: AppContext, option: AddCommandOption): Promise<Result<void, AppError>> {
+	if (!option.repo) {
+		console.log(red("❌ Repository URL is required in non-interactive mode (-y)"));
+		return Result.error(new AppError(AppErrorCode.INTERNAL, "Repository URL is required in non-interactive mode"));
+	}
+
+	const addResult = await ctx.addService.add({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
+		debug: option.debug,
+		repo: option.repo,
+		path: option.path,
+		branch: option.branch,
+		isGolang: option.go,
 	});
 
-	const discoverResult = await discovery.discover();
-
-	if (!discoverResult.ok) {
-		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
-		return Result.error(discoverResult.error);
+	if (!addResult.ok) {
+		return Result.error(addResult.error);
 	}
 
-	const { workspaceRoot, configPath } = discoverResult.value;
-	const debug = option.debug ?? false;
-
-	// Initialize ConfigManager
-	const configManager = ctx.createConfigStore(configPath);
-
-	// Parse config file
-	const parseResult = await configManager.getConfig();
-	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
-		return Result.error(parseResult.error);
-	}
-	const config = parseResult.value;
-
-	// Check if running in non-interactive mode
-	const isNonInteractive = option.yes === true;
-
-	if (isNonInteractive) {
-		// Non-interactive mode: use provided arguments
-		if (!option.repo) {
-			console.log(red("❌ Repository URL is required in non-interactive mode (-y)"));
-			return Result.error(new AppError(AppErrorCode.INTERNAL, "Repository URL is required in non-interactive mode"));
-		}
-
-		const addResult = await addSingleWorkspace(ctx, config, configManager, option, debug);
-		if (!addResult.ok) {
-			return Result.error(addResult.error);
-		}
-
-		// Handle sync if requested
-		if (option.sync) {
-			const syncResult = await performSync(ctx, configPath, workspaceRoot, debug, option.concurrency ?? 4);
-			if (!syncResult.ok) {
-				return Result.error(syncResult.error);
-			}
-		}
-	} else {
-		// Interactive mode: prompt for input (may use provided repo as default)
-		const interactiveResult = await runInteractiveMode(ctx, config, configManager, workspaceRoot, debug, option.concurrency ?? 4, option.repo);
-		if (!interactiveResult.ok) {
-			return Result.error(interactiveResult.error);
+	if (option.sync && addResult.value.added) {
+		const syncResult = await ctx.syncService.run({
+			config: addResult.value.configPath,
+			workspaceRoot: addResult.value.workspaceRoot,
+			debug: option.debug,
+			concurrency: option.concurrency,
+		});
+		if (!syncResult.ok) {
+			console.log(red("❌ Sync failed:"), syncResult.error.message);
+			return Result.error(syncResult.error);
 		}
 	}
 
 	return Result.ok();
 }
 
-/**
- * Add a single workspace to the configuration
- *
- * @param ctx Application context with injected ports
- * @param config Current workspace configuration
- * @param configManager ConfigStore instance
- * @param option Command options containing workspace details
- * @param debug Whether to show debug information
- * @returns Result indicating success or failure
- */
-async function addSingleWorkspace(
-	_ctx: AppContext,
-	config: WorkspaceConfig,
-	configManager: ConfigStore,
-	option: AddCommandOption,
-	debug: boolean,
-): Promise<Result<void, AppError>> {
-	const repo = option.repo!;
-	const defaultPath = extractRepoName(repo);
-	const workspacePath = option.path ?? defaultPath;
-	const branch = option.branch ?? "main";
-	const isGolang = option.go ?? false;
-
-	if (debug) {
-		console.log(blue(`📝 Adding workspace: ${workspacePath} from ${repo}`));
-	}
-
-	// Check if workspace already exists
-	const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === repo);
-	if (existingWorkspace) {
-		console.log(yellow(`⚠️  Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`));
-		return Result.ok();
-	}
-
-	// Create new workspace item
-	const newWorkspace: WorkspaceConfigItem = {
-		url: repo,
-		path: workspacePath,
-		branch,
-		isGolang,
-		active: true,
-	};
-
-	// Add to config
-	config.workspaces.push(newWorkspace);
-
-	// Write config back to file
-	const writeResult = await configManager.writeConfig(config);
-	if (!writeResult.ok) {
-		console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
-		return Result.error(writeResult.error);
-	}
-
-	console.log(green(`✅ Successfully added workspace: ${workspacePath}`));
-	return Result.ok();
-}
-
-/**
- * Run interactive mode to add multiple workspaces
- *
- * @param ctx Application context with injected ports
- * @param config Current workspace configuration
- * @param configManager ConfigStore instance
- * @param workspaceRoot Path to workspace root directory
- * @param debug Whether to show debug information
- * @param concurrency Number of concurrent operations
- * @param defaultRepo Optional default repository URL
- * @returns Result indicating success or failure
- */
-async function runInteractiveMode(
-	ctx: AppContext,
-	config: WorkspaceConfig,
-	configManager: ConfigStore,
-	workspaceRoot: string,
-	debug: boolean,
-	concurrency: number,
-	defaultRepo?: string,
-): Promise<Result<void, AppError>> {
+async function runInteractiveMode(ctx: AppContext, option: AddCommandOption): Promise<Result<void, AppError>> {
 	const interactivePrompt = new InteractivePrompt();
 	let hasAddedWorkspaces = false;
 
 	while (true) {
 		console.log(blue("\n📦 Adding a new workspace repository"));
 
-		// Prompt for repository URL
-		const repoResult = await interactivePrompt.promptForRepo(defaultRepo);
+		const repoResult = await interactivePrompt.promptForRepo(option.repo);
 		if (!repoResult.ok) {
 			if (repoResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -218,11 +84,7 @@ async function runInteractiveMode(
 			continue;
 		}
 
-		// Extract default path from repo name
-		const defaultPath = extractRepoName(repo);
-
-		// Prompt for path
-		const pathResult = await interactivePrompt.promptForPath(defaultPath);
+		const pathResult = await interactivePrompt.promptForPath(extractRepoName(repo));
 		if (!pathResult.ok) {
 			if (pathResult.error.message.includes("cancelled")) {
 				console.log(yellow("⚠️  Operation cancelled"));
@@ -230,9 +92,8 @@ async function runInteractiveMode(
 			}
 			return Result.error(pathResult.error);
 		}
-		const workspacePath = pathResult.value || defaultPath;
+		const workspacePath = pathResult.value || extractRepoName(repo);
 
-		// Prompt for branch
 		const branchResult = await interactivePrompt.promptForBranch();
 		if (!branchResult.ok) {
 			if (branchResult.error.message.includes("cancelled")) {
@@ -243,7 +104,6 @@ async function runInteractiveMode(
 		}
 		const branch = branchResult.value || "main";
 
-		// Prompt for Go workspace
 		const goResult = await interactivePrompt.promptForGo();
 		if (!goResult.ok) {
 			if (goResult.error.message.includes("cancelled")) {
@@ -254,36 +114,27 @@ async function runInteractiveMode(
 		}
 		const isGolang = goResult.value;
 
-		// Check if workspace already exists
-		const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === repo);
-		if (existingWorkspace) {
-			console.log(yellow(`⚠️  Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`));
-			continue;
-		}
-
-		// Create new workspace item
-		const newWorkspace: WorkspaceConfigItem = {
-			url: repo,
+		const addResult = await ctx.addService.add({
+			config: option.config,
+			workspaceRoot: option.workspaceRoot,
+			debug: option.debug,
+			repo,
 			path: workspacePath,
 			branch,
 			isGolang,
-			active: true,
-		};
+		});
 
-		// Add to config
-		config.workspaces.push(newWorkspace);
-		hasAddedWorkspaces = true;
-
-		// Write config back to file
-		const writeResult = await configManager.writeConfig(config);
-		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configManager.configPath, `(${writeResult.error.message})`);
-			return Result.error(writeResult.error);
+		if (!addResult.ok) {
+			return Result.error(addResult.error);
 		}
 
-		console.log(green(`✅ Successfully added workspace: ${workspacePath}`));
+		if (addResult.value.alreadyExisted) {
+			console.log(yellow(`⚠️  Workspace already exists: ${addResult.value.workspacePath}`));
+			continue;
+		}
 
-		// Ask if user wants to add another workspace
+		hasAddedWorkspaces = true;
+
 		const continueResult = await interactivePrompt.promptForContinue();
 		if (!continueResult.ok) {
 			if (continueResult.error.message.includes("cancelled")) {
@@ -298,7 +149,6 @@ async function runInteractiveMode(
 		}
 	}
 
-	// If workspaces were added, ask about syncing
 	if (hasAddedWorkspaces) {
 		const syncResult = await interactivePrompt.promptForSync();
 		if (!syncResult.ok) {
@@ -307,71 +157,19 @@ async function runInteractiveMode(
 		}
 
 		if (syncResult.value) {
-			const performSyncResult = await performSync(ctx, configManager.configPath, workspaceRoot, debug, concurrency);
+			const performSyncResult = await ctx.syncService.run({
+				config: option.config,
+				workspaceRoot: option.workspaceRoot,
+				debug: option.debug,
+				concurrency: option.concurrency,
+			});
 			if (!performSyncResult.ok) {
+				console.log(red("❌ Sync failed:"), performSyncResult.error.message);
 				return Result.error(performSyncResult.error);
 			}
 		} else {
 			console.log(blue("💡 Run 'workspace-manager sync' to apply changes"));
 		}
-	}
-
-	return Result.ok();
-}
-
-/**
- * Extract repository name from URL for default path
- *
- * @param repoUrl Repository URL
- * @returns Repository name
- */
-function extractRepoName(repoUrl: string): string {
-	// Handle various Git URL formats
-	const patterns = [
-		/\/([^/]+)\.git$/, // https://github.com/user/repo.git
-		/\/([^/]+)$/, // https://github.com/user/repo
-		/:([^/]+)\.git$/, // git@github.com:user/repo.git
-		/:([^/]+)$/, // git@github.com:user/repo
-	];
-
-	for (const pattern of patterns) {
-		const match = repoUrl.match(pattern);
-		if (match) {
-			return match[1];
-		}
-	}
-
-	// Fallback: use the last part of the URL
-	return repoUrl.split("/").pop()?.replace(".git", "") || "repository";
-}
-
-/**
- * Perform sync operation
- *
- * @param ctx Application context with injected ports
- * @param configPath Path to config file
- * @param workspaceRoot Path to workspace root directory
- * @param debug Whether to show debug information
- * @param concurrency Number of concurrent operations
- * @returns Result indicating success or failure
- */
-async function performSync(
-	ctx: AppContext,
-	configPath: string,
-	workspaceRoot: string,
-	debug: boolean,
-	concurrency: number,
-): Promise<Result<void, AppError>> {
-	const syncResult = await syncCommand(ctx, {
-		config: configPath,
-		workspaceRoot,
-		debug,
-		concurrency,
-	});
-
-	if (!syncResult.ok) {
-		console.log(red("❌ Sync failed:"), syncResult.error.message);
-		return Result.error(syncResult.error);
 	}
 
 	return Result.ok();

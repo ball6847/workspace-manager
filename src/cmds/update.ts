@@ -1,194 +1,28 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
-import * as path from "@std/path";
+import { green, red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
-import type { AppError } from "../libs/app-error.ts";
-import { processConcurrently } from "../libs/concurrent.ts";
+import { AppError } from "../libs/app-error.ts";
 
 export type UpdateCommandOption = {
-	/**
-	 * Path to workspace config file, default is workspace.yml
-	 */
 	config?: string;
-	/**
-	 * Path to workspace root directory, default is current directory
-	 */
 	workspaceRoot?: string;
-
-	/**
-	 * If true, print debug information
-	 */
 	debug?: boolean;
-
-	/**
-	 * Number of concurrent operations, default is 4
-	 */
 	concurrency?: number;
 };
 
-/**
- * Update all submodules by checking out to their tracking branches and pulling latest changes
- *
- * @param ctx Application context with injected ports
- * @param option Command options
- * @returns Result indicating success or failure
- */
 export async function updateCommand(ctx: AppContext, option: UpdateCommandOption): Promise<Result<void, AppError>> {
-	// Discover workspace
-	const discovery = ctx.createDiscovery({
+	const result = await ctx.updateService.run({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
+		debug: option.debug,
+		concurrency: option.concurrency,
 	});
 
-	const discoverResult = await discovery.discover();
-
-	if (!discoverResult.ok) {
-		console.log(red("❌ Failed to discover workspace:"), discoverResult.error.message);
-		return Result.error(discoverResult.error);
+	if (!result.ok) {
+		console.log(red("❌ Failed to update workspaces:"), result.error.message);
+		return Result.error(result.error);
 	}
 
-	const { workspaceRoot, configPath } = discoverResult.value;
-	const debug = option.debug ?? false;
-	const concurrency = option.concurrency ?? 4;
-
-	// Initialize ConfigManager
-	const configManager = ctx.createConfigStore(configPath);
-
-	// parse config file
-	const parseResult = await configManager.getConfig();
-	if (!parseResult.ok) {
-		console.log(red("❌ Failed to parse config file: "), configPath, `(${parseResult.error.message})`);
-		return Result.error(parseResult.error);
-	}
-	const config = parseResult.value;
-
-	// get only active workspaces
-	const activeWorkspaces = config.workspaces.filter((item) => item.active);
-
-	if (debug) {
-		console.log(blue(`📊 Found ${activeWorkspaces.length} active workspaces to update`));
-	}
-
-	// update all active workspaces concurrently
-	const updateResult = await processConcurrently(
-		activeWorkspaces,
-		async (workspace) => {
-			const workspacePath = path.join(workspaceRoot, workspace.path);
-			const git = ctx.gitFactory(workspacePath);
-
-			// check if directory exists
-			const dir = await ctx.fileSystem.isDir(workspacePath);
-			if (!dir.ok) {
-				console.log(yellow(`⚠️  Workspace directory does not exist, skipping: ${workspace.path}`));
-				return Result.ok();
-			}
-
-			console.log(blue(`🔄 Updating workspace: ${workspace.path} (branch: ${workspace.branch})`));
-
-			// checkout to tracking branch
-			const checkoutResult = await git.checkoutBranch(workspace.branch);
-			if (!checkoutResult.ok) {
-				console.log(
-					red(`❌ Failed to checkout to branch ${workspace.branch} in ${workspace.path}`),
-					`(${checkoutResult.error.message})`,
-				);
-				return Result.error(checkoutResult.error);
-			}
-
-			if (debug) {
-				console.log(green(`✓ Checked out to branch ${workspace.branch} in ${workspace.path}`));
-			}
-
-			// check if working directory is clean
-			const isCleanResult = await git.isWorkingDirectoryClean();
-			if (!isCleanResult.ok) {
-				console.log(
-					red(`❌ Failed to check working directory status in ${workspace.path}`),
-					`(${isCleanResult.error.message})`,
-				);
-				return Result.error(isCleanResult.error);
-			}
-
-			const isClean = isCleanResult.value;
-			let hasStashedChanges = false;
-
-			// stash changes if working directory is dirty
-			if (!isClean) {
-				console.log(yellow(`💾 Working directory is dirty in ${workspace.path}, stashing changes...`));
-				const stashResult = await git.stash(`workspace-manager auto-stash before update`);
-				if (!stashResult.ok) {
-					console.log(
-						red(`❌ Failed to stash changes in ${workspace.path}`),
-						`(${stashResult.error.message})`,
-					);
-					return Result.error(stashResult.error);
-				}
-				hasStashedChanges = true;
-				if (debug) {
-					console.log(green(`✓ Stashed changes in ${workspace.path}`));
-				}
-			}
-
-			// fetch latest changes from origin
-			const fetchResult = await git.fetch();
-			if (!fetchResult.ok) {
-				console.log(
-					red(`❌ Failed to fetch latest changes from origin in ${workspace.path}`),
-					`(${fetchResult.error.message})`,
-				);
-				return Result.error(fetchResult.error);
-			}
-
-			if (debug) {
-				console.log(green(`✓ Fetched latest changes from origin in ${workspace.path}`));
-			}
-
-			// pull latest changes from tracking branch
-			const pullResult = await git.pullOriginBranch(workspace.branch);
-			if (!pullResult.ok) {
-				console.log(
-					red(`❌ Failed to pull latest changes from origin/${workspace.branch} in ${workspace.path}`),
-					`(${pullResult.error.message})`,
-				);
-				return Result.error(pullResult.error);
-			}
-
-			if (debug) {
-				console.log(green(`✓ Pulled latest changes from origin/${workspace.branch} in ${workspace.path}`));
-			}
-
-			// pop stashed changes if we stashed them
-			if (hasStashedChanges) {
-				console.log(blue(`🔄 Restoring stashed changes in ${workspace.path}...`));
-				const popResult = await git.stashPop();
-				if (!popResult.ok) {
-					console.log(
-						yellow(
-							`⚠️  Warning: Failed to pop stash in ${workspace.path}. You may need to manually resolve conflicts.`,
-						),
-						`(${popResult.error.message})`,
-					);
-					// Don't return error here, as the update was successful, just the stash pop failed
-					console.log(
-						yellow(`💡 You can manually run 'git stash pop' in ${workspace.path} to restore your changes.`),
-					);
-				} else {
-					if (debug) {
-						console.log(green(`✓ Restored stashed changes in ${workspace.path}`));
-					}
-				}
-			}
-
-			console.log(green(`✅ Successfully updated workspace: ${workspace.path}`));
-			return Result.ok();
-		},
-		concurrency,
-	);
-
-	if (!updateResult.ok) {
-		return updateResult;
-	}
-
-	console.log(green(`🎉 All workspaces updated successfully!`));
+	console.log(green("🎉 All workspaces updated successfully!"));
 	return Result.ok();
 }

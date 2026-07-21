@@ -1,14 +1,19 @@
 import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
-import type { GitPort } from "../ports/git.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
+import type { FileSystemPort } from "../ports/file-system.ts";
+import type { GitPort } from "../ports/git.ts";
+import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
 import type { LogFields, Logger } from "../ports/logger.ts";
-import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
+import type { DiscoveryResult, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
+import type { PostSyncHook, WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
 export type FakeGitState = {
 	currentBranch?: string;
 	isRepo?: boolean;
 	isClean?: boolean;
+	modifiedFiles?: number;
+	untrackedFiles?: number;
 	failNext?: string;
 };
 
@@ -57,6 +62,11 @@ export class FakeGit implements GitPort {
 	isWorkingDirectoryClean(): Promise<Result<boolean, AppError>> {
 		this.record("isWorkingDirectoryClean", []);
 		return Promise.resolve(Result.ok(this.state.isClean ?? true));
+	}
+
+	getPorcelainStatus(): Promise<Result<{ modified: number; untracked: number }, AppError>> {
+		this.record("getPorcelainStatus", []);
+		return Promise.resolve(Result.ok({ modified: this.state.modifiedFiles ?? 0, untracked: this.state.untrackedFiles ?? 0 }));
 	}
 
 	stash(message?: string): Promise<Result<void, AppError>> {
@@ -153,5 +163,68 @@ export class FakeLogger implements Logger {
 
 	error(message: string, fields?: LogFields): void {
 		this.entries.push({ level: "error", message, fields });
+	}
+}
+
+export class FakeDiscovery implements WorkspaceDiscoveryPort {
+	constructor(private readonly result: Result<DiscoveryResult, AppError>) {}
+
+	discover(): Promise<Result<DiscoveryResult, AppError>> {
+		return Promise.resolve(this.result);
+	}
+
+	configExistsAt(_path: string): Promise<Result<boolean, AppError>> {
+		return Promise.resolve(Result.ok(true));
+	}
+
+	getConfigFileName(): string {
+		return "workspace.yml";
+	}
+}
+
+export class FakeFileSystem implements FileSystemPort {
+	dirs = new Set<string>();
+
+	isDir(path: string): Promise<Result<void, AppError>> {
+		if (this.dirs.has(path)) {
+			return Promise.resolve(Result.ok());
+		}
+		return Promise.resolve(Result.error(new AppError(AppErrorCode.PATH_INVALID, `directory does not exist: ${path}`)));
+	}
+
+	isDirectoryEmpty(_path: string): Promise<Result<boolean, AppError>> {
+		return Promise.resolve(Result.ok(true));
+	}
+}
+
+export class FakeHookRunner implements HookRunner {
+	hooks: Array<{ hook: PostSyncHook; context: HookContext }> = [];
+
+	executeHook(hook: PostSyncHook, context: HookContext): Promise<Result<HookExecutionResult, AppError>> {
+		this.hooks.push({ hook, context });
+		return Promise.resolve(
+			Result.ok({
+				success: true,
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+				duration: 0,
+			}),
+		);
+	}
+
+	executeHooks(hooks: PostSyncHook[], context: HookContext): Promise<Result<HookExecutionResult[], AppError>> {
+		const results: HookExecutionResult[] = [];
+		for (const hook of hooks) {
+			this.hooks.push({ hook, context });
+			results.push({
+				success: true,
+				exitCode: 0,
+				stdout: "",
+				stderr: "",
+				duration: 0,
+			});
+		}
+		return Promise.resolve(Result.ok(results));
 	}
 }
