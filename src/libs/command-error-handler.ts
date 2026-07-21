@@ -1,5 +1,6 @@
 import { red } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import { AppError } from "./app-error.ts";
 
 export interface ErrorHandler {
 	onError(error: Error, commandName: string): void;
@@ -7,7 +8,11 @@ export interface ErrorHandler {
 
 export class ConsoleErrorHandler implements ErrorHandler {
 	onError(error: Error, commandName: string): void {
-		console.log(red(`❌ ${commandName} failed:`), error.message);
+		if (error instanceof AppError) {
+			console.log(red(`❌ ${commandName} failed [${error.code}]:`), error.message);
+		} else {
+			console.log(red(`❌ ${commandName} failed:`), error.message);
+		}
 	}
 }
 
@@ -30,7 +35,11 @@ export class CommandErrorHandler {
 	// Static factory methods for convenience
 	static withExit<T>(result: Result<T, Error>, commandName: string): T | null {
 		if (!result.ok) {
-			console.log(red(`❌ ${commandName} failed:`), result.error.message);
+			if (result.error instanceof AppError) {
+				console.log(red(`❌ ${commandName} failed [${result.error.code}]:`), result.error.message);
+			} else {
+				console.log(red(`❌ ${commandName} failed:`), result.error.message);
+			}
 			Deno.exit(1);
 		}
 		return result.value as T | null;

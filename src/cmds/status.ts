@@ -2,12 +2,14 @@ import { Table } from "@cliffy/table";
 import { blue, gray, green, red, yellow } from "@std/fmt/colors";
 import * as path from "@std/path";
 import { Result } from "typescript-result";
+import { AppError } from "../libs/app-error.ts";
 import { processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { wrapError } from "../libs/errors.ts";
 import { isDir } from "../libs/file.ts";
 import { GitManager } from "../libs/git.ts";
 import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
 import { ConfigManager } from "../services/config-manager.ts";
+import type { WorkspaceConfigItem } from "../types/config.ts";
 
 export type StatusCommandOption = {
 	/**
@@ -118,71 +120,7 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 	// gather status for all active repositories concurrently
 	const statusResults = await processConcurrentlyWithResults(
 		activeWorkspaces,
-		async (workspace) => {
-			const workspacePath = path.join(workspaceRoot, workspace.path);
-			const git = new GitManager(workspacePath);
-			const status: RepositoryStatus = {
-				path: workspace.path,
-				url: workspace.url,
-				trackingBranch: workspace.branch,
-				isGoModule: workspace.isGolang,
-				active: workspace.active,
-				exists: false,
-			};
-
-			try {
-				// check if directory exists
-				const dir = await isDir(workspacePath);
-				if (!dir.ok) {
-					status.error = "Directory does not exist";
-					return Result.ok(status);
-				}
-
-				// check if it's a git repository
-				const isRepo = await git.isRepository();
-				if (!isRepo.ok) {
-					status.error = "Failed to check git repository";
-					return Result.ok(status);
-				}
-
-				if (!isRepo.value) {
-					status.error = "Not a git repository";
-					return Result.ok(status);
-				}
-
-				status.exists = true;
-
-				// get current branch
-				const currentBranch = await git.getCurrentBranch();
-				if (!currentBranch.ok) {
-					status.error = "Failed to get current branch";
-					return Result.ok(status);
-				}
-				status.currentBranch = currentBranch.value;
-
-				// check if working directory is clean
-				const isClean = await git.isWorkingDirectoryClean();
-				if (!isClean.ok) {
-					status.error = "Failed to check working directory";
-					return Result.ok(status);
-				}
-				status.isClean = isClean.value;
-
-				if (!isClean.value || verbose) {
-					// count modified and untracked files
-					const fileStatus = await getFileStatus(workspacePath);
-					if (fileStatus.ok) {
-						status.modifiedFiles = fileStatus.value.modified;
-						status.untrackedFiles = fileStatus.value.untracked;
-					}
-				}
-
-				return Result.ok(status);
-			} catch (error) {
-				status.error = error instanceof Error ? error.message : "Unknown error";
-				return Result.ok(status);
-			}
-		},
+		async (workspace) => await processSingleWorkspace(workspace, workspaceRoot, verbose),
 		concurrency,
 	);
 
@@ -211,6 +149,71 @@ export async function statusCommand(option: StatusCommandOption): Promise<Result
 	}
 
 	return Result.ok();
+}
+
+async function processSingleWorkspace(
+	workspace: WorkspaceConfigItem,
+	workspaceRoot: string,
+	verbose: boolean,
+): Promise<Result<RepositoryStatus, AppError>> {
+	const workspacePath = path.join(workspaceRoot, workspace.path);
+	const git = new GitManager(workspacePath);
+	const status: RepositoryStatus = {
+		path: workspace.path,
+		url: workspace.url,
+		trackingBranch: workspace.branch,
+		isGoModule: workspace.isGolang,
+		active: workspace.active,
+		exists: false,
+	};
+
+	// check if directory exists
+	const dir = await isDir(workspacePath);
+	if (!dir.ok) {
+		status.error = "Directory does not exist";
+		return Result.ok(status);
+	}
+
+	// check if it's a git repository
+	const isRepo = await git.isRepository();
+	if (!isRepo.ok) {
+		status.error = "Failed to check git repository";
+		return Result.ok(status);
+	}
+
+	if (!isRepo.value) {
+		status.error = "Not a git repository";
+		return Result.ok(status);
+	}
+
+	status.exists = true;
+
+	// get current branch
+	const currentBranch = await git.getCurrentBranch();
+	if (!currentBranch.ok) {
+		status.error = "Failed to get current branch";
+		return Result.ok(status);
+	}
+	status.currentBranch = currentBranch.value;
+
+	// check if working directory is clean
+	const isClean = await git.isWorkingDirectoryClean();
+	if (!isClean.ok) {
+		status.error = "Failed to check working directory";
+		return Result.ok(status);
+	}
+	status.isClean = isClean.value;
+
+	if (!isClean.value || verbose) {
+		// count modified and untracked files
+		const fileStatus = await getFileStatus(workspacePath);
+		if (fileStatus.ok) {
+			status.modifiedFiles = fileStatus.value.modified;
+			status.untrackedFiles = fileStatus.value.untracked;
+		}
+	}
+
+	return Result.ok(status);
 }
 
 async function getFileStatus(cwd: string): Promise<Result<{ modified: number; untracked: number }, Error>> {
