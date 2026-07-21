@@ -1,0 +1,20 @@
+{
+  "skill_name": "jsr-release",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Release a new version of this package to JSR",
+      "expected_output": "The agent runs ./scripts/release.sh --yes from the repo root, reports the quality gate results, the assessed semver bump, and the new tag name."
+    },
+    {
+      "id": 1,
+      "prompt": "I want to bump the version and publish this package to JSR. We've added a few new features since the last tag.",
+      "expected_output": "The agent runs ./scripts/release.sh --yes, the script assesses a minor bump from the feat: commits, and pushes the new tag."
+    },
+    {
+      "id": 2,
+      "prompt": "Check if the package is ready to release, then cut a new tag",
+      "expected_output": "The agent runs the release script which discovers available deno tasks, runs format check, lint, tests, and JSR dry-run before creating and pushing the tag."
+    }
+  ]
+}

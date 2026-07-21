@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# release.sh — Quality gate + release script for serve-md
+# release.sh — Quality gate + release script for JSR packages
 #
 # Runs pre-release checks, assesses the next semver version from commits,
 # creates a git tag, and pushes it to trigger the JSR publish workflow.
@@ -81,25 +81,126 @@ if [[ "$COMMITS_SINCE_TAG" -eq 0 ]]; then
 fi
 ok "$COMMITS_SINCE_TAG commit(s) ahead of latest tag"
 
-# ── 3. Quality gate: deno task check ────────────────────────────────────────
-step "Running quality gate: deno task check"
+# ── 3. Discover available deno tasks ────────────────────────────────────────
+step "Discovering available deno tasks"
 
-if deno task check; then
-  ok "deno task check passed"
-else
-  die "deno task check failed — fix issues before releasing."
+AVAILABLE_TASKS="$(deno task 2>/dev/null || true)"
+
+# Helper: check if a task name exists in the available tasks list
+has_task() {
+  echo "$AVAILABLE_TASKS" | grep -qE "^[[:space:]]*$1([[:space:]]|$)"
+}
+
+# Find the best task for each quality check
+FMT_TASK=""
+LINT_TASK=""
+TEST_TASK=""
+JSR_DRYRUN_TASK=""
+
+# fmt: prefer fmt:check, then fmt
+if has_task "fmt:check"; then
+  FMT_TASK="fmt:check"
+elif has_task "fmt"; then
+  FMT_TASK="fmt"
 fi
 
-# ── 4. Quality gate: deno task release:check ────────────────────────────────
-step "Running quality gate: deno task release:check"
-
-if deno task release:check; then
-  ok "deno task release:check passed (JSR dry-run OK)"
-else
-  die "deno task release:check failed — the package is not ready for JSR."
+# lint: prefer lint, then lint:check
+if has_task "lint"; then
+  LINT_TASK="lint"
+elif has_task "lint:check"; then
+  LINT_TASK="lint:check"
 fi
 
-# ── 5. Semver assessment ────────────────────────────────────────────────────
+# test: prefer test, then test:unit, then test:integration
+if has_task "test"; then
+  TEST_TASK="test"
+elif has_task "test:unit"; then
+  TEST_TASK="test:unit"
+fi
+
+# JSR dry-run: prefer release:check, then publish:check, then jsr:check, then jsr:publish
+for candidate in release:check publish:check jsr:check jsr:publish; do
+  if has_task "$candidate"; then
+    JSR_DRYRUN_TASK="$candidate"
+    break
+  fi
+done
+
+ok "Discovered tasks — fmt: ${FMT_TASK:-none}, lint: ${LINT_TASK:-none}, test: ${TEST_TASK:-none}, jsr-dryrun: ${JSR_DRYRUN_TASK:-none}"
+
+# ── 4. Quality gate: format check ───────────────────────────────────────────
+step "Running quality gate: format check"
+
+if [[ -n "$FMT_TASK" ]]; then
+  if deno task "$FMT_TASK"; then
+    ok "deno task $FMT_TASK passed"
+  else
+    die "deno task $FMT_TASK failed — fix formatting before releasing."
+  fi
+else
+  # Fallback: direct deno fmt check
+  if deno fmt --check; then
+    ok "deno fmt --check passed"
+  else
+    die "deno fmt --check failed — fix formatting before releasing."
+  fi
+fi
+
+# ── 5. Quality gate: lint ───────────────────────────────────────────────────
+step "Running quality gate: lint"
+
+if [[ -n "$LINT_TASK" ]]; then
+  if deno task "$LINT_TASK"; then
+    ok "deno task $LINT_TASK passed"
+  else
+    die "deno task $LINT_TASK failed — fix lint errors before releasing."
+  fi
+else
+  # Fallback: direct deno lint
+  if deno lint; then
+    ok "deno lint passed"
+  else
+    die "deno lint failed — fix lint errors before releasing."
+  fi
+fi
+
+# ── 6. Quality gate: tests ──────────────────────────────────────────────────
+step "Running quality gate: tests"
+
+if [[ -n "$TEST_TASK" ]]; then
+  if deno task "$TEST_TASK"; then
+    ok "deno task $TEST_TASK passed"
+  else
+    die "deno task $TEST_TASK failed — fix failing tests before releasing."
+  fi
+else
+  # Fallback: direct deno test
+  if deno test; then
+    ok "deno test passed"
+  else
+    die "deno test failed — fix failing tests before releasing."
+  fi
+fi
+
+# ── 7. Quality gate: JSR dry-run ────────────────────────────────────────────
+step "Running quality gate: JSR dry-run"
+
+if [[ -n "$JSR_DRYRUN_TASK" ]]; then
+  if deno task "$JSR_DRYRUN_TASK"; then
+    ok "deno task $JSR_DRYRUN_TASK passed (JSR dry-run OK)"
+  else
+    die "deno task $JSR_DRYRUN_TASK failed — the package is not ready for JSR."
+  fi
+else
+  # Fallback: direct jsr publish --dry-run
+  if deno publish --dry-run 2>/dev/null || jsr publish --dry-run 2>/dev/null; then
+    ok "JSR dry-run passed"
+  else
+    die "JSR dry-run failed — the package is not ready for JSR."
+  fi
+fi
+
+# ── 8. Semver assessment ────────────────────────────────────────────────────
 step "Assessing next version"
 
 if [[ -z "$LATEST_TAG" ]]; then
@@ -135,9 +236,8 @@ BUMP_LEVEL="${OVERRIDE_BUMP:-patch}"
 if git log --oneline "$COMMIT_RANGE" | grep -qiE '(BREAKING CHANGE|^[a-z0-9]+! )'; then
   BUMP_LEVEL="major"
 elif git log --oneline "$COMMIT_RANGE" | grep -qE '^feat(\(.+\))?:'; then
-  if [[ "$BUMP_LEVEL" != "major" ]]; then
-    BUMP_LEVEL="minor"
-  fi
+  # Any feat: commit → minor bump, regardless of fix: commits
+  BUMP_LEVEL="minor"
 fi
 
 case "$BUMP_LEVEL" in
@@ -162,7 +262,7 @@ info "Bump level:        $BUMP_LEVEL"
 info "New version:       $NEW_VERSION"
 info "New tag:           $NEW_TAG"
 
-# ── 6. Confirmation ─────────────────────────────────────────────────────────
+# ── 9. Confirmation ─────────────────────────────────────────────────────────
 if [[ "$SKIP_CONFIRM" != true ]]; then
   echo ""
   echo -e "${BOLD}Summary${NC}"
@@ -179,7 +279,7 @@ if [[ "$SKIP_CONFIRM" != true ]]; then
   fi
 fi
 
-# ── 7. Update deno.json version ─────────────────────────────────────────────
+# ── 9. Update deno.json version ─────────────────────────────────────────────
 step "Updating version in deno.json"
 
 # Use a portable sed-free approach via python
@@ -197,7 +297,7 @@ else:
     print('Version already $NEW_VERSION, no change needed')
 "
 
-# ── 8. Commit version bump ──────────────────────────────────────────────────
+# ── 10. Commit version bump ──────────────────────────────────────────────────
 step "Committing version bump"
 
 git add deno.json
@@ -208,7 +308,7 @@ else
   info "No version change to commit (already at $NEW_VERSION)"
 fi
 
-# ── 9. Create & push tag ────────────────────────────────────────────────────
+# ── 11. Create & push tag ────────────────────────────────────────────────────
 step "Creating and pushing tag"
 
 if git tag | grep -q "^${NEW_TAG}$"; then
@@ -230,5 +330,7 @@ echo ""
 echo -e "${GREEN}${BOLD}✓ Released $NEW_TAG${NC}"
 echo ""
 echo "  The GitHub Actions workflow will now publish to JSR."
-echo "  Watch: https://github.com/${GITHUB_REPOSITORY:-ball6847/serve-md}/actions"
+if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+  echo "  Watch: https://github.com/${GITHUB_REPOSITORY}/actions"
+fi
 echo ""
