@@ -3,9 +3,10 @@ import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { wrapErrorResult } from "../libs/errors.ts";
 import { parseWorkspaceConfig } from "../domain/config-schema.ts";
+import type { ConfigStore } from "../ports/config-store.ts";
 import type { WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
-export class ConfigManager {
+export class ConfigManager implements ConfigStore {
 	private _cachedConfig: WorkspaceConfig | null = null;
 	private _configFileMtime: number | null = null;
 
