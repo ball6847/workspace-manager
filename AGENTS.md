@@ -68,14 +68,14 @@ There is **no database, no HTTP API, no repository/ORM layer**. Persistence is Y
 │  domain/*        (pure rules & types)                         │  no I/O
 ├──────────────────────────────────────────────────────────────┤
 │  ports/*         (interfaces only)                            │  zero runtime deps
-│  adapters/*      (git, go, fs, config, hooks, logger impls)   │  external I/O
+│  adapters/*      (git, go, fs, config, hooks)                 │  external I/O
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ### Layering rules (enforced by **review only** — see §10)
 
 - **cmd** → may import Service (+ presentation helpers). Must not import concrete adapters or call `Deno.Command` / raw FS for business I/O.
-- **Service** → may import ports (interfaces) + domain types. **Must not** import Cliffy prompts, or concrete adapter classes. **Must not** hold pure business rules that belong in `domain/`. Services orchestrate: call ports, delegate decisions to domain, return `Result<T, AppError>`.
+- **Service** → may import ports (interfaces) + domain types. **Must not** import Cliffy prompts, or concrete adapter classes. **Must not** hold pure business rules that belong in `domain/`. Services orchestrate: call ports, delegate decisions to domain, return `Result<T, AppError>`. CLI progress/status may use `console.log` + `@std/fmt/colors` (see §7).
 - **Adapter** → implements a port; wraps git/subprocess, filesystem, YAML, hooks. No multi-workspace orchestration logic.
 - **Ports** live in `ports/` with **zero runtime dependencies**. Services depend on ports, not concrete adapters.
 - **Domain** (entities, pure filters, path defaults) live in `domain/` and depend on nothing external.
@@ -99,7 +99,7 @@ src/
 ├── services/              # Use-case classes
 ├── domain/                # Pure types and rules
 ├── ports/                 # Port interfaces only
-├── adapters/              # Concrete I/O (git, go, fs, config, hooks, logger)
+├── adapters/              # Concrete I/O (git, go, fs, config, hooks)
 ├── testing/               # Shared fakes for unit tests
 ├── types/                 # Shared DTOs / command option types (or fold into domain)
 └── libs/                  # Pure utils + shims + error helpers — no I/O policy
@@ -206,16 +206,26 @@ workspaces:
 
 ---
 
-## 7. Logging — Logger Port
+## 7. Logging & CLI Output
 
-- **Structured / leveled logs** go through an injected **Logger** port. Prefer no ad-hoc `console.log` inside services/adapters for operational noise.
-- **Allowed console use**:
-  - Composition bootstrap before logger exists
-  - cmd-layer **presentation** (colored success lines, tables, interactive prompts) — preferably via a small presenter helper, not scattered forever
-- **Implementation is swappable**: simple console adapter is fine; richer sinks may sit behind the same port. App code must not depend on a concrete logger package outside the adapter.
-- Log fields: **camelCase** (`workspacePath`, `errCode`, `durationMs`).
+Use plain **`console.log` / `console.error`** with **`@std/fmt/colors`** — not a structured Logger port or leveled structured-log stack.
+
+- **User-facing and operational messages**: `console.log` + colors (`green`, `yellow`, `red`, `blue`, `gray`, …) and the existing emoji patterns (✅ ⚠️ ❌ 🎉 💡, etc.).
+- **Where**: primarily **cmd** presentation; services/adapters may print progress or status the same way when helpful. Prefer keeping heavy UX (tables, prompts) in cmds.
+- **Debug**: gate verbose output behind `--debug` / `-d` when needed (e.g. only print extra detail if the flag is set). No separate log-level framework required.
+- **Errors**: present `AppError` via cmd helpers / `console` + colors (and optional debug dump of `context` / `cause` when `--debug`). See §4.
+- **Do not introduce** a `Logger` port, structured key=value log fields API, or third-party logging package unless explicitly decided and this section is updated.
 - **Never log secrets** (tokens, keys, private env).
-- Levels: `debug` (off unless `--debug`), `info`, `warn`, `error` (include `errCode` when applicable).
+
+Example style (see also `FORMATTING.md`):
+
+```ts
+import { green, red, yellow } from "@std/fmt/colors";
+
+console.log(green(`✅ Completed for ${path}`));
+console.log(yellow(`⚠️  Hook failed for ${path} with exit code ${exitCode}`));
+console.error(red(`❌ ${commandName} failed:`), error.message);
+```
 
 ---
 
@@ -292,13 +302,12 @@ If import hygiene becomes a recurring problem, a custom `deno lint` plugin may b
 | ----------------- | ----------------------------------------------- | -------------------------------------------- |
 | CLI flags         | kebab-case long options                         | `--workspace-root`, `--debug`                |
 | Error codes       | SCREAMING_SNAKE_CASE                            | `CONFIG_INVALID`, `GIT_FAILED`               |
-| Log fields        | camelCase                                       | `workspacePath`, `errCode`                   |
 | Env vars          | UPPER_SNAKE_CASE                                | `EDITOR`                                     |
 | TS files          | kebab-case                                      | `workspace-manager.ts`, `config-manager.ts`  |
 | Tests             | `*_test.ts` colocated                           | `sync_test.ts`                               |
 | Deno imports      | relative, no aliases                            | `../ports/git.ts`                            |
 | Classes           | PascalCase                                      | `SyncService`, `GitAdapter`                  |
-| Ports             | PascalCase, no `I` prefix                       | `GitPort`, `ConfigStore`, `Logger`           |
+| Ports             | PascalCase, no `I` prefix                       | `GitPort`, `ConfigStore`                     |
 | Sentinel errors   | PascalCase, `Error` suffix / `AppError` base    | `AppError`, `ConfigInvalidError` (optional)  |
 | Result returns    | `Result<T, AppError>`                           | `Promise<Result<void, AppError>>`            |
 
@@ -312,7 +321,7 @@ If import hygiene becomes a recurring problem, a custom `deno lint` plugin may b
 | CLI          | Cliffy (`@cliffy/*` via JSR)                        |
 | Config       | YAML (`@std/yaml`) + **Zod** validation             |
 | Errors       | **AppError** sentinels + **typescript-result**      |
-| Logging      | Logger **port** (console adapter by default)        |
+| Logging      | `console.log` / `console.error` + **`@std/fmt/colors`** |
 | Architecture | Ports/adapters + services + thin cmds + domain      |
 | DI           | Composition root, constructor injection             |
 | Tests        | `Deno.test`, fakes over mocks                       |
@@ -323,7 +332,7 @@ If import hygiene becomes a recurring problem, a custom `deno lint` plugin may b
 ### JSR (preferred)
 
 - `@cliffy/*` — command, prompt, table, ansi, …
-- `@std/*` — yaml, path, fmt, text, dotenv, …
+- `@std/*` — yaml, path, fmt (including **`@std/fmt/colors`**), text, dotenv, …
 
 ### npm (when needed)
 
