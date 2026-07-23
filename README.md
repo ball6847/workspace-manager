@@ -431,36 +431,25 @@ This process ensures that Git submodules are properly removed and re-added with 
 
 ## Architecture
 
-The project follows SOLID principles with a clean separation of concerns:
+The project follows **ports/adapters** architecture with a composition root for dependency injection. For full architectural contracts, see [`AGENTS.md`](./AGENTS.md).
 
 ```
 workspace-manager/
 ├── main.ts                    # CLI entry point (delegates to src/cli.ts)
 ├── src/
-│   ├── cli.ts                 # CLI command definitions and configuration
-│   ├── cmds/                  # CLI command implementations (one per file)
-│   │   ├── add.ts            # Add new repositories to workspace
-│   │   ├── enable.ts         # Enable disabled workspace repositories
-│   │   ├── open.ts           # Open workspace in editor via interactive selection
-│   │   ├── save.ts           # Save current workspace state to config
-│   │   ├── status.ts         # Show workspace status with branch/dirty tracking
-│   │   ├── sync.ts           # Sync workspace with remote repositories
-│   │   └── update.ts         # Update submodules to latest branches
-│   └── libs/                 # Reusable utility libraries
-│       ├── command-error-handler.ts  # CLI error handling abstraction
-│       ├── concurrent.ts     # Concurrent processing with batching
-│       ├── errors.ts         # Custom error types and wrappers
-│       ├── file.ts           # File system utilities and validation
-│       ├── git.ts            # Git operations (submodules, branches, status)
-│       ├── go.ts             # Go workspace management (go.work integration)
-│       └── workspace-discovery.ts  # Auto-discovery of workspace config
-├── build/                     # Compiled output directory
-│   └── cli.js                # Bundled CLI executable
+│   ├── cli.ts                 # Cliffy command definitions + composition root
+│   ├── composition.ts         # Builds adapters and services (DI wiring)
+│   ├── cmds/                  # Thin command actions (flags → service → UX)
+│   ├── services/              # Use-case orchestration classes
+│   ├── domain/                # Pure business rules and types
+│   ├── ports/                 # Interfaces only (zero runtime deps)
+│   ├── adapters/              # Concrete I/O (git, go, fs, config, hooks, logger)
+│   ├── testing/               # Shared fakes for unit tests
+│   └── types/                 # Shared DTOs / config types
 ├── example/                   # Example configuration files
 │   └── workspace.yml         # Sample workspace configuration
 ├── deno.json                  # Deno project configuration and tasks
-├── deno.lock                  # Dependency lock file
-└── .vscode/settings.json      # VSCode Deno integration settings
+└── AGENTS.md                  # Architecture contracts and conventions
 ```
 
 ## Error Handling

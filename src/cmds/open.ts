@@ -1,274 +1,113 @@
-import { blue, green, red, yellow } from "@std/fmt/colors";
-import * as path from "@std/path";
+import { blue, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
+import type { AppContext } from "../composition.ts";
+import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
-import { isDir } from "../libs/file.ts";
-import { GitManager } from "../libs/git.ts";
-import { GoWork } from "../libs/go.ts";
-import { type HookExecutionResult, HookExecutor } from "../libs/hooks.ts";
-import { WorkspaceDiscovery } from "../libs/workspace-discovery.ts";
-import { ConfigManager } from "../services/config-manager.ts";
-import { InteractivePrompt } from "../services/interactive-prompt.ts";
-import { WorkspaceManager } from "../services/workspace-manager.ts";
-import type { WorkspaceConfig } from "../types/config.ts";
+import type { HookExecutionResult } from "../ports/hook-runner.ts";
+import type { OpenWorkspaceInfo } from "../services/open.ts";
+import { InteractivePrompt } from "./interactive-prompt.ts";
 
 export type OpenCommandOption = {
-	/**
-	 * Path to workspace config file, default is workspace.yml
-	 */
 	config?: string;
-	/**
-	 * Path to workspace root directory, default is current directory
-	 */
 	workspaceRoot?: string;
-	/**
-	 * If true, print debug information
-	 */
 	debug?: boolean;
-	/**
-	 * Editor to use (overrides config and $EDITOR)
-	 */
 	editor?: string;
-	/**
-	 * Workspace path to open directly (skips interactive selection)
-	 */
 	workspace?: string;
 };
 
-type WorkspaceSelection = {
-	path: string;
-	url: string;
-	branch: string;
-	isActive: boolean;
-	isGolang: boolean;
-	directory: string;
-	displayName: string;
-};
-
-const createGoWork = (path: string) => new GoWork(path);
-const createGitManager = (path: string) => new GitManager(path);
-
-// Helper function to process hook results with early-return pattern
-function processHookResult(hookResult: HookExecutionResult, workspacePath: string): void {
-	if (hookResult.success) {
-		console.log(green(`✅ Hook completed for ${workspacePath} in ${hookResult.duration}ms`));
-		return;
-	}
-
-	// Hook failed
-	console.log(yellow(`⚠️  Hook failed for ${workspacePath} with exit code ${hookResult.exitCode}`));
-	if (hookResult.stderr) {
-		console.log(yellow(`stderr: ${hookResult.stderr}`));
-	}
-}
-
-// Helper function to process global hook results
-function processGlobalHookResult(hookResult: HookExecutionResult): void {
-	if (hookResult.success) {
-		console.log(green(`✅ Global hook completed in ${hookResult.duration}ms`));
-		return;
-	}
-
-	// Hook failed
-	console.log(yellow(`⚠️  Global hook failed with exit code ${hookResult.exitCode}`));
-	if (hookResult.stderr) {
-		console.log(yellow(`stderr: ${hookResult.stderr}`));
-	}
-}
-
-/**
- * Open workspace submodule in configured editor via interactive selection
- */
-export async function openCommand(option: OpenCommandOption): Promise<Result<void, Error>> {
-	// Discover workspace
-	const discovery = new WorkspaceDiscovery({
+export async function openCommand(ctx: AppContext, option: OpenCommandOption): Promise<Result<void, AppError>> {
+	const listResult = await ctx.openService.listWorkspaces({
 		config: option.config,
 		workspaceRoot: option.workspaceRoot,
+		debug: option.debug,
+		editor: option.editor,
 	});
 
-	const discoverResult = await discovery.discover();
-
-	if (!discoverResult.ok) {
-		return Result.error(discoverResult.error);
+	if (!listResult.ok) {
+		return Result.error(listResult.error);
 	}
 
-	const { workspaceRoot, configPath } = discoverResult.value;
-	const debug = option.debug ?? false;
-
-	// Initialize managers
-	const configManager = new ConfigManager(configPath);
-	const workspaceManager = new WorkspaceManager(workspaceRoot, createGoWork, createGitManager);
-	const interactivePrompt = new InteractivePrompt();
-
-	// Parse config
-	const configResult = await configManager.getWorkspaceConfig(workspaceRoot);
-	if (!configResult.ok) {
-		return Result.error(configResult.error);
-	}
-	const config = configResult.value;
-
-	// Build workspace selection list
-	const workspaces = await buildWorkspaceList(config, workspaceRoot);
+	const { workspaces, editor } = listResult.value;
 
 	if (workspaces.length === 0) {
-		return Result.error(new Error("No workspaces found in configuration"));
+		return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, "No workspaces found in configuration"));
 	}
 
-	// Check editor - CLI option overrides config, which overrides environment
-	const editor = resolveEditor(config, option.editor);
 	if (!editor) {
-		return Result.error(new Error("No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable"));
+		return Result.error(
+			new AppError(
+				AppErrorCode.CONFIG_INVALID,
+				"No editor configured. Set 'editor' in workspace.yml or $EDITOR environment variable",
+			),
+		);
 	}
 
-	if (debug) {
+	if (option.debug) {
 		console.log(blue(`Using editor: ${editor}`));
 	}
 
-	// Determine selected workspace
-	let selected: WorkspaceSelection | null = null;
+	let selected: OpenWorkspaceInfo | null = null;
 
-	// If workspace option provided, use it directly (skip interactive selection)
 	if (option.workspace) {
 		const found = workspaces.find((w) => w.path === option.workspace);
 		if (!found) {
-			return Result.error(new Error(`Workspace not found: ${option.workspace}`));
+			return Result.error(new AppError(AppErrorCode.CONFIG_INVALID, `Workspace not found: ${option.workspace}`, { context: { path: option.workspace } }));
 		}
 		selected = found;
 	} else {
-		// Present interactive selection
 		selected = await presentWorkspaceSelector(workspaces);
 		if (!selected) {
-			// User cancelled
 			return Result.ok();
 		}
 	}
 
-	if (debug) {
+	if (option.debug) {
 		console.log(blue(`Selected workspace: ${selected.path}`));
 	}
 
-	// Check if workspace is disabled and handle enabling/syncing
+	let enableIfDisabled = selected.isActive;
+
 	if (!selected.isActive) {
+		const interactivePrompt = new InteractivePrompt();
 		const confirmResult = await interactivePrompt.promptForEnableAndSync(selected.path);
 		if (!confirmResult.ok) {
-			// User cancelled or error
 			return confirmResult;
 		}
-
 		if (!confirmResult.value) {
-			// User declined to enable
 			console.log(blue("💡 Run 'workspace-manager enable' to enable workspaces manually"));
 			return Result.ok();
 		}
-
-		// Enable the workspace
-		const enableResult = configManager.enableWorkspace(selected.path, config);
-		if (!enableResult.ok) {
-			return enableResult;
-		}
-
-		// Write config back to file
-		const writeResult = await configManager.writeConfig(config);
-		if (!writeResult.ok) {
-			console.log(red("❌ Failed to write config file: "), configPath, `(${writeResult.error.message})`);
-			return Result.error(writeResult.error);
-		}
-
-		console.log(green(`✅ Enabled: ${selected.path}`));
-
-		// Sync the workspace
-		const checkoutResult = await workspaceManager.checkoutWorkspace(selected.url, selected.path, selected.branch);
-		if (!checkoutResult.ok) {
-			console.log(red(`❌ Failed to checkout workspace: ${selected.path}`), `(${checkoutResult.error.message})`);
-			return Result.error(checkoutResult.error);
-		}
-
-		console.log(green(`✅ Successfully checked out workspace: ${selected.path}`));
-
-		// Update the selected directory to reflect the new state
-		selected.isActive = true;
-
-		// Execute post-sync hooks after successful checkout
-		const hookExecutor = new HookExecutor(debug);
-		const hookContext = { root: workspaceRoot, path: selected.path };
-
-		// Execute global hooks
-		if (config.hooks?.postSyncHooks?.length) {
-			console.log(blue(`🔧 Executing ${config.hooks.postSyncHooks.length} global post-sync hooks...`));
-			const globalHooksResult = await hookExecutor.executeHooks(config.hooks.postSyncHooks, hookContext);
-
-			if (!globalHooksResult.ok) {
-				console.log(red("❌ Global post-sync hooks failed:"), globalHooksResult.error.message);
-				return Result.error(globalHooksResult.error);
-			}
-
-			for (const result of globalHooksResult.value) {
-				processGlobalHookResult(result);
-			}
-		}
-
-		// Execute workspace-specific hooks
-		const workspaceConfig = config.workspaces.find((w) => w.path === selected.path);
-		if (workspaceConfig?.postSyncHooks?.length) {
-			console.log(blue(`🔧 Executing ${workspaceConfig.postSyncHooks.length} hooks for ${selected.path}...`));
-			const workspaceHooksResult = await hookExecutor.executeHooks(workspaceConfig.postSyncHooks, hookContext);
-
-			if (!workspaceHooksResult.ok) {
-				console.log(red(`❌ Post-sync hooks failed for ${selected.path}:`), workspaceHooksResult.error.message);
-				return Result.error(workspaceHooksResult.error);
-			}
-
-			for (const result of workspaceHooksResult.value) {
-				processHookResult(result, selected.path);
-			}
-		}
+		enableIfDisabled = true;
 	}
 
-	// Open selected workspace in editor
-	return openInEditor(selected.directory, editor, debug);
-}
+	const prepareResult = await ctx.openService.prepareWorkspace({
+		config: option.config,
+		workspaceRoot: option.workspaceRoot,
+		debug: option.debug,
+		path: selected.path,
+		enableIfDisabled,
+		editor,
+	});
 
-async function buildWorkspaceList(config: WorkspaceConfig, workspaceRoot: string): Promise<WorkspaceSelection[]> {
-	const result: WorkspaceSelection[] = [];
-
-	for (const workspace of config.workspaces) {
-		const workspaceDir = path.join(workspaceRoot, workspace.path);
-
-		// Check if directory exists
-		const exists = await isDir(workspaceDir);
-		const dirExists = exists.ok;
-
-		// Build display string with status indicators
-		const statusParts: string[] = [];
-
-		if (!workspace.active) {
-			statusParts.push("disabled");
-		}
-
-		if (!dirExists) {
-			statusParts.push("not found");
-		}
-
-		const status = statusParts.length > 0 ? ` (${statusParts.join(", ")})` : "";
-
-		result.push({
-			path: workspace.path,
-			url: workspace.url,
-			branch: workspace.branch,
-			isActive: workspace.active,
-			isGolang: workspace.isGolang,
-			directory: workspaceDir,
-			displayName: `${workspace.active ? "◉" : "○"} ${workspace.path} (${workspace.branch})${status}`,
-		});
+	if (!prepareResult.ok) {
+		return Result.error(prepareResult.error);
 	}
 
-	return result;
+	const prepareReport = prepareResult.value;
+
+	for (const hookResult of prepareReport.globalHookResults) {
+		processGlobalHookResult(hookResult);
+	}
+	for (const hookResult of prepareReport.workspaceHookResults) {
+		processHookResult(hookResult, selected.path);
+	}
+
+	return openInEditor(prepareReport.directory, editor, option.debug ?? false);
 }
 
-async function presentWorkspaceSelector(workspaces: WorkspaceSelection[]): Promise<WorkspaceSelection | null> {
+async function presentWorkspaceSelector(workspaces: OpenWorkspaceInfo[]): Promise<OpenWorkspaceInfo | null> {
 	const interactivePrompt = new InteractivePrompt();
 
-	// Map to format expected by promptForWorkspaceSelectionSingle
 	const workspacesForPrompt = workspaces.map((w) => ({
 		path: w.path,
 		url: w.url,
@@ -282,40 +121,11 @@ async function presentWorkspaceSelector(workspaces: WorkspaceSelection[]): Promi
 		return null;
 	}
 
-	// Find selected workspace
-	const workspace = workspaces.find((w) => w.path === result.value);
-	return workspace ?? null;
+	return workspaces.find((w) => w.path === result.value) ?? null;
 }
 
-function resolveEditor(config: WorkspaceConfig, cliEditor?: string): string | null {
-	// 0. Check CLI option first (highest priority)
-	if (cliEditor && cliEditor.trim().length > 0) {
-		return cliEditor;
-	}
-
-	// 1. Check global editor in config
-	if (config.editor && config.editor.trim().length > 0) {
-		return config.editor;
-	}
-
-	// 2. Fallback to environment variable
-	const envEditor = Deno.env.get("EDITOR");
-	if (envEditor && envEditor.trim().length > 0) {
-		return envEditor;
-	}
-
-	// 3. Check VISUAL as secondary fallback
-	const visualEditor = Deno.env.get("VISUAL");
-	if (visualEditor && visualEditor.trim().length > 0) {
-		return visualEditor;
-	}
-
-	return null;
-}
-
-async function openInEditor(dir: string, editor: string, debug: boolean): Promise<Result<void, Error>> {
+async function openInEditor(dir: string, editor: string, debug: boolean): Promise<Result<void, AppError>> {
 	const open = async () => {
-		// Parse editor command (support spaces in command path)
 		const parts = editor.split(" ").filter((p) => p.length > 0);
 		const editorCmd = parts[0];
 		const args = parts.slice(1);
@@ -324,8 +134,6 @@ async function openInEditor(dir: string, editor: string, debug: boolean): Promis
 			console.log(blue(`Opening ${dir} with: ${editor}`));
 		}
 
-		// Spawn editor - use inherit for stdin/stdout/stderr to make it interactive
-		// Use dir as working directory (cwd) instead of passing it as argument
 		const command = new Deno.Command(editorCmd, {
 			args: [...args],
 			cwd: dir,
@@ -341,5 +149,30 @@ async function openInEditor(dir: string, editor: string, debug: boolean): Promis
 			throw new Error(`Editor exited with code ${status.code}`);
 		}
 	};
+
 	return await Result.fromAsyncCatching(open).mapError((error) => wrapError(`Failed to open editor for ${dir}`, error));
+}
+
+function processHookResult(hookResult: HookExecutionResult, workspacePath: string): void {
+	if (hookResult.success) {
+		console.log(green(`✅ Hook completed for ${workspacePath} in ${hookResult.duration}ms`));
+		return;
+	}
+
+	console.log(yellow(`⚠️  Hook failed for ${workspacePath} with exit code ${hookResult.exitCode}`));
+	if (hookResult.stderr) {
+		console.log(yellow(`stderr: ${hookResult.stderr}`));
+	}
+}
+
+function processGlobalHookResult(hookResult: HookExecutionResult): void {
+	if (hookResult.success) {
+		console.log(green(`✅ Global hook completed in ${hookResult.duration}ms`));
+		return;
+	}
+
+	console.log(yellow(`⚠️  Global hook failed with exit code ${hookResult.exitCode}`));
+	if (hookResult.stderr) {
+		console.log(yellow(`stderr: ${hookResult.stderr}`));
+	}
 }

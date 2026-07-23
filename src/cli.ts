@@ -1,6 +1,5 @@
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
-import { red } from "@std/fmt/colors";
 import meta from "../deno.json" with { type: "json" };
 import { addCommand } from "./cmds/add.ts";
 import { enableCommand } from "./cmds/enable.ts";
@@ -9,6 +8,8 @@ import { saveCommand } from "./cmds/save.ts";
 import { statusCommand } from "./cmds/status.ts";
 import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
+import { createAppContext } from "./composition.ts";
+import { CommandErrorHandler } from "./libs/command-error-handler.ts";
 
 // Create CLI application
 export const cli = new Command()
@@ -31,16 +32,14 @@ cli
 	)
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
-		const result = await syncCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await syncCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Sync failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Sync", { debug: options.debug });
 	});
 
 // Update command
@@ -60,16 +59,14 @@ cli
 		},
 	)
 	.action(async (options) => {
-		const result = await updateCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await updateCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Update failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Update", { debug: options.debug });
 	});
 
 // Enable command
@@ -87,17 +84,15 @@ cli
 	)
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
-		const result = await enableCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await enableCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 			concurrency: options.concurrency,
 			yes: options.yes,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Enable failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Enable", { debug: options.debug });
 	});
 
 // Save command
@@ -110,15 +105,13 @@ cli
 	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.action(async (options) => {
-		const result = await saveCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await saveCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Save failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Save", { debug: options.debug });
 	});
 
 // Add command
@@ -152,7 +145,8 @@ cli
 		{ default: false },
 	)
 	.action(async (options, repo, path) => {
-		const result = await addCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await addCommand(ctx, {
 			repo,
 			path,
 			branch: options.branch,
@@ -164,10 +158,7 @@ cli
 			debug: options.debug,
 			concurrency: options.concurrency,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Add failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Add", { debug: options.debug });
 	});
 
 // Status command
@@ -187,7 +178,8 @@ cli
 	.option("--json", "Output in JSON format", { default: false })
 	.option("-v, --verbose", "Show verbose git information", { default: false })
 	.action(async (options) => {
-		const result = await statusCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await statusCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
@@ -195,10 +187,7 @@ cli
 			json: options.json,
 			verbose: options.verbose,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Status failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Status", { debug: options.debug, json: options.json });
 	});
 
 // Open command
@@ -211,17 +200,15 @@ cli
 	.option("-e, --editor <editor:string>", "Editor to use (overrides config and $EDITOR)")
 	.option("--workspace <workspace:string>", "Workspace path to open directly (skips interactive selection)")
 	.action(async (options) => {
-		const result = await openCommand({
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await openCommand(ctx, {
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
 			editor: options.editor,
 			workspace: options.workspace,
 		});
-		if (!result.ok) {
-			console.log(red("❌ Open failed:"), result.error.message);
-			Deno.exit(1);
-		}
+		CommandErrorHandler.withExit(result, "Open", { debug: options.debug });
 	});
 
 // Completions command

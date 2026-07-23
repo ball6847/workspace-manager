@@ -1,5 +1,6 @@
 import { Checkbox, Confirm, Input, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
+import type { AppError } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
 
 export type PromptMessages = {
@@ -33,14 +34,14 @@ export const defaultPromptMessages: PromptMessages = {
 export class InteractivePrompt {
 	constructor(private readonly messages: PromptMessages = defaultPromptMessages) {}
 
-	private _handleError(error: unknown, context: string): Error {
+	private _handleError(error: unknown, context: string): AppError {
 		if (error instanceof Error && error.message.includes("cancelled")) {
 			return wrapError("Operation cancelled", error);
 		}
 		return wrapError(context, error as Error);
 	}
 
-	promptForRepo(defaultRepo?: string): Promise<Result<string, Error>> {
+	promptForRepo(defaultRepo?: string): Promise<Result<string, AppError>> {
 		return Result.wrap(
 			() =>
 				Input.prompt({
@@ -57,7 +58,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForPath(defaultPath: string): Promise<Result<string, Error>> {
+	promptForPath(defaultPath: string): Promise<Result<string, AppError>> {
 		return Result.wrap(
 			() =>
 				Input.prompt({
@@ -68,7 +69,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForBranch(): Promise<Result<string, Error>> {
+	promptForBranch(): Promise<Result<string, AppError>> {
 		return Result.wrap(
 			() =>
 				Input.prompt({
@@ -80,7 +81,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForGo(): Promise<Result<boolean, Error>> {
+	promptForGo(): Promise<Result<boolean, AppError>> {
 		return Result.wrap(
 			() =>
 				Confirm.prompt({
@@ -91,7 +92,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForContinue(): Promise<Result<boolean, Error>> {
+	promptForContinue(): Promise<Result<boolean, AppError>> {
 		return Result.wrap(
 			() =>
 				Confirm.prompt({
@@ -102,7 +103,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForSync(): Promise<Result<boolean, Error>> {
+	promptForSync(): Promise<Result<boolean, AppError>> {
 		return Result.wrap(
 			() =>
 				Confirm.prompt({
@@ -113,7 +114,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForSyncWithInput(): Promise<Result<string, Error>> {
+	promptForSyncWithInput(): Promise<Result<string, AppError>> {
 		return Result.wrap(
 			() =>
 				Input.prompt({
@@ -125,7 +126,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForEnableAndSync(workspacePath: string): Promise<Result<boolean, Error>> {
+	promptForEnableAndSync(workspacePath: string): Promise<Result<boolean, AppError>> {
 		return Result.wrap(
 			() =>
 				Confirm.prompt({
@@ -136,7 +137,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	promptForWorkspaceSelection(workspaces: Array<{ path: string; url: string; active: boolean }>): Promise<Result<string[], Error>> {
+	promptForWorkspaceSelection(workspaces: Array<{ path: string; url: string; active: boolean }>): Promise<Result<string[], AppError>> {
 		const options = workspaces.map((workspace) => ({
 			name: `${workspace.path} (${workspace.url})`,
 			value: workspace.path,
@@ -154,7 +155,7 @@ export class InteractivePrompt {
 		)();
 	}
 
-	async promptForWorkspaceSelectionSingle(workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>): Promise<Result<string | null, Error>> {
+	async promptForWorkspaceSelectionSingle(workspaces: Array<{ path: string; url: string; branch: string; active: boolean }>): Promise<Result<string | null, AppError>> {
 		const options = workspaces.map((workspace) => ({
 			name: `${workspace.active ? "◉" : "○"} ${workspace.path} (${workspace.branch})`,
 			value: workspace.path,

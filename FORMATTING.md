@@ -1,5 +1,7 @@
 # Code Formatting Rules
 
+> **Architecture contracts** (layering, DI, error handling, ports/adapters) live in [`AGENTS.md`](./AGENTS.md). This document covers formatting and style only.
+
 This document outlines the code formatting and style rules for this project. These rules are mandatory and must be followed consistently.
 
 ## 1. Control Flow Statements Must Have Curly Braces
