@@ -84,11 +84,11 @@ ok "$COMMITS_SINCE_TAG commit(s) ahead of latest tag"
 # ── 3. Discover available deno tasks ────────────────────────────────────────
 step "Discovering available deno tasks"
 
-AVAILABLE_TASKS="$(deno task 2>/dev/null || true)"
+AVAILABLE_TASKS="$(deno task 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' || true)"
 
 # Helper: check if a task name exists in the available tasks list
 has_task() {
-  echo "$AVAILABLE_TASKS" | grep -qE "^[[:space:]]*$1([[:space:]]|$)"
+  echo "$AVAILABLE_TASKS" | grep -qE "^- $1([[:space:]]|$)"
 }
 
 # Find the best task for each quality check
