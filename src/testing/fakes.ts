@@ -5,7 +5,6 @@ import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPort } from "../ports/git.ts";
 import type { GoAvailabilityPort, GoWorkPort } from "../ports/go-work.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
-import type { LogFields, Logger } from "../ports/logger.ts";
 import type { DiscoveryResult, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { PostSyncHook, WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
@@ -144,26 +143,6 @@ export class FakeConfigStore implements ConfigStore {
 		}
 		workspace.active = true;
 		return Result.ok();
-	}
-}
-
-export class FakeLogger implements Logger {
-	entries: { level: "debug" | "info" | "warn" | "error"; message: string; fields?: LogFields }[] = [];
-
-	debug(message: string, fields?: LogFields): void {
-		this.entries.push({ level: "debug", message, fields });
-	}
-
-	info(message: string, fields?: LogFields): void {
-		this.entries.push({ level: "info", message, fields });
-	}
-
-	warn(message: string, fields?: LogFields): void {
-		this.entries.push({ level: "warn", message, fields });
-	}
-
-	error(message: string, fields?: LogFields): void {
-		this.entries.push({ level: "error", message, fields });
 	}
 }
 

@@ -4,7 +4,7 @@ import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { GitPort, GitPortFactory } from "../ports/git.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
-import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeLogger } from "../testing/fakes.ts";
+import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit } from "../testing/fakes.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
 import { StatusService } from "./status.ts";
 
@@ -36,8 +36,6 @@ function createTestContext({
 		});
 	};
 
-	const logger = new FakeLogger();
-
 	const createDiscovery = (_options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort => discovery;
 	const createConfigStore = (_configPath: string): ConfigStore => configStore;
 
@@ -47,8 +45,7 @@ function createTestContext({
 		discovery,
 		configStore,
 		fileSystem,
-		logger,
-		service: new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem, logger }),
+		service: new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem }),
 	};
 }
 
@@ -148,8 +145,7 @@ Deno.test("StatusService propagates discovery errors", async () => {
 	const createConfigStore = (_configPath: string): ConfigStore => new FakeConfigStore("/ws/workspace.yml", { workspaces: [] });
 	const fileSystem = new FakeFileSystem();
 	const gitFactory = (_cwd: string): GitPort => new FakeGit({ currentBranch: "main" });
-	const logger = new FakeLogger();
-	const service = new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem, logger });
+	const service = new StatusService({ createDiscovery, createConfigStore, gitFactory, fileSystem });
 
 	const result = await service.run({});
 

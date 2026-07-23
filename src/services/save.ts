@@ -4,8 +4,8 @@ import { getActiveWorkspaces, workspaceDirectory } from "../domain/workspaces.ts
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPortFactory } from "../ports/git.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
+import { blue, gray, red, yellow } from "@std/fmt/colors";
 
 export type SaveChange = {
 	path: string;
@@ -26,7 +26,6 @@ export type SaveServiceDeps = {
 	createConfigStore(configPath: string): ConfigStore;
 	gitFactory: GitPortFactory;
 	fileSystem: FileSystemPort;
-	logger: Logger;
 };
 
 export type SaveInput = {
@@ -60,7 +59,7 @@ export class SaveService {
 		const config = parseResult.value;
 
 		if (debug) {
-			this.deps.logger.info("Scanning active workspaces for current branches", { workspaceRoot, configPath });
+			console.log(blue(`Scanning active workspaces for current branches`));
 		}
 
 		const activeWorkspaces = getActiveWorkspaces(config);
@@ -81,7 +80,7 @@ export class SaveService {
 
 			const dirExists = await this.deps.fileSystem.isDir(workspacePath);
 			if (!dirExists.ok) {
-				this.deps.logger.warn(`Workspace directory not found: ${workspace.path}`);
+				console.log(yellow(`⚠️  Workspace directory not found: ${workspace.path}`));
 				report.errorCount++;
 				continue;
 			}
@@ -90,14 +89,14 @@ export class SaveService {
 
 			const isRepo = await git.isRepository();
 			if (!isRepo.ok || !isRepo.value) {
-				this.deps.logger.warn(`Not a git repository: ${workspace.path}`);
+				console.log(yellow(`⚠️  Not a git repository: ${workspace.path}`));
 				report.errorCount++;
 				continue;
 			}
 
 			const currentBranch = await git.getCurrentBranch();
 			if (!currentBranch.ok) {
-				this.deps.logger.error(`Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`);
+				console.log(red(`❌ Failed to get current branch for ${workspace.path}: ${currentBranch.error.message}`));
 				report.errorCount++;
 				continue;
 			}
@@ -107,15 +106,13 @@ export class SaveService {
 			if (workspace.branch !== newBranch) {
 				const oldBranch = workspace.branch;
 				if (debug) {
-					this.deps.logger.debug(`Updating ${workspace.path}: ${oldBranch} → ${newBranch}`);
+					console.log(gray(`Updating ${workspace.path}: ${oldBranch} → ${newBranch}`));
 				}
 				workspace.branch = newBranch;
 				report.updatedCount++;
 				report.changes.push({ path: workspace.path, oldBranch, newBranch });
-			} else {
-				if (debug) {
-					this.deps.logger.debug(`${workspace.path}: ${workspace.branch} (no change)`);
-				}
+			} else if (debug) {
+				console.log(gray(`${workspace.path}: ${workspace.branch} (no change)`));
 			}
 		}
 

@@ -7,7 +7,7 @@ import type { GitPort, GitPortFactory } from "../ports/git.ts";
 import type { GoWorkPortFactory } from "../ports/go-work.ts";
 import type { HookRunner } from "../ports/hook-runner.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
-import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeGoWork, FakeHookRunner, FakeLogger } from "../testing/fakes.ts";
+import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeGoWork, FakeHookRunner } from "../testing/fakes.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
 import { SyncService } from "./sync.ts";
 
@@ -62,7 +62,6 @@ function makeDeps({
 	};
 
 	const hookRunner = new FakeHookRunner();
-	const logger = new FakeLogger();
 
 	const createDiscovery = (_options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort => discovery;
 	const createConfigStore = (_configPath: string): ConfigStore => configStore;
@@ -75,7 +74,6 @@ function makeDeps({
 		goWorkFactory,
 		fileSystem,
 		createHookRunner,
-		logger,
 	});
 
 	return {
@@ -85,7 +83,6 @@ function makeDeps({
 		gitFactory,
 		goWorkFactory,
 		hookRunner,
-		logger,
 		service,
 		getGit: (cwd: string) => gitInstances.get(cwd),
 		getGoWork: (cwd: string) => goWorkInstances.get(cwd),
@@ -236,7 +233,6 @@ Deno.test("SyncService: discovery error propagates as error Result", async () =>
 	const gitFactory = (_cwd: string): GitPort => new FakeGit({ currentBranch: "main" });
 	const goWorkFactory: GoWorkPortFactory = (_cwd: string) => new FakeGoWork();
 	const hookRunner = new FakeHookRunner();
-	const logger = new FakeLogger();
 	const createHookRunner = (_debug?: boolean): HookRunner => hookRunner;
 
 	const service = new SyncService({
@@ -246,7 +242,6 @@ Deno.test("SyncService: discovery error propagates as error Result", async () =>
 		goWorkFactory,
 		fileSystem,
 		createHookRunner,
-		logger,
 	});
 
 	const result = await service.run({});

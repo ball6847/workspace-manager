@@ -5,9 +5,9 @@ import { getActiveWorkspaces, workspaceDirectory } from "../domain/workspaces.ts
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPortFactory } from "../ports/git.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { WorkspaceConfigItem } from "../types/config.ts";
+import { blue } from "@std/fmt/colors";
 
 export type StatusRepository = {
 	path: string;
@@ -34,7 +34,6 @@ export type StatusServiceDeps = {
 	createConfigStore(configPath: string): ConfigStore;
 	gitFactory: GitPortFactory;
 	fileSystem: FileSystemPort;
-	logger: Logger;
 };
 
 export type StatusInput = {
@@ -74,10 +73,7 @@ export class StatusService {
 		const activeWorkspaces = getActiveWorkspaces(config);
 
 		if (debug) {
-			this.deps.logger.info(`Checking status for ${activeWorkspaces.length} active repositories`, {
-				workspaceRoot,
-				configPath,
-			});
+			console.log(blue(`Checking status for ${activeWorkspaces.length} active repositories`));
 		}
 
 		if (activeWorkspaces.length === 0) {

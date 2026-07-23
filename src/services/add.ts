@@ -2,14 +2,13 @@ import { Result } from "typescript-result";
 import { AppError } from "../libs/app-error.ts";
 import { extractRepoName } from "../domain/workspaces.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { WorkspaceConfigItem } from "../types/config.ts";
+import { blue, green } from "@std/fmt/colors";
 
 export type AddServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
 	createConfigStore(configPath: string): ConfigStore;
-	logger: Logger;
 };
 
 export type AddInput = {
@@ -59,12 +58,11 @@ export class AddService {
 		const isGolang = input.isGolang ?? false;
 
 		if (debug) {
-			this.deps.logger.info(`Adding workspace: ${workspacePath} from ${input.repo}`, { workspaceRoot, configPath });
+			console.log(blue(`Adding workspace: ${workspacePath} from ${input.repo}`));
 		}
 
 		const existingWorkspace = config.workspaces.find((w) => w.path === workspacePath || w.url === input.repo);
 		if (existingWorkspace) {
-			this.deps.logger.warn(`Workspace already exists: ${existingWorkspace.path} (${existingWorkspace.url})`);
 			return Result.ok({
 				added: false,
 				workspacePath,
@@ -89,7 +87,7 @@ export class AddService {
 			return Result.error(writeResult.error);
 		}
 
-		this.deps.logger.info(`Successfully added workspace: ${workspacePath}`);
+		console.log(green(`✅ Successfully added workspace: ${workspacePath}`));
 		return Result.ok({
 			added: true,
 			workspacePath,

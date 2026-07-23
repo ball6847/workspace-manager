@@ -1,11 +1,11 @@
 import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
+import { blue, gray, yellow } from "@std/fmt/colors";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { PostSyncHook } from "../types/config.ts";
 
 export class HookExecutor implements HookRunner {
-	constructor(private readonly _logger: Logger, private readonly _debug: boolean = false) {}
+	constructor(private readonly _debug: boolean = false) {}
 
 	async executeHook(hook: PostSyncHook, context: HookContext): Promise<Result<HookExecutionResult, AppError>> {
 		const startTime = Date.now();
@@ -13,10 +13,10 @@ export class HookExecutor implements HookRunner {
 		const substitutedCmd = this._substituteVariables(hook.cmd, context);
 		const substitutedWorkDir = hook.workDir ? this._substituteVariables([hook.workDir], context)[0] : context.root;
 
-		this._logger.info("Running hook", { cmd: substitutedCmd.join(" "), workDir: substitutedWorkDir });
+		console.log(blue(`Running hook: ${substitutedCmd.join(" ")}`));
 
 		if (this._debug) {
-			this._logger.debug("Hook working directory", { workDir: substitutedWorkDir });
+			console.log(gray(`  workDir: ${substitutedWorkDir}`));
 		}
 
 		const env = { ...Deno.env.toObject(), ...hook.env };
@@ -66,12 +66,12 @@ export class HookExecutor implements HookRunner {
 		const stderr = new TextDecoder().decode(output.stderr);
 
 		if (this._debug) {
-			this._logger.debug("Hook completed", { durationMs: duration });
+			console.log(gray(`Hook completed in ${duration}ms`));
 			if (stdout) {
-				this._logger.debug("Hook stdout", { stdout });
+				console.log(gray(`  stdout: ${stdout}`));
 			}
 			if (stderr) {
-				this._logger.debug("Hook stderr", { stderr });
+				console.log(gray(`  stderr: ${stderr}`));
 			}
 		}
 
@@ -84,7 +84,10 @@ export class HookExecutor implements HookRunner {
 		};
 
 		if (!output.success) {
-			this._logger.warn("Hook exited with non-zero status", { exitCode: output.code, stderr });
+			console.log(yellow(`Hook exited with non-zero status: ${output.code}`));
+			if (stderr) {
+				console.log(yellow(`  stderr: ${stderr}`));
+			}
 		}
 
 		return Result.ok(executionResult);

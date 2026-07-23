@@ -2,10 +2,9 @@ import { assertEquals, assertFalse } from "@std/assert";
 import { AppErrorCode } from "../libs/app-error.ts";
 import { GitManager } from "../adapters/git.ts";
 import { ConfigManager } from "../adapters/config-store.ts";
-import { FakeConfigStore, FakeGit, FakeLogger } from "./fakes.ts";
+import { FakeConfigStore, FakeGit } from "./fakes.ts";
 import type { GitPort } from "../ports/git.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
-import type { Logger } from "../ports/logger.ts";
 
 Deno.test("FakeGit returns configured branch and records calls", async () => {
 	const git: GitPort = new FakeGit({ currentBranch: "feature-x" });
@@ -68,25 +67,10 @@ Deno.test("FakeConfigStore enableWorkspace mutates config", () => {
 	assertEquals(config.workspaces[0].active, true);
 });
 
-Deno.test("FakeLogger records all levels and respects debug silence", () => {
-	const logger: Logger = new FakeLogger();
-	logger.debug("quiet");
-	logger.info("hello");
-	logger.warn("careful");
-	logger.error("boom");
-
-	const fake = logger as FakeLogger;
-	assertEquals(fake.entries.length, 4);
-	assertEquals(fake.entries[0].level, "debug");
-	assertEquals(fake.entries[0].message, "quiet");
-	assertEquals(fake.entries[3].level, "error");
-});
-
 Deno.test("Adapters type-check as ports at compile time", () => {
 	// These assignments are intentionally unused; they verify structural conformance.
 	const _git: GitPort = new GitManager(".");
 	const _store: ConfigStore = new ConfigManager("./workspace.yml");
-	const _logger: Logger = new FakeLogger();
 
 	assertFalse(false);
 });

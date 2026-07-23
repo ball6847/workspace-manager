@@ -1,13 +1,12 @@
 import { Result } from "typescript-result";
 import type { AppError } from "../libs/app-error.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
+import { blue } from "@std/fmt/colors";
 
 export type EnableServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
 	createConfigStore(configPath: string): ConfigStore;
-	logger: Logger;
 };
 
 export type EnableInput = {
@@ -60,10 +59,7 @@ export class EnableService {
 		}
 
 		if (debug) {
-			this.deps.logger.info(`Updating active states for ${config.workspaces.length} workspaces`, {
-				workspaceRoot,
-				configPath,
-			});
+			console.log(blue(`Updating active states for ${config.workspaces.length} workspaces`));
 		}
 
 		const enabledPaths: string[] = [];
@@ -97,11 +93,6 @@ export class EnableService {
 		if (!writeResult.ok) {
 			return Result.error(writeResult.error);
 		}
-
-		this.deps.logger.info("Workspace states updated successfully", {
-			enabledCount: enabledPaths.length,
-			disabledCount: disabledPaths.length,
-		});
 
 		return Result.ok({
 			workspaceRoot,

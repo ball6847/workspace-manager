@@ -6,7 +6,6 @@ Deno.test("createAppContext returns expected shape", () => {
 	const ctx = createAppContext({ debug: true });
 
 	assertEquals(ctx.debug, true);
-	assert(typeof ctx.logger === "object");
 	assert(typeof ctx.fileSystem === "object");
 	assert(typeof ctx.goAvailability === "object");
 	assert(typeof ctx.gitFactory === "function");
@@ -70,24 +69,6 @@ Deno.test("createConfigStore returns a store with configPath", () => {
 	assertEquals(store.configPath, "/tmp/workspace.yml");
 	assert(typeof store.getConfig === "function");
 	assert(typeof store.writeConfig === "function");
-});
-
-Deno.test("logger debugEnabled honors bootstrap debug flag", () => {
-	const debugCtx = createAppContext({ debug: true });
-	const silentCtx = createAppContext({ debug: false });
-
-	assert(debugCtx.logger !== silentCtx.logger);
-
-	// Smoke test: debug logger accepts messages without throwing
-	debugCtx.logger.debug("debug message");
-	debugCtx.logger.info("info message");
-	debugCtx.logger.warn("warn message");
-	debugCtx.logger.error("error message");
-
-	// Non-debug logger should also accept messages without throwing
-	silentCtx.logger.info("info message");
-	silentCtx.logger.warn("warn message");
-	silentCtx.logger.error("error message");
 });
 
 Deno.test("createDiscovery forwards startDir from bootstrap options", () => {

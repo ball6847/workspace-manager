@@ -1,5 +1,4 @@
 import { ConfigManager } from "./adapters/config-store.ts";
-import { ConsoleLogger } from "./adapters/console-logger.ts";
 import { DenoFileSystem } from "./adapters/file-system.ts";
 import { GitManager } from "./adapters/git.ts";
 import { GoWork } from "./adapters/go-work.ts";
@@ -10,7 +9,6 @@ import type { FileSystemPort } from "./ports/file-system.ts";
 import type { GitPortFactory } from "./ports/git.ts";
 import type { GoAvailabilityPort, GoWorkPortFactory } from "./ports/go-work.ts";
 import type { HookRunner } from "./ports/hook-runner.ts";
-import type { Logger } from "./ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "./ports/workspace-discovery.ts";
 import { AddService } from "./services/add.ts";
 import { EnableService } from "./services/enable.ts";
@@ -28,7 +26,6 @@ export type BootstrapOptions = {
 
 export type AppContext = {
 	debug: boolean;
-	logger: Logger;
 	fileSystem: FileSystemPort;
 	goAvailability: GoAvailabilityPort;
 	gitFactory: GitPortFactory;
@@ -49,13 +46,12 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 	const debug = options?.debug ?? false;
 	const startDir = options?.startDir;
 
-	const logger = new ConsoleLogger(debug);
 	const fileSystem = new DenoFileSystem();
 	const goAvailability = new GoWork();
 
 	const createConfigStore = (configPath: string) => new ConfigManager(configPath);
 	const createDiscovery = (opts: WorkspaceDiscoveryOptions) => new WorkspaceDiscovery({ ...opts, startDir: opts.startDir ?? startDir });
-	const createHookRunner = (hookDebug?: boolean) => new HookExecutor(logger, hookDebug ?? debug);
+	const createHookRunner = (hookDebug?: boolean) => new HookExecutor(hookDebug ?? debug);
 	const gitFactory: GitPortFactory = (cwd: string) => new GitManager(cwd);
 	const goWorkFactory: GoWorkPortFactory = (cwd: string) => new GoWork(cwd);
 
@@ -64,7 +60,6 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		createConfigStore,
 		gitFactory,
 		fileSystem,
-		logger,
 	});
 
 	const saveService = new SaveService({
@@ -72,7 +67,6 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		createConfigStore,
 		gitFactory,
 		fileSystem,
-		logger,
 	});
 
 	const updateService = new UpdateService({
@@ -80,7 +74,6 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		createConfigStore,
 		gitFactory,
 		fileSystem,
-		logger,
 	});
 
 	const syncService = new SyncService({
@@ -90,19 +83,16 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		goWorkFactory,
 		fileSystem,
 		createHookRunner,
-		logger,
 	});
 
 	const addService = new AddService({
 		createDiscovery,
 		createConfigStore,
-		logger,
 	});
 
 	const enableService = new EnableService({
 		createDiscovery,
 		createConfigStore,
-		logger,
 	});
 
 	const openService = new OpenService({
@@ -112,12 +102,10 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		goWorkFactory,
 		fileSystem,
 		createHookRunner,
-		logger,
 	});
 
 	return {
 		debug,
-		logger,
 		fileSystem,
 		goAvailability,
 		gitFactory,

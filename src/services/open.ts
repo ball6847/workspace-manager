@@ -6,7 +6,6 @@ import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPortFactory } from "../ports/git.ts";
 import type { GoWorkPortFactory } from "../ports/go-work.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
-import type { Logger } from "../ports/logger.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { WorkspaceConfig } from "../types/config.ts";
 import { WorkspaceManager } from "./workspace-manager.ts";
@@ -46,7 +45,6 @@ export type OpenServiceDeps = {
 	goWorkFactory: GoWorkPortFactory;
 	fileSystem: FileSystemPort;
 	createHookRunner(debug?: boolean): HookRunner;
-	logger: Logger;
 };
 
 export type OpenListInput = {
