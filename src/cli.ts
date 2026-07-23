@@ -11,6 +11,7 @@ import { updateCommand } from "./cmds/update.ts";
 import { createAppContext } from "./composition.ts";
 import { CommandErrorHandler } from "./libs/command-error-handler.ts";
 import { linkCommand } from "./cmds/link.ts";
+import { unlinkCommand } from "./cmds/unlink.ts";
 
 // Create CLI application
 export const cli = new Command()
@@ -226,6 +227,22 @@ cli
 			debug: options.debug,
 		});
 		CommandErrorHandler.withExit(result, "Link", { debug: options.debug });
+	});
+
+// Unlink command
+cli
+	.command("unlink", "Remove symlinks created by the link command")
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.action(async (options) => {
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await unlinkCommand(ctx, {
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+		});
+		CommandErrorHandler.withExit(result, "Unlink", { debug: options.debug });
 	});
 
 // Completions command
