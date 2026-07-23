@@ -17,6 +17,7 @@ export const workspaceConfigItemSchema = z.object({
 	isGolang: z.boolean(),
 	active: z.boolean(),
 	postSyncHooks: z.array(postSyncHookSchema).optional(),
+	link: z.record(z.string()).optional(),
 });
 
 export const workspaceConfigSchema = z.object({

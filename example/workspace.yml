@@ -24,6 +24,9 @@ workspaces:
     branch: develop
     isGolang: true
     active: true
+    link:
+      .agents: .agents
+      AGENT.md: prompt/BACKEND.md
     postSyncHooks:
       - cmd: ["go", "mod", "tidy"]
         description: "Clean up Go dependencies"

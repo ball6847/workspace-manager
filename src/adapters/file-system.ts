@@ -34,6 +34,39 @@ export class DenoFileSystem implements FileSystemPort {
 			(error) => new AppError(AppErrorCode.INTERNAL, `Failed to check if directory is empty`, { cause: error }),
 		);
 	}
+
+	async lstat(path: string): Promise<Result<{ isDirectory: boolean; isSymlink: boolean }, AppError>> {
+		return await Result.fromAsyncCatching(() => Deno.lstat(path)).mapError(
+			(error) => new AppError(AppErrorCode.FS_FAILED, `lstat failed: ${path}`, { cause: error }),
+		).map((stat) => ({
+			isDirectory: stat.isDirectory,
+			isSymlink: stat.isSymlink,
+		}));
+	}
+
+	async readLink(path: string): Promise<Result<string, AppError>> {
+		return await Result.fromAsyncCatching(() => Deno.readLink(path)).mapError(
+			(error) => new AppError(AppErrorCode.FS_FAILED, `readLink failed: ${path}`, { cause: error }),
+		);
+	}
+
+	async createSymlink(target: string, linkPath: string): Promise<Result<void, AppError>> {
+		return await Result.fromAsyncCatching(() => Deno.symlink(target, linkPath)).mapError(
+			(error) => new AppError(AppErrorCode.FS_FAILED, `createSymlink failed: ${linkPath}`, { cause: error }),
+		);
+	}
+
+	async remove(path: string): Promise<Result<void, AppError>> {
+		return await Result.fromAsyncCatching(() => Deno.remove(path)).mapError(
+			(error) => new AppError(AppErrorCode.FS_FAILED, `remove failed: ${path}`, { cause: error }),
+		);
+	}
+
+	async ensureDir(path: string): Promise<Result<void, AppError>> {
+		return await Result.fromAsyncCatching(() => Deno.mkdir(path, { recursive: true })).mapError(
+			(error) => new AppError(AppErrorCode.FS_FAILED, `ensureDir failed: ${path}`, { cause: error }),
+		);
+	}
 }
 
 const defaultFileSystem = new DenoFileSystem();
