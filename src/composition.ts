@@ -14,6 +14,7 @@ import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "./ports/
 import { AddService } from "./services/add.ts";
 import { EnableService } from "./services/enable.ts";
 import { LinkService } from "./services/link.ts";
+import { UnlinkService } from "./services/unlink.ts";
 import { OpenService } from "./services/open.ts";
 import { SaveService } from "./services/save.ts";
 import { StatusService } from "./services/status.ts";
@@ -43,6 +44,7 @@ export type AppContext = {
 	enableService: EnableService;
 	openService: OpenService;
 	linkService: LinkService;
+	unlinkService: UnlinkService;
 };
 
 export function createAppContext(options?: BootstrapOptions): AppContext {
@@ -114,6 +116,13 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		confirmer: new CliffyConfirmer(),
 	});
 
+	const unlinkService = new UnlinkService({
+		createDiscovery,
+		createConfigStore,
+		fileSystem,
+		confirmer: new CliffyConfirmer(),
+	});
+
 	return {
 		debug,
 		fileSystem,
@@ -131,5 +140,6 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		enableService,
 		openService,
 		linkService,
+		unlinkService,
 	};
 }
