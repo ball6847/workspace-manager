@@ -5,7 +5,7 @@ import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
 import type { HookExecutionResult } from "../ports/hook-runner.ts";
 import type { OpenWorkspaceInfo } from "../services/open.ts";
-import { InteractivePrompt } from "./interactive-prompt.ts";
+import { InteractivePrompt } from "../libs/prompts.ts";
 
 export type OpenCommandOption = {
 	config?: string;

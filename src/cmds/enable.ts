@@ -4,7 +4,7 @@ import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
 import { wrapError } from "../libs/errors.ts";
-import { InteractivePrompt } from "./interactive-prompt.ts";
+import { InteractivePrompt } from "../libs/prompts.ts";
 
 export type EnableCommandOption = {
 	config?: string;

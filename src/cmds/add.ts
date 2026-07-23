@@ -3,7 +3,7 @@ import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { extractRepoName } from "../domain/workspaces.ts";
-import { InteractivePrompt } from "./interactive-prompt.ts";
+import { InteractivePrompt } from "../libs/prompts.ts";
 
 export type AddCommandOption = {
 	repo?: string;

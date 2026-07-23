@@ -1,5 +1,5 @@
 import { Result } from "typescript-result";
-import { presentCommandError, type PresentErrorOptions } from "../cmds/present-error.ts";
+import { presentCommandError, type PresentErrorOptions } from "./error-formatter.ts";
 
 export interface ErrorHandler {
 	onError(error: Error, commandName: string, options?: PresentErrorOptions): void;

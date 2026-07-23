@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { AppError, AppErrorCode } from "../libs/app-error.ts";
-import { presentCommandError } from "./present-error.ts";
+import { AppError, AppErrorCode } from "./app-error.ts";
+import { presentCommandError } from "./error-formatter.ts";
 
 class ConsoleCapture {
 	logs: string[] = [];

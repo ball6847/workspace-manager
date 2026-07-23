@@ -102,7 +102,7 @@ src/
 ├── adapters/              # Concrete I/O (git, go, fs, config, hooks)
 ├── testing/               # Shared fakes for unit tests
 ├── types/                 # Shared DTOs / command option types (or fold into domain)
-└── libs/                  # Pure utils + shims + error helpers — no I/O policy
+└── libs/                  # Pure utils + shims + error helpers; CLI presentation utilities (prompts, formatting)
 ```
 
 ---

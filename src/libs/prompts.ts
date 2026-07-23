@@ -1,7 +1,7 @@
 import { Checkbox, Confirm, Input, Select } from "@cliffy/prompt";
 import { Result } from "typescript-result";
-import type { AppError } from "../libs/app-error.ts";
-import { wrapError } from "../libs/errors.ts";
+import type { AppError } from "./app-error.ts";
+import { wrapError } from "./errors.ts";
 
 export type PromptMessages = {
 	repo: string;

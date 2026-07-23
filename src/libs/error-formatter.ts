@@ -1,5 +1,5 @@
 import { red, yellow } from "@std/fmt/colors";
-import { isAppError } from "../libs/app-error.ts";
+import { isAppError } from "./app-error.ts";
 
 export type PresentErrorOptions = {
 	debug?: boolean;
