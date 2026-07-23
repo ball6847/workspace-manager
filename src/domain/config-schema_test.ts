@@ -137,3 +137,62 @@ Deno.test("valid optional hook fields are accepted", () => {
 	assertEquals(result.value.workspaces[0].postSyncHooks?.length, 1);
 	assertEquals(result.value.hooks?.postSyncHooks?.length, 1);
 });
+
+Deno.test("TC-104: workspace item with valid link map parses", () => {
+	const raw = {
+		workspaces: [{
+			url: "git@example.com:org/repo.git",
+			path: "projects/repo",
+			branch: "main",
+			isGolang: false,
+			active: true,
+			link: { ".agents": ".agents", "AGENT.md": "prompt/BACKEND.md" },
+		}],
+	};
+
+	const result = parseWorkspaceConfig(raw);
+
+	assert(result.ok);
+	if (result.ok) {
+		assertEquals(result.value.workspaces[0].link, { ".agents": ".agents", "AGENT.md": "prompt/BACKEND.md" });
+	}
+});
+
+Deno.test("TC-104: non-string values in link map are rejected", () => {
+	const raw = {
+		workspaces: [{
+			url: "git@example.com:org/repo.git",
+			path: "projects/repo",
+			branch: "main",
+			isGolang: false,
+			active: true,
+			link: { "a": 1 },
+		}],
+	};
+
+	const result = parseWorkspaceConfig(raw);
+
+	assertFalse(result.ok);
+	if (!result.ok) {
+		assertEquals(result.error.code, AppErrorCode.CONFIG_INVALID);
+	}
+});
+
+Deno.test("TC-104: missing link field still parses (optional)", () => {
+	const raw = {
+		workspaces: [{
+			url: "git@example.com:org/repo.git",
+			path: "projects/repo",
+			branch: "main",
+			isGolang: false,
+			active: true,
+		}],
+	};
+
+	const result = parseWorkspaceConfig(raw);
+
+	assert(result.ok);
+	if (result.ok) {
+		assertEquals(result.value.workspaces[0].link, undefined);
+	}
+});

@@ -18,6 +18,8 @@ export const AppErrorCode = {
 	CANCELLED: "CANCELLED",
 	INVALID_INPUT: "INVALID_INPUT",
 	INTERNAL: "INTERNAL",
+	FS_FAILED: "FS_FAILED",
+	LINK_VALIDATION_FAILED: "LINK_VALIDATION_FAILED",
 } as const;
 
 export type AppErrorCode = (typeof AppErrorCode)[keyof typeof AppErrorCode];

@@ -33,6 +33,7 @@ workspace-manager open
 workspace-manager add
 workspace-manager save
 workspace-manager status
+workspace-manager link
 workspace-manager completions
 ```
 
@@ -255,6 +256,42 @@ workspace-manager open --workspace "services/api"
 # Debug mode to see what's happening
 workspace-manager open --debug
 ```
+
+### Link Command
+
+Create relative symlinks inside configured submodules pointing at files or directories in the workspace root. Driven by a per-workspace `link` map in `workspace.yml`:
+
+```yaml
+workspaces:
+  - url: git@example.com:org/repo.git
+    path: projects/repo
+    branch: main
+    active: true
+    link:
+      .agents: .agents            # dir link
+      AGENT.md: prompt/BACKEND.md # file link
+```
+
+```bash
+workspace-manager link [options]
+```
+
+**Options:**
+
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+
+**Behavior:**
+
+1. **Two-phase execution** — validation runs first across all workspaces; no filesystem changes are made until everything validates.
+2. **All-or-nothing validation** — if any source is missing or any destination conflicts with a real directory, the entire run aborts with no mutations.
+3. **Interactive overwrite prompts** — when a destination already exists (real file, wrong symlink, or dangling symlink), you are prompted `y/N` before replacing it.
+4. **Relative symlinks** — links are created as relative paths, so the workspace remains portable.
+5. **Idempotent** — re-running `link` when symlinks are already correct is a no-op (silent, no prompts); already-correct links are counted toward `linkedCount`, so repeated runs report identical numbers.
+6. **Missing submodules are skipped** — workspaces that haven't been synced yet emit a warning and are skipped; they do not fail the run.
+
+> **Note:** `--yes` / non-interactive mode and sync-integration are planned for a future release.
 
 ### Add Command
 

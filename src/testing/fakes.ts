@@ -6,6 +6,7 @@ import type { GitPort } from "../ports/git.ts";
 import type { GoAvailabilityPort, GoWorkPort } from "../ports/go-work.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
 import type { DiscoveryResult, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
+import type { Confirmer } from "../ports/confirmer.ts";
 import type { PostSyncHook, WorkspaceConfig, WorkspaceConfigItem } from "../types/config.ts";
 
 export type FakeGitState = {
@@ -162,11 +163,38 @@ export class FakeDiscovery implements WorkspaceDiscoveryPort {
 	}
 }
 
+export type FakeFsEntry = {
+	kind: "dir" | "file" | "symlink";
+	target?: string;
+};
+
 export class FakeFileSystem implements FileSystemPort {
 	dirs = new Set<string>();
+	entries = new Map<string, FakeFsEntry>();
+	calls: { method: string; args: unknown[] }[] = [];
+
+	constructor(entries?: Map<string, FakeFsEntry>) {
+		if (entries) {
+			this.entries = entries;
+			// Seed dirs from entries for backward compatibility
+			for (const [p, entry] of entries) {
+				if (entry.kind === "dir") {
+					this.dirs.add(p);
+				}
+			}
+		}
+	}
+
+	private record(method: string, args: unknown[]): void {
+		this.calls.push({ method, args });
+	}
 
 	isDir(path: string): Promise<Result<void, AppError>> {
 		if (this.dirs.has(path)) {
+			return Promise.resolve(Result.ok());
+		}
+		const entry = this.entries.get(path);
+		if (entry && entry.kind === "dir") {
 			return Promise.resolve(Result.ok());
 		}
 		return Promise.resolve(Result.error(new AppError(AppErrorCode.PATH_INVALID, `directory does not exist: ${path}`)));
@@ -174,6 +202,52 @@ export class FakeFileSystem implements FileSystemPort {
 
 	isDirectoryEmpty(_path: string): Promise<Result<boolean, AppError>> {
 		return Promise.resolve(Result.ok(true));
+	}
+
+	lstat(path: string): Promise<Result<{ isDirectory: boolean; isSymlink: boolean }, AppError>> {
+		const entry = this.entries.get(path);
+		if (!entry) {
+			// Fall back to dirs set for backward compatibility
+			if (this.dirs.has(path)) {
+				return Promise.resolve(Result.ok({ isDirectory: true, isSymlink: false }));
+			}
+			return Promise.resolve(Result.error(new AppError(AppErrorCode.FS_FAILED, `lstat failed: ${path}`)));
+		}
+		return Promise.resolve(Result.ok({
+			isDirectory: entry.kind === "dir",
+			isSymlink: entry.kind === "symlink",
+		}));
+	}
+
+	readLink(path: string): Promise<Result<string, AppError>> {
+		const entry = this.entries.get(path);
+		if (!entry || entry.kind !== "symlink") {
+			return Promise.resolve(Result.error(new AppError(AppErrorCode.FS_FAILED, `not a symlink: ${path}`)));
+		}
+		return Promise.resolve(Result.ok(entry.target!));
+	}
+
+	createSymlink(target: string, linkPath: string): Promise<Result<void, AppError>> {
+		this.record("createSymlink", [target, linkPath]);
+		this.entries.set(linkPath, { kind: "symlink", target });
+		return Promise.resolve(Result.ok());
+	}
+
+	remove(path: string): Promise<Result<void, AppError>> {
+		this.record("remove", [path]);
+		if (this.entries.has(path)) {
+			this.entries.delete(path);
+			this.dirs.delete(path);
+			return Promise.resolve(Result.ok());
+		}
+		return Promise.resolve(Result.error(new AppError(AppErrorCode.FS_FAILED, `remove failed: ${path}`)));
+	}
+
+	ensureDir(path: string): Promise<Result<void, AppError>> {
+		this.record("ensureDir", [path]);
+		this.entries.set(path, { kind: "dir" });
+		this.dirs.add(path);
+		return Promise.resolve(Result.ok());
 	}
 }
 
@@ -236,5 +310,23 @@ export class FakeGoWork implements GoWorkPort, GoAvailabilityPort {
 	isAvailable(): Promise<Result<boolean, AppError>> {
 		this.record("isAvailable", []);
 		return Promise.resolve(Result.ok(this.available));
+	}
+}
+
+export class FakeConfirmer implements Confirmer {
+	answers: boolean[];
+	messages: string[] = [];
+
+	constructor(answers: boolean[]) {
+		this.answers = [...answers];
+	}
+
+	confirm(message: string): Promise<Result<boolean, AppError>> {
+		this.messages.push(message);
+		const answer = this.answers.shift();
+		if (answer === undefined) {
+			return Promise.resolve(Result.error(new AppError(AppErrorCode.CANCELLED, "no more canned answers")));
+		}
+		return Promise.resolve(Result.ok(answer));
 	}
 }

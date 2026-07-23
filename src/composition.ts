@@ -4,6 +4,7 @@ import { GitManager } from "./adapters/git.ts";
 import { GoWork } from "./adapters/go-work.ts";
 import { HookExecutor } from "./adapters/hooks.ts";
 import { WorkspaceDiscovery } from "./adapters/workspace-discovery.ts";
+import { CliffyConfirmer } from "./adapters/confirmer.ts";
 import type { ConfigStore } from "./ports/config-store.ts";
 import type { FileSystemPort } from "./ports/file-system.ts";
 import type { GitPortFactory } from "./ports/git.ts";
@@ -12,6 +13,7 @@ import type { HookRunner } from "./ports/hook-runner.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "./ports/workspace-discovery.ts";
 import { AddService } from "./services/add.ts";
 import { EnableService } from "./services/enable.ts";
+import { LinkService } from "./services/link.ts";
 import { OpenService } from "./services/open.ts";
 import { SaveService } from "./services/save.ts";
 import { StatusService } from "./services/status.ts";
@@ -40,6 +42,7 @@ export type AppContext = {
 	addService: AddService;
 	enableService: EnableService;
 	openService: OpenService;
+	linkService: LinkService;
 };
 
 export function createAppContext(options?: BootstrapOptions): AppContext {
@@ -104,6 +107,13 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		createHookRunner,
 	});
 
+	const linkService = new LinkService({
+		createDiscovery,
+		createConfigStore,
+		fileSystem,
+		confirmer: new CliffyConfirmer(),
+	});
+
 	return {
 		debug,
 		fileSystem,
@@ -120,5 +130,6 @@ export function createAppContext(options?: BootstrapOptions): AppContext {
 		addService,
 		enableService,
 		openService,
+		linkService,
 	};
 }

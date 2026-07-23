@@ -39,6 +39,9 @@ Deno.test("createAppContext exposes all use-case services", () => {
 	assert(ctx.openService instanceof Object);
 	assert(typeof ctx.openService.listWorkspaces === "function");
 	assert(typeof ctx.openService.prepareWorkspace === "function");
+
+	assert(ctx.linkService instanceof Object);
+	assert(typeof ctx.linkService.run === "function");
 });
 
 Deno.test("gitFactory returns an object assignable to GitPort", () => {

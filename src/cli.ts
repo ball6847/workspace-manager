@@ -10,6 +10,7 @@ import { syncCommand } from "./cmds/sync.ts";
 import { updateCommand } from "./cmds/update.ts";
 import { createAppContext } from "./composition.ts";
 import { CommandErrorHandler } from "./libs/command-error-handler.ts";
+import { linkCommand } from "./cmds/link.ts";
 
 // Create CLI application
 export const cli = new Command()
@@ -209,6 +210,22 @@ cli
 			workspace: options.workspace,
 		});
 		CommandErrorHandler.withExit(result, "Open", { debug: options.debug });
+	});
+
+// Link command
+cli
+	.command("link", "Create symlinks from workspace root files into submodules")
+	.option("-c, --config <config:string>", "Workspace config file (auto-discovers if not specified)")
+	.option("-w, --workspace-root <workspace-root:string>", "Workspace root directory (auto-discovers if not specified)")
+	.option("-d, --debug", "Enable debug mode", { default: false })
+	.action(async (options) => {
+		const ctx = createAppContext({ debug: options.debug });
+		const result = await linkCommand(ctx, {
+			config: options.config,
+			workspaceRoot: options.workspaceRoot,
+			debug: options.debug,
+		});
+		CommandErrorHandler.withExit(result, "Link", { debug: options.debug });
 	});
 
 // Completions command
