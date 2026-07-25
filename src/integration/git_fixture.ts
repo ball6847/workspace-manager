@@ -324,6 +324,130 @@ export async function buildUninitializedFixture(opts?: {
 	});
 }
 
+export type MultiSubmoduleFixture = {
+	workspaceRoot: string;
+	configPath: string;
+	submodulePaths: string[];
+	upstreamDirs: string[];
+	branch: string;
+	cleanup: () => Promise<void>;
+};
+
+/**
+ * Build a superproject with N registered but uninitialized submodules.
+ * Each submodule directory exists as an empty dir inside a git worktree.
+ */
+export async function buildMultiSubmoduleUninitializedFixture(opts?: {
+	count?: number;
+	branch?: string;
+}): Promise<MultiSubmoduleFixture> {
+	const count = opts?.count ?? 2;
+	const branch = opts?.branch ?? "feature";
+	const tempRoot = await Deno.makeTempDir({ prefix: "wm-integration-" });
+
+	const upstreamDirs: string[] = [];
+	const submoduleNames: string[] = [];
+
+	try {
+		// Create upstream repos
+		for (let i = 0; i < count; i++) {
+			const upstreamDir = `${tempRoot}/upstream-${i}`;
+			const name = `sub-${i}`;
+			submoduleNames.push(name);
+			upstreamDirs.push(upstreamDir);
+
+			await Deno.mkdir(upstreamDir);
+			const initResult = await runGit(upstreamDir, ["init"]);
+			if (!initResult.ok) {
+				throw initResult.error;
+			}
+			await configureGitUser(upstreamDir);
+			await createCommit(upstreamDir, "c1");
+			const checkoutResult = await runGit(upstreamDir, ["checkout", "-b", branch]);
+			if (!checkoutResult.ok) {
+				throw checkoutResult.error;
+			}
+			await createCommit(upstreamDir, "c2");
+		}
+
+		// Create superproject and add all submodules
+		const superDir = `${tempRoot}/super`;
+		await Deno.mkdir(superDir);
+		const superInit = await runGit(superDir, ["init"]);
+		if (!superInit.ok) {
+			throw superInit.error;
+		}
+		await configureGitUser(superDir);
+
+		for (let i = 0; i < count; i++) {
+			const addResult = await runGit(superDir, [
+				"submodule",
+				"add",
+				"-b",
+				branch,
+				upstreamDirs[i],
+				submoduleNames[i],
+			]);
+			if (!addResult.ok) {
+				throw addResult.error;
+			}
+		}
+
+		const addResult = await runGit(superDir, ["add", "."]);
+		if (!addResult.ok) {
+			throw addResult.error;
+		}
+		const commitResult = await runGit(superDir, ["commit", "-m", "add submodules"]);
+		if (!commitResult.ok) {
+			throw commitResult.error;
+		}
+
+		// Create worktree so submodules are not auto-initialized
+		const workspaceRoot = `${tempRoot}/worktree`;
+		const worktreeResult = await runGit(superDir, ["worktree", "add", workspaceRoot, "HEAD"]);
+		if (!worktreeResult.ok) {
+			throw worktreeResult.error;
+		}
+
+		const submodulePaths = submoduleNames.map((name) => `${workspaceRoot}/${name}`);
+
+		// Write workspace.yml with all submodules
+		const configPath = `${workspaceRoot}/workspace.yml`;
+		const config: WorkspaceConfig = {
+			workspaces: submoduleNames.map((name) => ({
+				url: `file://${upstreamDirs[submoduleNames.indexOf(name)]}`,
+				path: name,
+				branch,
+				isGolang: false,
+				active: true,
+			})),
+		};
+		await Deno.writeTextFile(configPath, stringify(config as Record<string, unknown>));
+
+		return {
+			workspaceRoot,
+			configPath,
+			submodulePaths,
+			upstreamDirs,
+			branch,
+			cleanup: async () => {
+				try {
+					await Deno.remove(tempRoot, { recursive: true });
+				} catch {
+					// ignore cleanup errors
+				}
+			},
+		};
+	} catch (e) {
+		try {
+			await Deno.remove(tempRoot, { recursive: true });
+		} catch {
+			// ignore
+		}
+		throw e;
+	}
+}
+
 /**
  * Overwrite workspace.yml with a different branch value (for TC-4 save test).
  */

@@ -10,6 +10,34 @@ A command-line tool for managing workspaces with Git submodules and Go workspace
 - **Status monitoring** with branch tracking and dirty state detection
 - YAML-based configuration
 - Debug mode support
+- **SSH connection reuse** via OpenSSH ControlMaster for faster sync/update against SSH remotes
+
+## SSH Connection Multiplexing
+
+Sync and update operations against SSH remotes (`git@github.com:...`) automatically reuse the underlying SSH connection. On the first network operation the CLI opens a shared socket in `/tmp/wm-ssh-<user>/` (a short path is required by the macOS Unix socket length limit); subsequent operations within a 60-second window skip the TCP + auth handshake. The socket directory is created with `0700` permissions and must be owned by the current user, otherwise multiplexing is disabled automatically.
+
+No configuration is required. HTTPS remotes are unaffected.
+
+### Opt-out
+
+To use your own SSH options, set `GIT_SSH_COMMAND` in your environment:
+
+```bash
+export GIT_SSH_COMMAND="ssh -i ~/.ssh/my_key"
+```
+
+When `GIT_SSH_COMMAND` is set the CLI preserves it verbatim and does not inject any ControlMaster options.
+
+### Equivalent `~/.ssh/config` snippet
+
+If you prefer persistent connection reuse outside this tool, add the following to `~/.ssh/config`:
+
+```
+Host github.com
+  ControlMaster auto
+  ControlPath /tmp/wm-ssh-<user>/%C
+  ControlPersist 60
+```
 
 ## Installation
 
@@ -77,6 +105,18 @@ workspace-manager sync [options]
 - `-d, --debug` - Enable debug mode
 - `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
 - `-y, --yes` - Accept all changes (⚠️ not yet implemented)
+
+**Sync behavior:**
+
+- `sync` fetches `origin/<branch>` and fast-forwards the local branch only when
+  it is behind the remote tip. Already up-to-date repos skip the merge entirely
+  (no index write / lock churn) and are reported as "Up-to-date".
+- On first sync, uninitialized submodules registered in `.gitmodules` are cloned
+  in parallel via `git submodule update --init --jobs=<concurrency>`.
+- Diverged histories are **never** silently merged. If your local branch and
+  `origin/<branch>` have diverged, the workspace fails with a `GIT_FAILED` error
+  and instructions to resolve manually (e.g. `git pull --rebase` or a manual
+  merge) for that path.
 
 ### Update Command
 

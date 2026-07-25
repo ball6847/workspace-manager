@@ -8,7 +8,7 @@
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
-    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --config deno.json --name workspace-manager-local ./main.ts"
+    "local-install": "deno install -fr --global --allow-run --allow-write --allow-read --allow-env --allow-net --no-prompt --config deno.json --name workspace-manager-local ./main.ts"
   },
   "imports": {
     "@117/mutex": "jsr:@117/mutex@^1.0.8",

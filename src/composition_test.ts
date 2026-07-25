@@ -53,6 +53,7 @@ Deno.test("gitFactory returns an object assignable to GitPort", () => {
 	assert(typeof git.checkoutBranch === "function");
 	assert(typeof git.getCurrentBranch === "function");
 	assert(typeof git.pullOriginBranch === "function");
+	assert(typeof git.syncBranch === "function");
 	assert(typeof git.isRepository === "function");
 	assert(typeof git.isDetachedHead === "function");
 	assert(typeof git.isHeadBehindBranch === "function");
