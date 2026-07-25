@@ -9,6 +9,8 @@ import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports
 import type { WorkspaceConfigItem } from "../types/config.ts";
 import { blue } from "@std/fmt/colors";
 
+export type RepositoryReadiness = "ready" | "not_initialized" | "detached_at_tip" | "detached";
+
 export type StatusRepository = {
 	path: string;
 	url: string;
@@ -16,6 +18,8 @@ export type StatusRepository = {
 	isGoModule: boolean;
 	active: boolean;
 	exists: boolean;
+	readiness?: RepositoryReadiness;
+	headSha?: string;
 	currentBranch?: string;
 	isClean?: boolean;
 	modifiedFiles?: number;
@@ -131,12 +135,23 @@ export class StatusService {
 			status.error = "Failed to check git repository";
 			return Result.ok(status);
 		}
+
+		// Readiness: not_initialized
 		if (!isRepo.value) {
-			status.error = "Not a git repository";
+			status.readiness = "not_initialized";
+			status.exists = false;
+			// No error field - readiness carries the meaning
 			return Result.ok(status);
 		}
 
 		status.exists = true;
+
+		// Check detached state first
+		const isDetached = await git.isDetachedHead();
+		if (!isDetached.ok) {
+			status.error = "Failed to check detached HEAD state";
+			return Result.ok(status);
+		}
 
 		const currentBranch = await git.getCurrentBranch();
 		if (!currentBranch.ok) {
@@ -144,6 +159,22 @@ export class StatusService {
 			return Result.ok(status);
 		}
 		status.currentBranch = currentBranch.value;
+
+		if (isDetached.value) {
+			if (currentBranch.value === workspace.branch) {
+				// Detached at the tip of tracking branch
+				status.readiness = "detached_at_tip";
+			} else {
+				// Detached, not at any recognized branch tip (or wrong branch)
+				status.readiness = "detached";
+				const headSha = await git.getHeadSha();
+				if (headSha.ok) {
+					status.headSha = headSha.value;
+				}
+			}
+		} else {
+			status.readiness = "ready";
+		}
 
 		const isClean = await git.isWorkingDirectoryClean();
 		if (!isClean.ok) {

@@ -164,12 +164,84 @@ export class GitManager implements GitPort {
 
 	async isRepository(): Promise<Result<boolean, AppError>> {
 		return await Result.fromAsyncCatching(async () => {
-			const result = await this.runCommand(["rev-parse", "--git-dir"]);
+			// Cheap first check: is there a git repo accessible from here?
+			const gitDirResult = await this.runCommand(["rev-parse", "--git-dir"]);
+			if (!gitDirResult.ok || !gitDirResult.value.success) {
+				return false;
+			}
+
+			// Harden: toplevel must equal this.cwd
+			// This prevents false positives for uninitialized submodule dirs
+			// inside a superproject (git walks up to parent repo otherwise).
+			const toplevelResult = await this.runCommand(["rev-parse", "--show-toplevel"]);
+			if (!toplevelResult.ok || !toplevelResult.value.success) {
+				return false;
+			}
+
+			const toplevel = new TextDecoder().decode(toplevelResult.value.stdout).trim();
+
+			// Use realpath on both sides to handle:
+			// - worktree gitdir files (not directories)
+			// - symlinked paths
+			// - case normalization on case-insensitive filesystems
+			let toplevelReal: string;
+			let cwdReal: string;
+
+			try {
+				toplevelReal = await Deno.realPath(toplevel);
+			} catch {
+				// Toplevel doesn't exist or can't be resolved -> not a valid repo root
+				return false;
+			}
+
+			try {
+				cwdReal = await Deno.realPath(this.cwd);
+			} catch {
+				// Our cwd doesn't exist -> definitely not a repo here
+				return false;
+			}
+
+			return toplevelReal === cwdReal;
+		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check if directory is a git repository`, { cause: error }));
+	}
+
+	async isDetachedHead(): Promise<Result<boolean, AppError>> {
+		// git symbolic-ref --quiet --short HEAD
+		// - exit 0 + stdout = branch name -> not detached
+		// - exit non-zero -> detached
+		return await Result.fromAsyncCatching(async () => {
+			// Use async output() to satisfy require-await lint rule
+			const proc = await new Deno.Command("git", {
+				args: ["symbolic-ref", "--quiet", "--short", "HEAD"],
+				cwd: this.cwd,
+				stdout: "null",
+				stderr: "null",
+			}).output();
+
+			// exit 0 -> not detached
+			// exit non-zero -> detached
+			return !proc.success;
+		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check detached HEAD state`, { cause: error }));
+	}
+
+	async getHeadSha(): Promise<Result<string, AppError>> {
+		return await Result.fromAsyncCatching(async () => {
+			const result = await this.runCommand(["rev-parse", "HEAD"]);
 			if (!result.ok) {
 				throw result.error;
 			}
-			return result.value.success;
-		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check if directory is a git repository`, { cause: error }));
+			return new TextDecoder().decode(result.value.stdout).trim().toLowerCase();
+		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to get HEAD SHA`, { cause: error }));
+	}
+
+	async submoduleInit(path: string): Promise<Result<void, AppError>> {
+		await this.mutex.acquire();
+		const result = await this.runCommandWithErrorContext(
+			["submodule", "update", "--init", path],
+			`Failed to initialize submodule at ${path}`,
+		);
+		this.mutex.release();
+		return result;
 	}
 
 	async isWorkingDirectoryClean(): Promise<Result<boolean, AppError>> {

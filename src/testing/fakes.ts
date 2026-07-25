@@ -15,6 +15,8 @@ export type FakeGitState = {
 	isClean?: boolean;
 	modifiedFiles?: number;
 	untrackedFiles?: number;
+	isDetached?: boolean;
+	headSha?: string;
 	failNext?: string;
 };
 
@@ -37,6 +39,16 @@ export class FakeGit implements GitPort {
 		return Promise.resolve(this.nextResult());
 	}
 
+	submoduleInit(path: string): Promise<Result<void, AppError>> {
+		this.record("submoduleInit", [path]);
+		const result = this.nextResult();
+		// After successful init, this path becomes a real repo
+		if (result.ok) {
+			this.state.isRepo = true;
+		}
+		return Promise.resolve(result);
+	}
+
 	checkoutBranch(branch: string): Promise<Result<void, AppError>> {
 		this.record("checkoutBranch", [branch]);
 		return Promise.resolve(this.nextResult());
@@ -47,7 +59,18 @@ export class FakeGit implements GitPort {
 		if (this.state.failNext === "getCurrentBranch") {
 			return Promise.resolve(Result.error(new AppError(AppErrorCode.GIT_FAILED, "fake getCurrentBranch failure")));
 		}
+		// When detached and not at tip, convention is to return "HEAD"
 		return Promise.resolve(Result.ok(this.state.currentBranch ?? "main"));
+	}
+
+	isDetachedHead(): Promise<Result<boolean, AppError>> {
+		this.record("isDetachedHead", []);
+		return Promise.resolve(Result.ok(this.state.isDetached ?? false));
+	}
+
+	getHeadSha(): Promise<Result<string, AppError>> {
+		this.record("getHeadSha", []);
+		return Promise.resolve(Result.ok(this.state.headSha ?? "a1b2c3d"));
 	}
 
 	pullOriginBranch(branch: string): Promise<Result<void, AppError>> {
