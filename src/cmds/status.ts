@@ -44,6 +44,8 @@ function outputJson(repositories: StatusRepository[]) {
 		clean: repositories.filter((r) => r.exists && r.isClean).length,
 		modified: repositories.filter((r) => r.exists && !r.isClean).length,
 		missing: repositories.filter((r) => !r.exists).length,
+		notInitialized: repositories.filter((r) => r.readiness === "not_initialized").length,
+		detached: repositories.filter((r) => r.readiness === "detached" || r.readiness === "detached_at_tip").length,
 		onWrongBranch: repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length,
 		goModules: repositories.filter((r) => r.isGoModule).length,
 	};
@@ -57,6 +59,8 @@ function outputJson(repositories: StatusRepository[]) {
 				trackingBranch: repo.trackingBranch,
 				isGoModule: repo.isGoModule,
 				exists: repo.exists,
+				readiness: repo.readiness,
+				headSha: repo.headSha,
 				currentBranch: repo.currentBranch,
 				isClean: repo.isClean,
 				onCorrectBranch: repo.exists ? repo.currentBranch === repo.trackingBranch : true,
@@ -79,6 +83,10 @@ function outputJson(repositories: StatusRepository[]) {
 	console.log(JSON.stringify(output, null, 2));
 }
 
+function shortSha(sha: string): string {
+	return sha.slice(0, 7);
+}
+
 function outputTable(repositories: StatusRepository[], verbose: boolean) {
 	if (repositories.length === 0) {
 		console.log(yellow("⚠️  No active repositories found"));
@@ -87,8 +95,10 @@ function outputTable(repositories: StatusRepository[], verbose: boolean) {
 
 	const clean = repositories.filter((r) => r.exists && r.isClean).length;
 	const modified = repositories.filter((r) => r.exists && !r.isClean).length;
-	const missing = repositories.filter((r) => !r.exists).length;
-	const wrongBranch = repositories.filter((r) => r.exists && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length;
+	const missing = repositories.filter((r) => !r.exists && r.readiness !== "not_initialized").length;
+	const notInitialized = repositories.filter((r) => r.readiness === "not_initialized").length;
+	const detached = repositories.filter((r) => r.readiness === "detached" || r.readiness === "detached_at_tip").length;
+	const wrongBranch = repositories.filter((r) => r.readiness === "ready" && r.currentBranch && r.trackingBranch && r.currentBranch !== r.trackingBranch).length;
 
 	console.log("");
 	console.log(blue(`📊 Workspace Status - ${repositories.length} active repositories`));
@@ -104,6 +114,15 @@ function outputTable(repositories: StatusRepository[], verbose: boolean) {
 
 	for (const repo of repositories) {
 		const path = repo.path;
+
+		// Readiness: not_initialized
+		if (repo.readiness === "not_initialized") {
+			table.push([
+				yellow(path),
+				gray(`⚠ not initialized (→ ${repo.trackingBranch || "unknown"})`),
+			]);
+			continue;
+		}
 
 		if (!repo.exists) {
 			table.push([
@@ -125,7 +144,16 @@ function outputTable(repositories: StatusRepository[], verbose: boolean) {
 		const trackingBranch = repo.trackingBranch || "unknown";
 
 		let branchDisplay: string;
-		if (currentBranch === trackingBranch) {
+
+		// Readiness: detached_at_tip
+		if (repo.readiness === "detached_at_tip") {
+			branchDisplay = yellow(`detached at ${currentBranch}`);
+		} // Readiness: detached (not at tip)
+		else if (repo.readiness === "detached") {
+			const shaDisplay = repo.headSha ? shortSha(repo.headSha) : "unknown";
+			branchDisplay = yellow(`detached @${shaDisplay}`);
+		} // Readiness: ready
+		else if (currentBranch === trackingBranch) {
 			branchDisplay = green(currentBranch);
 		} else {
 			branchDisplay = yellow(`${currentBranch} → ${trackingBranch}`);
@@ -148,11 +176,19 @@ function outputTable(repositories: StatusRepository[], verbose: boolean) {
 	const summaryParts = [];
 	if (clean > 0) summaryParts.push(green(`✅ ${clean} clean`));
 	if (modified > 0) summaryParts.push(yellow(`⚠️  ${modified} modified`));
+	if (notInitialized > 0) summaryParts.push(yellow(`⚠️  ${notInitialized} not initialized`));
+	if (detached > 0) summaryParts.push(yellow(`🔀 ${detached} detached`));
 	if (wrongBranch > 0) summaryParts.push(yellow(`🌿 ${wrongBranch} wrong branch`));
 	if (missing > 0) summaryParts.push(red(`❌ ${missing} missing`));
 
 	console.log(summaryParts.join("  "));
 	console.log("");
+
+	// Hint when readiness issues exist
+	if (notInitialized > 0 || detached > 0) {
+		console.log(gray(`💡 Run 'workspace-manager sync' to initialize and re-attach.`));
+		console.log("");
+	}
 
 	if (verbose) {
 		console.log(blue("🔍 Detailed Information:"));

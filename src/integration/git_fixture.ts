@@ -88,10 +88,10 @@ async function createCommit(repoDir: string, message: string): Promise<void> {
 /**
  * Creates workspace.yml content.
  */
-function createWorkspaceYaml(branch: string, overrideBranch?: string): string {
+function createWorkspaceYaml(branch: string, overrideBranch?: string, urlOverride?: string): string {
 	const config: WorkspaceConfig = {
 		workspaces: [{
-			url: "file:///dummy", // not used for read operations
+			url: urlOverride ?? "file:///dummy", // not used for read operations unless specified
 			path: "sub",
 			branch: overrideBranch ?? branch,
 			isGolang: false,
@@ -115,7 +115,7 @@ function createWorkspaceYaml(branch: string, overrideBranch?: string): string {
  * - Returns fixture pointing at the superproject directly (submodule on branch)
  */
 async function buildFixtureInternal(
-	opts: { branch?: string; isWorktree: boolean },
+	opts: { branch?: string; isWorktree: boolean; initSubmodule?: boolean; urlOverride?: string },
 ): Promise<WorktreeFixture> {
 	const branch = opts.branch ?? "feature";
 
@@ -214,14 +214,17 @@ async function buildFixtureInternal(
 				throw worktreeResult.error;
 			}
 
-			// Init + update submodule in the worktree → submodule detached at tip
-			const subUpdateResult = await runGit(workspaceRoot, [
-				"submodule",
-				"update",
-				"--init",
-			]);
-			if (!subUpdateResult.ok) {
-				throw subUpdateResult.error;
+			// Optionally init + update submodule in the worktree → submodule detached at tip
+			// When initSubmodule is false, the submodule dir remains empty (uninitialized)
+			if (opts.initSubmodule !== false) {
+				const subUpdateResult = await runGit(workspaceRoot, [
+					"submodule",
+					"update",
+					"--init",
+				]);
+				if (!subUpdateResult.ok) {
+					throw subUpdateResult.error;
+				}
 			}
 
 			submodulePath = `${workspaceRoot}/sub`;
@@ -248,7 +251,7 @@ async function buildFixtureInternal(
 		const configPath = `${workspaceRoot}/workspace.yml`;
 		await Deno.writeTextFile(
 			configPath,
-			createWorkspaceYaml(branch),
+			createWorkspaceYaml(branch, undefined, opts.urlOverride),
 		);
 
 		// ------------------------------
@@ -301,6 +304,23 @@ export async function buildNormalFixture(opts?: {
 	return await buildFixtureInternal({
 		branch: opts?.branch,
 		isWorktree: false,
+	});
+}
+
+/**
+ * Build a worktree-based fixture where the submodule directory exists but is
+ * NOT initialized (no .git file, empty dir). This reproduces the reported bug
+ * topology where git commands walk up to the superproject.
+ */
+export async function buildUninitializedFixture(opts?: {
+	branch?: string;
+	urlOverride?: string;
+}): Promise<WorktreeFixture> {
+	return await buildFixtureInternal({
+		branch: opts?.branch,
+		isWorktree: true,
+		initSubmodule: false,
+		urlOverride: opts?.urlOverride,
 	});
 }
 

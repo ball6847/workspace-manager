@@ -1,6 +1,6 @@
 import { Result } from "typescript-result";
-import { AppError, AppErrorCode } from "../libs/app-error.ts";
-import { processConcurrently } from "../libs/concurrent.ts";
+import { AppError } from "../libs/app-error.ts";
+import { processConcurrently, processConcurrentlyWithResults } from "../libs/concurrent.ts";
 import { getActiveWorkspaces, getInactiveWorkspaces, goModulePaths, workspaceDirectory } from "../domain/workspaces.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { FileSystemPort } from "../ports/file-system.ts";
@@ -19,10 +19,13 @@ export type SyncReport = {
 	inactiveCount: number;
 	removedCount: number;
 	syncedCount: number;
+	skippedDetachedCount: number;
 	goWorkspaceSetup: boolean;
 	globalHookResults: HookExecutionResult[];
 	workspaceHookResults: Array<{ path: string; results: HookExecutionResult[] }>;
 };
+
+type SyncSingleResult = { skippedDetached: boolean };
 
 export type SyncServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
@@ -79,6 +82,7 @@ export class SyncService {
 			inactiveCount: inactiveWorkspaces.length,
 			removedCount: 0,
 			syncedCount: 0,
+			skippedDetachedCount: 0,
 			goWorkspaceSetup: false,
 			globalHookResults: [],
 			workspaceHookResults: [],
@@ -107,20 +111,20 @@ export class SyncService {
 
 		if (activeWorkspaces.length > 0) {
 			console.log(blue(`Syncing ${activeWorkspaces.length} active workspaces...`));
-			const syncResult = await processConcurrently(
+			const syncResults = await processConcurrentlyWithResults(
 				activeWorkspaces,
-				async (workspace) => {
-					const sync = await this.syncSingleWorkspace(workspace, workspaceRoot, workspaceManager);
-					if (sync.ok) {
-						report.syncedCount++;
-					}
-					return sync;
-				},
+				async (workspace) => await this.syncSingleWorkspace(workspace, workspaceRoot, workspaceManager),
 				concurrency,
 			);
 
-			if (!syncResult.ok) {
-				return Result.error(syncResult.error);
+			for (const result of syncResults) {
+				if (!result.ok) {
+					return Result.error(result.error);
+				}
+				report.syncedCount++;
+				if (result.value.skippedDetached) {
+					report.skippedDetachedCount++;
+				}
 			}
 		}
 
@@ -178,9 +182,10 @@ export class SyncService {
 		workspace: WorkspaceConfigItem,
 		workspaceRoot: string,
 		workspaceManager: WorkspaceManager,
-	): Promise<Result<void, AppError>> {
+	): Promise<Result<SyncSingleResult, AppError>> {
 		const workspacePath = workspaceDirectory(workspaceRoot, workspace.path);
 
+		// Branch 1: Dir missing → checkout path
 		const dir = await this.deps.fileSystem.isDir(workspacePath);
 		if (!dir.ok) {
 			console.log(yellow(`📥 Checking out workspace: ${workspace.path}`));
@@ -190,7 +195,7 @@ export class SyncService {
 				return Result.error(checkout.error);
 			}
 			console.log(green(`✅ Successfully checked out workspace: ${workspace.path}`));
-			return Result.ok();
+			return Result.ok({ skippedDetached: false });
 		}
 
 		const subGit = this.deps.gitFactory(workspacePath);
@@ -199,18 +204,77 @@ export class SyncService {
 			console.log(red(`❌ Failed to check git repository: ${workspace.path}: ${isGitRepo.error.message}`));
 			return Result.error(isGitRepo.error);
 		}
+
+		// Branch 2: Dir exists but isRepository() false → uninitialized submodule
 		if (!isGitRepo.value) {
-			console.log(red(`❌ Not a git repository: ${workspace.path}`));
-			return Result.error(new AppError(AppErrorCode.NOT_A_GIT_REPO, `Not a git repository: ${workspace.path}`));
+			console.log(yellow(`📥 Initializing submodule: ${workspace.path}`));
+
+			const rootGit = this.deps.gitFactory(workspaceRoot);
+			const initResult = await rootGit.submoduleInit(workspace.path);
+
+			if (!initResult.ok) {
+				// Fallback: submodule not in .gitmodules → try full checkout
+				console.log(yellow(`⚠️  submodule init failed for ${workspace.path}, falling back to checkout...`));
+				const checkout = await workspaceManager.checkoutWorkspace(workspace.url, workspace.path, workspace.branch);
+				if (!checkout.ok) {
+					console.log(red(`❌ Failed to check out workspace: ${workspace.path}: ${checkout.error.message}`));
+					return Result.error(checkout.error);
+				}
+			}
+
+			console.log(green(`✅ Initialized submodule: ${workspace.path}`));
+			// Fall through to continue with detached check, branch check, pull
 		}
 
-		const currentBranch = await subGit.getCurrentBranch();
-		if (!currentBranch.ok) {
-			console.log(red(`❌ Failed to get current branch: ${workspace.path}: ${currentBranch.error.message}`));
-			return Result.error(currentBranch.error);
+		// Branch 3: Repo exists (or was just initialized), check if detached
+		const isDetached = await subGit.isDetachedHead();
+		if (!isDetached.ok) {
+			console.log(red(`❌ Failed to check detached state: ${workspace.path}: ${isDetached.error.message}`));
+			return Result.error(isDetached.error);
 		}
-		if (currentBranch.value !== workspace.branch) {
-			console.log(yellow(`🔄 Switching branch for ${workspace.path} from ${currentBranch.value} to ${workspace.branch}`));
+
+		if (isDetached.value) {
+			const currentBranch = await subGit.getCurrentBranch();
+			if (!currentBranch.ok) {
+				console.log(red(`❌ Failed to get current branch: ${workspace.path}: ${currentBranch.error.message}`));
+				return Result.error(currentBranch.error);
+			}
+
+			// Detached at tip: resolver returns the branch name → re-attach
+			if (currentBranch.value === workspace.branch) {
+				console.log(yellow(`🔗 Re-attaching ${workspace.path} to ${workspace.branch}`));
+				const checkout = await subGit.checkoutBranch(workspace.branch);
+				if (!checkout.ok) {
+					console.log(red(`❌ Failed to re-attach ${workspace.path}: ${checkout.error.message}`));
+					return Result.error(checkout.error);
+				}
+				// Continue into dirty-check + pull via fall-through
+			} else {
+				// Detached NOT at tip (resolver returned "HEAD" or wrong branch)
+				// WARN-AND-SKIP: never silently abandon commits
+				const headSha = await subGit.getHeadSha();
+				const shortSha = headSha.ok ? headSha.value.slice(0, 7) : "unknown";
+
+				console.log(yellow(
+					`⚠️  ${workspace.path} is detached @${shortSha}, not on any branch tip — skipping. Run 'git -C ${workspacePath} status' to inspect.`,
+				));
+
+				// Skip is NOT a failure; increment skippedDetachedCount
+				return Result.ok({ skippedDetached: true });
+			}
+		}
+
+		// Branch 4: On branch (or just re-attached, or just initialized) → existing flow
+
+		// Ensure correct branch (may have been re-attached or was already correct)
+		const currentBranchAfter = await subGit.getCurrentBranch();
+		if (!currentBranchAfter.ok) {
+			console.log(red(`❌ Failed to get current branch: ${workspace.path}: ${currentBranchAfter.error.message}`));
+			return Result.error(currentBranchAfter.error);
+		}
+
+		if (currentBranchAfter.value !== workspace.branch) {
+			console.log(yellow(`🔄 Switching branch for ${workspace.path} from ${currentBranchAfter.value} to ${workspace.branch}`));
 			const checkout = await subGit.checkoutBranch(workspace.branch);
 			if (!checkout.ok) {
 				console.log(red(`❌ Failed to switch branch for ${workspace.path}: ${checkout.error.message}`));
@@ -224,7 +288,11 @@ export class SyncService {
 			return Result.error(isClean.error);
 		}
 		if (!isClean.value) {
-			return await this.handleDirtyWorkspace(subGit, workspace);
+			const dirtyResult = await this.handleDirtyWorkspace(subGit, workspace);
+			if (!dirtyResult.ok) {
+				return Result.error(dirtyResult.error);
+			}
+			return Result.ok({ skippedDetached: false });
 		}
 
 		const pull = await subGit.pullOriginBranch(workspace.branch);
@@ -234,7 +302,7 @@ export class SyncService {
 		}
 		console.log(green(`✅ Successfully pulled latest changes: ${workspace.path}`));
 
-		return Result.ok();
+		return Result.ok({ skippedDetached: false });
 	}
 
 	private async handleDirtyWorkspace(subGit: GitPort, workspace: WorkspaceConfigItem): Promise<Result<void, AppError>> {
