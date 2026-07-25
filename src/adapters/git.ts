@@ -143,15 +143,20 @@ export class GitManager implements GitPort {
 				return new TextDecoder().decode(symbolicRefResult.value.stdout).trim();
 			}
 
-			// If HEAD is detached, try git name-rev to find the closest branch/tag
-			const nameRevResult = await this.runCommand([
-				"name-rev",
-				"--name-only",
+			// Detached HEAD: find the local branch whose tip == HEAD (exact, not "contains")
+			// This correctly handles worktree submodules which are always in detached HEAD state
+			// but at a known branch tip. Unlike name-rev, this returns the exact branch at tip
+			// and degrades honestly (empty) when behind tip.
+			const headsResult = await this.runCommand([
+				"for-each-ref",
+				"--points-at",
 				"HEAD",
+				"--format=%(refname:short)",
+				"refs/heads/",
 			]);
 
-			if (nameRevResult.ok && nameRevResult.value.success) {
-				const branchName = new TextDecoder().decode(nameRevResult.value.stdout).trim();
+			if (headsResult.ok && headsResult.value.success) {
+				const branchName = new TextDecoder().decode(headsResult.value.stdout).trim();
 				if (branchName) {
 					return branchName;
 				}
