@@ -1,16 +1,80 @@
 import { createMutex, type Mutex } from "@117/mutex";
+import { yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import { wrapErrorResult } from "../libs/errors.ts";
-import type { GitPort } from "../ports/git.ts";
+import { buildGitEnv, getSshSocketDir } from "../libs/git-env.ts";
+import type { BranchState, GitPort, SyncBranchResult } from "../ports/git.ts";
 
 // Registry to share mutexes by cwd
 const mutexRegistry = new Map<string, Mutex>();
 
+// One-per-process SSH multiplex socket directory state.
+let socketDirEnsured = false;
+let ensuredSocketDir: string | null = null;
+
+/**
+ * Ensure the SSH multiplex socket directory exists.
+ *
+ * Returns the directory path on success, or `null` when no usable socket
+ * directory is available or it cannot be created. In the failure case the
+ * caller should fall back to spawning git without connection reuse.
+ *
+ * Because the preferred location lives under the world-writable `/tmp`, the
+ * directory must be owned by the current user and private (0700); otherwise
+ * mux is disabled rather than trusting a foreign directory.
+ *
+ * `env` is injectable for tests; production callers use the process env.
+ */
+export async function ensureSshSocketDir(
+	debug?: boolean,
+	env: Record<string, string | undefined> = Deno.env.toObject(),
+): Promise<string | null> {
+	if (socketDirEnsured) {
+		return ensuredSocketDir;
+	}
+	socketDirEnsured = true;
+
+	const dir = getSshSocketDir(env);
+	if (!dir) {
+		return null;
+	}
+
+	const result = await Result.fromAsyncCatching(async () => {
+		await Deno.mkdir(dir, { recursive: true, mode: 0o700 });
+		if (Deno.build.os !== "windows") {
+			const stat = await Deno.stat(dir);
+			if (stat.uid !== Deno.uid()) {
+				throw new Error(`socket dir ${dir} is owned by uid ${stat.uid}, expected ${Deno.uid()}`);
+			}
+			// Enforce privacy even when the dir pre-existed with laxer perms.
+			await Deno.chmod(dir, 0o700);
+		}
+	});
+	if (!result.ok) {
+		if (debug) {
+			console.warn(yellow(`⚠️  Failed to create SSH socket directory ${dir}; connection multiplexing disabled: ${result.error.message}`));
+		}
+		return null;
+	}
+
+	ensuredSocketDir = dir;
+	return dir;
+}
+
+/** Test-only hook to reset the module-level socket-dir ensure state. */
+export function resetSocketDirStateForTests(): void {
+	socketDirEnsured = false;
+	ensuredSocketDir = null;
+}
+
 export class GitManager implements GitPort {
 	private readonly mutex: Mutex;
 
-	constructor(private readonly cwd: string) {
+	constructor(
+		private readonly cwd: string,
+		private readonly debug?: boolean,
+	) {
 		// Share mutex for same cwd across instances
 		if (!mutexRegistry.has(cwd)) {
 			mutexRegistry.set(cwd, createMutex());
@@ -154,6 +218,55 @@ export class GitManager implements GitPort {
 		);
 	}
 
+	async syncBranch(branch: string): Promise<Result<SyncBranchResult, AppError>> {
+		const fetchResult = await this.runCommandWithErrorContext(
+			["fetch", "origin", branch],
+			`Failed to fetch origin/${branch}`,
+		);
+		if (!fetchResult.ok) {
+			return Result.error(fetchResult.error);
+		}
+
+		const headResult = await this.getHeadSha();
+		if (!headResult.ok) {
+			return Result.error(headResult.error);
+		}
+
+		const remoteResult = await this.getRefSha(`refs/remotes/origin/${branch}`);
+		if (!remoteResult.ok) {
+			return Result.error(remoteResult.error);
+		}
+
+		if (headResult.value === remoteResult.value) {
+			return Result.ok({ updated: false });
+		}
+
+		const mergeResult = await this.runCommand(["merge", "--ff-only", `origin/${branch}`]);
+		if (!mergeResult.ok) {
+			return Result.error(
+				new AppError(
+					AppErrorCode.GIT_FAILED,
+					`Cannot fast-forward ${this.cwd} to origin/${branch}: branches have diverged. Resolve manually (e.g. git -C ${this.cwd} pull --rebase or git -C ${this.cwd} merge).`,
+					{ cause: mergeResult.error, context: { cwd: this.cwd, branch } },
+				),
+			);
+		}
+
+		return Result.ok({ updated: true });
+	}
+
+	private async getRefSha(ref: string): Promise<Result<string, AppError>> {
+		return await Result.fromAsyncCatching(async () => {
+			const result = await this.runCommand(["rev-parse", ref]);
+			if (!result.ok) {
+				throw result.error;
+			}
+			return new TextDecoder().decode(result.value.stdout).trim().toLowerCase();
+		}).mapError(
+			(error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to resolve ${ref}`, { cause: error }),
+		);
+	}
+
 	// Repository operations
 	async fetch(): Promise<Result<void, AppError>> {
 		return await this.runCommandWithErrorContext(
@@ -164,15 +277,10 @@ export class GitManager implements GitPort {
 
 	async isRepository(): Promise<Result<boolean, AppError>> {
 		return await Result.fromAsyncCatching(async () => {
-			// Cheap first check: is there a git repo accessible from here?
-			const gitDirResult = await this.runCommand(["rev-parse", "--git-dir"]);
-			if (!gitDirResult.ok || !gitDirResult.value.success) {
-				return false;
-			}
-
-			// Harden: toplevel must equal this.cwd
-			// This prevents false positives for uninitialized submodule dirs
-			// inside a superproject (git walks up to parent repo otherwise).
+			// `rev-parse --show-toplevel` fails outside a work tree, so a single
+			// invocation is sufficient. Harden: toplevel must equal this.cwd to
+			// prevent false positives for uninitialized submodule dirs inside a
+			// superproject (git would otherwise walk up to the parent repo).
 			const toplevelResult = await this.runCommand(["rev-parse", "--show-toplevel"]);
 			if (!toplevelResult.ok || !toplevelResult.value.success) {
 				return false;
@@ -210,18 +318,34 @@ export class GitManager implements GitPort {
 		// - exit 0 + stdout = branch name -> not detached
 		// - exit non-zero -> detached
 		return await Result.fromAsyncCatching(async () => {
-			// Use async output() to satisfy require-await lint rule
-			const proc = await new Deno.Command("git", {
-				args: ["symbolic-ref", "--quiet", "--short", "HEAD"],
-				cwd: this.cwd,
+			const proc = await this.spawnGit(["symbolic-ref", "--quiet", "--short", "HEAD"], {
 				stdout: "null",
 				stderr: "null",
-			}).output();
+			});
 
 			// exit 0 -> not detached
 			// exit non-zero -> detached
 			return !proc.success;
 		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check detached HEAD state`, { cause: error }));
+	}
+
+	async getBranchState(): Promise<Result<BranchState, AppError>> {
+		// One spawn: git symbolic-ref --short HEAD
+		// - exit 0 + stdout = branch name -> { detached: false, branch }
+		// - exit non-zero -> { detached: true, branch: null }
+		return await Result.fromAsyncCatching(async () => {
+			const proc = await this.spawnGit(["symbolic-ref", "--short", "HEAD"], {
+				stdout: "piped",
+				stderr: "null",
+			});
+
+			if (proc.success) {
+				const branch = new TextDecoder().decode(proc.stdout).trim();
+				return { detached: false, branch };
+			}
+
+			return { detached: true, branch: null };
+		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to get branch state`, { cause: error }));
 	}
 
 	async isHeadBehindBranch(branch: string): Promise<Result<boolean, AppError>> {
@@ -240,12 +364,10 @@ export class GitManager implements GitPort {
 				// exit 0 -> HEAD is ancestor of (or equal to) target
 				// exit 1 -> not an ancestor (diverged)
 				// other   -> genuine failure
-				const proc = await new Deno.Command("git", {
-					args: ["merge-base", "--is-ancestor", "HEAD", target],
-					cwd: this.cwd,
+				const proc = await this.spawnGit(["merge-base", "--is-ancestor", "HEAD", target], {
 					stdout: "null",
 					stderr: "null",
-				}).output();
+				});
 
 				if (proc.success) {
 					return true;
@@ -260,12 +382,10 @@ export class GitManager implements GitPort {
 	}
 
 	private async refExists(ref: string): Promise<boolean> {
-		const proc = await new Deno.Command("git", {
-			args: ["rev-parse", "--verify", "--quiet", ref],
-			cwd: this.cwd,
+		const proc = await this.spawnGit(["rev-parse", "--verify", "--quiet", ref], {
 			stdout: "null",
 			stderr: "null",
-		}).output();
+		});
 		return proc.success;
 	}
 
@@ -284,6 +404,20 @@ export class GitManager implements GitPort {
 		const result = await this.runCommandWithErrorContext(
 			["submodule", "update", "--init", path],
 			`Failed to initialize submodule at ${path}`,
+		);
+		this.mutex.release();
+		return result;
+	}
+
+	async submoduleInitMany(paths: string[], jobs: number): Promise<Result<void, AppError>> {
+		if (paths.length === 0) {
+			return Result.ok(undefined);
+		}
+
+		await this.mutex.acquire();
+		const result = await this.runCommandWithErrorContext(
+			["submodule", "update", "--init", `--jobs=${jobs}`, "--", ...paths],
+			`Failed to batch initialize submodules`,
 		);
 		this.mutex.release();
 		return result;
@@ -349,18 +483,29 @@ export class GitManager implements GitPort {
 	}
 
 	// Private utility methods
+	private async spawnGit(
+		args: string[],
+		options: { stdout?: "null" | "piped"; stderr?: "null" | "piped" } = {},
+	): Promise<Deno.CommandOutput> {
+		const socketDir = await ensureSshSocketDir(this.debug);
+		const env = buildGitEnv(Deno.env.toObject(), socketDir);
+		return await new Deno.Command("git", {
+			args,
+			cwd: this.cwd,
+			env,
+			stdout: options.stdout ?? "piped",
+			stderr: options.stderr ?? "null",
+		}).output();
+	}
+
 	private async runCommand(
 		args: string[],
 	): Promise<Result<Deno.CommandOutput, AppError>> {
 		return await Result.fromAsyncCatching(async () => {
-			const output = await new Deno.Command("git", {
-				args,
-				cwd: this.cwd,
-				// TODO: Capture stderr for better error reporting instead of suppressing it
-				stderr: "null",
-			}).output();
+			const output = await this.spawnGit(args, { stderr: "piped" });
 			if (!output.success) {
-				throw new Error(`Git command failed with exit code ${output.code}: git ${args.join(" ")}`);
+				const stderr = new TextDecoder().decode(output.stderr).trim();
+				throw new Error(`Git command failed with exit code ${output.code}: git ${args.join(" ")}${stderr ? `\n${stderr}` : ""}`);
 			}
 			return output;
 		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Git command failed: git ${args.join(" ")}`, { cause: error }));

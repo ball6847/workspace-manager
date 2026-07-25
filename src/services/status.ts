@@ -64,7 +64,7 @@ export class StatusService {
 
 		const { workspaceRoot, configPath } = discoverResult.value;
 		const debug = input.debug ?? false;
-		const concurrency = input.concurrency ?? 4;
+		const concurrency = input.concurrency ?? 8;
 		const verbose = input.verbose ?? false;
 
 		const configStore = this.deps.createConfigStore(configPath);

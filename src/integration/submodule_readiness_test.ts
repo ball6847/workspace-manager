@@ -508,15 +508,15 @@ Deno.test(
 		assertEquals(initCalls.length, 1, "should call submoduleInit on root");
 		assertEquals(initCalls[0].args[0], "repo", "should init the correct path");
 
-		// After init, the submodule git should proceed with checkout/pull
+		// After init, the submodule git should proceed with checkout/sync
 		const subGit = getGit(repoPath);
 		assert(subGit !== undefined);
-		// Should have called checkoutBranch (to switch from main to feature) and pullOriginBranch
+		// Should have called checkoutBranch (to switch from main to feature) and syncBranch
 		const checkoutCalls = subGit.calls.filter((c) => c.method === "checkoutBranch");
-		const pullCalls = subGit.calls.filter((c) => c.method === "pullOriginBranch");
+		const syncCalls = subGit.calls.filter((c) => c.method === "syncBranch");
 		assert(checkoutCalls.length >= 1, "should checkout branch after init");
 		assertEquals(checkoutCalls[0].args[0], "feature", "should checkout to feature branch");
-		assert(pullCalls.length >= 1, "should pull after init");
+		assert(syncCalls.length >= 1, "should sync branch after init");
 	},
 );
 

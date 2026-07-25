@@ -29,7 +29,7 @@ cli
 		"-j, --concurrency <concurrency:number>",
 		"Number of concurrent operations",
 		{
-			default: 4,
+			default: 8,
 		},
 	)
 	.option("-y, --yes", "Accept all changes")
@@ -57,7 +57,7 @@ cli
 		"-j, --concurrency <concurrency:number>",
 		"Number of concurrent operations",
 		{
-			default: 4,
+			default: 8,
 		},
 	)
 	.action(async (options) => {
@@ -81,7 +81,7 @@ cli
 		"-j, --concurrency <concurrency:number>",
 		"Number of concurrent operations",
 		{
-			default: 4,
+			default: 8,
 		},
 	)
 	.option("-y, --yes", "Skip sync confirmation prompt")
@@ -129,7 +129,7 @@ cli
 		"-j, --concurrency <concurrency:number>",
 		"Number of concurrent operations",
 		{
-			default: 4,
+			default: 8,
 		},
 	)
 	.option("-b, --branch <branch:string>", "Git branch to checkout", {
@@ -174,7 +174,7 @@ cli
 		"-j, --concurrency <concurrency:number>",
 		"Number of concurrent operations",
 		{
-			default: 4,
+			default: 8,
 		},
 	)
 	.option("--json", "Output in JSON format", { default: false })

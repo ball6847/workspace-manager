@@ -1,4 +1,4 @@
-import { blue, green, yellow } from "@std/fmt/colors";
+import { blue, gray, green, yellow } from "@std/fmt/colors";
 import { Result } from "typescript-result";
 import type { AppContext } from "../composition.ts";
 import { AppError } from "../libs/app-error.ts";
@@ -25,7 +25,7 @@ export async function syncCommand(ctx: AppContext, options: SyncCommandOption): 
 	return Result.ok();
 }
 
-function presentSyncReport(report: SyncReport, debug: boolean): void {
+export function presentSyncReport(report: SyncReport, debug: boolean): void {
 	console.log(blue(`📄 Config file: ${report.configPath}`));
 	console.log(blue(`📁 Workspace root: ${report.workspaceRoot}`));
 
@@ -35,6 +35,8 @@ function presentSyncReport(report: SyncReport, debug: boolean): void {
 
 	console.log(blue(`✅ Active workspaces: ${report.activeCount}`));
 	console.log(blue(`❌ Inactive workspaces: ${report.inactiveCount}`));
+	console.log(blue(`⬇️  Updated: ${report.updatedCount}`));
+	console.log(blue(`✓ Up-to-date: ${report.upToDateCount}`));
 
 	if (report.goWorkspaceSetup) {
 		console.log(green("✅ Go workspace setup successful"));
@@ -51,6 +53,18 @@ function presentSyncReport(report: SyncReport, debug: boolean): void {
 		for (const hookResult of workspaceResult.results) {
 			processHookResult(hookResult, workspaceResult.path);
 		}
+	}
+
+	if (debug) {
+		console.log(gray("⏱ Sync timing:"));
+		for (const [path, ms] of Object.entries(report.timing.perWorkspaceMs)) {
+			console.log(gray(`  ⏱ ${path}: ${ms}ms`));
+		}
+		console.log(gray(`  removal: ${report.timing.removalMs}ms`));
+		console.log(gray(`  sync: ${report.timing.syncMs}ms`));
+		console.log(gray(`  go workspace: ${report.timing.goWorkspaceMs}ms`));
+		console.log(gray(`  hooks: ${report.timing.hooksMs}ms`));
+		console.log(gray(`  total: ${report.timing.totalMs}ms`));
 	}
 }
 

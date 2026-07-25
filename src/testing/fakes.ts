@@ -2,7 +2,7 @@ import { Result } from "typescript-result";
 import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { FileSystemPort } from "../ports/file-system.ts";
-import type { GitPort } from "../ports/git.ts";
+import type { BranchState, GitPort, SyncBranchResult } from "../ports/git.ts";
 import type { GoAvailabilityPort, GoWorkPort } from "../ports/go-work.ts";
 import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
 import type { DiscoveryResult, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
@@ -18,13 +18,24 @@ export type FakeGitState = {
 	isDetached?: boolean;
 	isHeadBehindBranch?: boolean;
 	headSha?: string;
+	syncBranchUpdated?: boolean;
 	failNext?: string;
+	batchInitInitializes?: string[];
+};
+
+export type FakeGitOptions = {
+	cwd?: string;
+	sharedStates?: Map<string, FakeGitState>;
+	dirs?: Set<string>;
 };
 
 export class FakeGit implements GitPort {
 	calls: { method: string; args: unknown[] }[] = [];
 
-	constructor(private readonly state: FakeGitState = {}) {}
+	constructor(
+		private readonly state: FakeGitState = {},
+		private readonly options: FakeGitOptions = {},
+	) {}
 
 	private record(method: string, args: unknown[]): void {
 		this.calls.push({ method, args });
@@ -32,7 +43,11 @@ export class FakeGit implements GitPort {
 
 	submoduleAdd(url: string, path: string, branch?: string): Promise<Result<void, AppError>> {
 		this.record("submoduleAdd", [url, path, branch]);
-		return Promise.resolve(this.nextResult());
+		const result = this.nextResult();
+		if (result.ok) {
+			this.markChildInitialized(path);
+		}
+		return Promise.resolve(result);
 	}
 
 	submoduleRemove(path: string): Promise<Result<void, AppError>> {
@@ -45,9 +60,36 @@ export class FakeGit implements GitPort {
 		const result = this.nextResult();
 		// After successful init, this path becomes a real repo
 		if (result.ok) {
-			this.state.isRepo = true;
+			this.markChildInitialized(path);
 		}
 		return Promise.resolve(result);
+	}
+
+	submoduleInitMany(paths: string[], jobs: number): Promise<Result<void, AppError>> {
+		this.record("submoduleInitMany", [...paths, String(jobs)]);
+		const result = this.nextResult();
+		if (result.ok) {
+			const toInitialize = this.state.batchInitInitializes ?? paths;
+			for (const path of toInitialize) {
+				this.markChildInitialized(path);
+			}
+		}
+		return Promise.resolve(result);
+	}
+
+	private markChildInitialized(path: string): void {
+		if (!this.options.cwd) {
+			return;
+		}
+		const childCwd = `${this.options.cwd}/${path}`;
+		if (this.options.dirs) {
+			this.options.dirs.add(childCwd);
+		}
+		if (this.options.sharedStates) {
+			const childState = this.options.sharedStates.get(childCwd) ?? {};
+			childState.isRepo = true;
+			this.options.sharedStates.set(childCwd, childState);
+		}
 	}
 
 	checkoutBranch(branch: string): Promise<Result<void, AppError>> {
@@ -74,6 +116,14 @@ export class FakeGit implements GitPort {
 		return Promise.resolve(Result.ok(this.state.isDetached ?? false));
 	}
 
+	getBranchState(): Promise<Result<BranchState, AppError>> {
+		this.record("getBranchState", []);
+		const detached = this.state.isDetached ?? false;
+		return Promise.resolve(
+			Result.ok(detached ? { detached: true, branch: null } : { detached: false, branch: this.state.currentBranch ?? "main" }),
+		);
+	}
+
 	isHeadBehindBranch(branch: string): Promise<Result<boolean, AppError>> {
 		this.record("isHeadBehindBranch", [branch]);
 		return Promise.resolve(Result.ok(this.state.isHeadBehindBranch ?? false));
@@ -89,9 +139,19 @@ export class FakeGit implements GitPort {
 		return Promise.resolve(this.nextResult());
 	}
 
+	syncBranch(branch: string): Promise<Result<SyncBranchResult, AppError>> {
+		this.record("syncBranch", [branch]);
+		if (this.state.failNext === "syncBranch") {
+			this.state.failNext = undefined;
+			return Promise.resolve(Result.error(new AppError(AppErrorCode.GIT_FAILED, "fake syncBranch failure")));
+		}
+		return Promise.resolve(Result.ok({ updated: this.state.syncBranchUpdated ?? true }));
+	}
+
 	isRepository(): Promise<Result<boolean, AppError>> {
 		this.record("isRepository", []);
-		return Promise.resolve(Result.ok(this.state.isRepo ?? true));
+		const hasDir = this.options.cwd && this.options.dirs ? this.options.dirs.has(this.options.cwd) : undefined;
+		return Promise.resolve(Result.ok(this.state.isRepo ?? hasDir ?? true));
 	}
 
 	isWorkingDirectoryClean(): Promise<Result<boolean, AppError>> {
