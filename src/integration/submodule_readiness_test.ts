@@ -204,15 +204,15 @@ Deno.test(
 );
 
 // -----------------------------------------------------------------------------
-// TC-5: sync warn-and-skips detached-behind-tip submodule
+// TC-5: sync re-attaches detached-behind-tip submodule (fast-forward heal)
 // -----------------------------------------------------------------------------
 
 Deno.test(
-	"submodule readiness — sync warn-and-skips detached-behind-tip submodule (P1)",
+	"submodule readiness — sync re-attaches detached-behind-tip submodule (P0)",
 	async () => {
 		const fixture = await buildWorktreeFixture({ branch: "feature" });
 		try {
-			// Put submodule in detached state behind the tip
+			// Put submodule in detached state behind the tip (recorded gitlink SHA)
 			const checkoutResult = await new Deno.Command("git", {
 				args: ["checkout", "HEAD~1"],
 				cwd: fixture.submodulePath,
@@ -221,37 +221,93 @@ Deno.test(
 			}).output();
 			assertEquals(checkoutResult.success, true, "pre-condition: should checkout HEAD~1");
 
-			// Verify it's detached and not at tip
 			const subGit = new GitManager(fixture.submodulePath);
+
 			const isDetached = await subGit.isDetachedHead();
 			assert(isDetached.ok);
 			assertEquals(isDetached.value, true, "pre-condition: submodule should be detached");
 
 			const branch = await subGit.getCurrentBranch();
 			assert(branch.ok);
-			// getCurrentBranch resolver returns the branch name only if at tip
-			// Since we're behind tip, it should return "HEAD" (or not match "feature")
 			assertNotEquals(branch.value, "feature", "pre-condition: should not be at feature tip");
 
 			const { syncService } = wireServicesForFixture(fixture);
-			const syncInput: SyncInput = {
-				debug: false,
-				concurrency: 1,
-			};
-			const r = await syncService.run(syncInput);
+			const r = await syncService.run({ debug: false, concurrency: 1 });
 
-			// Skip is NOT a failure
+			assert(r.ok, `syncService failed: ${!r.ok ? r.error.message : ""}`);
+			assertEquals(r.value.skippedDetachedCount, 0, "should not skip a healable behind-tip HEAD");
+
+			// HEAD should now be re-attached to the configured branch
+			const isDetachedAfter = await subGit.isDetachedHead();
+			assert(isDetachedAfter.ok);
+			assertEquals(isDetachedAfter.value, false, "submodule should be re-attached to branch");
+
+			const branchAfter = await subGit.getCurrentBranch();
+			assert(branchAfter.ok);
+			assertEquals(branchAfter.value, "feature", "submodule should be on feature branch");
+		} finally {
+			await fixture.cleanup();
+		}
+	},
+);
+
+// -----------------------------------------------------------------------------
+// TC-5b: sync warn-and-skips detached diverged submodule
+// -----------------------------------------------------------------------------
+
+Deno.test(
+	"submodule readiness — sync warn-and-skips detached-diverged submodule (P1)",
+	async () => {
+		const fixture = await buildWorktreeFixture({ branch: "feature" });
+		try {
+			// Detach behind the tip, then create a dangling commit so HEAD is not
+			// reachable from the configured branch — this is the real case where
+			// re-attaching would silently abandon work.
+			const checkoutResult = await new Deno.Command("git", {
+				args: ["checkout", "HEAD~1"],
+				cwd: fixture.submodulePath,
+				stdout: "null",
+				stderr: "null",
+			}).output();
+			assertEquals(checkoutResult.success, true, "pre-condition: should checkout HEAD~1");
+
+			await new Deno.Command("git", {
+				args: ["config", "user.email", "test@test.test"],
+				cwd: fixture.submodulePath,
+				stdout: "null",
+				stderr: "null",
+			}).output();
+			await new Deno.Command("git", {
+				args: ["config", "user.name", "Test User"],
+				cwd: fixture.submodulePath,
+				stdout: "null",
+				stderr: "null",
+			}).output();
+			const danglingCommit = await new Deno.Command("git", {
+				args: ["commit", "--allow-empty", "-m", "dangling"],
+				cwd: fixture.submodulePath,
+				stdout: "null",
+				stderr: "null",
+			}).output();
+			assertEquals(danglingCommit.success, true, "pre-condition: should create dangling commit");
+
+			const subGit = new GitManager(fixture.submodulePath);
+			const headShaBefore = await subGit.getHeadSha();
+			assert(headShaBefore.ok);
+
+			const { syncService } = wireServicesForFixture(fixture);
+			const r = await syncService.run({ debug: false, concurrency: 1 });
+
 			assert(r.ok, `syncService failed: ${!r.ok ? r.error.message : ""}`);
 			assertEquals(r.value.skippedDetachedCount, 1, "should count skipped detached");
 
-			// Verify HEAD was NOT mutated
 			const headShaAfter = await subGit.getHeadSha();
 			assert(headShaAfter.ok);
-			// The sha should still be HEAD~1, not the tip
-			// We can verify by checking it's still detached
+			assertEquals(headShaAfter.value, headShaBefore.value, "diverged HEAD must not be mutated");
+
 			const isDetachedAfter = await subGit.isDetachedHead();
 			assert(isDetachedAfter.ok);
-			assertEquals(isDetachedAfter.value, true, "submodule should remain detached (not mutated)");
+			assertEquals(isDetachedAfter.value, true, "submodule should remain detached");
 		} finally {
 			await fixture.cleanup();
 		}
@@ -365,7 +421,7 @@ function makeDeps({
 	existingDirs,
 }: {
 	config: WorkspaceConfig;
-	gitStates?: Record<string, { currentBranch?: string; isClean?: boolean; isRepo?: boolean; isDetached?: boolean; headSha?: string }>;
+	gitStates?: Record<string, { currentBranch?: string; isClean?: boolean; isRepo?: boolean; isDetached?: boolean; isHeadBehindBranch?: boolean; headSha?: string }>;
 	existingDirs?: string[];
 } = { config: { workspaces: [] } }) {
 	const discovery = makeDiscovery();
@@ -385,6 +441,7 @@ function makeDeps({
 				isClean: state.isClean ?? true,
 				isRepo: state.isRepo ?? true,
 				isDetached: state.isDetached ?? false,
+				isHeadBehindBranch: state.isHeadBehindBranch ?? false,
 				headSha: state.headSha,
 			});
 			gitInstances.set(cwd, git);

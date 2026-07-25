@@ -234,14 +234,17 @@ export class SyncService {
 		}
 
 		if (isDetached.value) {
-			const currentBranch = await subGit.getCurrentBranch();
-			if (!currentBranch.ok) {
-				console.log(red(`❌ Failed to get current branch: ${workspace.path}: ${currentBranch.error.message}`));
-				return Result.error(currentBranch.error);
+			// Heal detached HEAD when HEAD is at or behind the configured branch tip.
+			// In worktree/submodule setups, git pins HEAD at the recorded gitlink SHA,
+			// which is an ancestor of the branch tip; re-attaching is a pure fast-forward.
+			// Only skip when HEAD has commits not on the branch (true divergence).
+			const behind = await subGit.isHeadBehindBranch(workspace.branch);
+			if (!behind.ok) {
+				console.log(red(`❌ Failed to check branch ancestry: ${workspace.path}: ${behind.error.message}`));
+				return Result.error(behind.error);
 			}
 
-			// Detached at tip: resolver returns the branch name → re-attach
-			if (currentBranch.value === workspace.branch) {
+			if (behind.value) {
 				console.log(yellow(`🔗 Re-attaching ${workspace.path} to ${workspace.branch}`));
 				const checkout = await subGit.checkoutBranch(workspace.branch);
 				if (!checkout.ok) {
@@ -250,13 +253,13 @@ export class SyncService {
 				}
 				// Continue into dirty-check + pull via fall-through
 			} else {
-				// Detached NOT at tip (resolver returned "HEAD" or wrong branch)
+				// Detached with commits not on the configured branch
 				// WARN-AND-SKIP: never silently abandon commits
 				const headSha = await subGit.getHeadSha();
 				const shortSha = headSha.ok ? headSha.value.slice(0, 7) : "unknown";
 
 				console.log(yellow(
-					`⚠️  ${workspace.path} is detached @${shortSha}, not on any branch tip — skipping. Run 'git -C ${workspacePath} status' to inspect.`,
+					`⚠️  ${workspace.path} is detached @${shortSha} with commits not on ${workspace.branch} — skipping. Run 'git -C ${workspacePath} status' to inspect.`,
 				));
 
 				// Skip is NOT a failure; increment skippedDetachedCount

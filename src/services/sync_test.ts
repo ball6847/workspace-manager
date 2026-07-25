@@ -25,7 +25,7 @@ function makeDeps({
 	goAvailable,
 }: {
 	config: WorkspaceConfig;
-	gitStates?: Record<string, { currentBranch?: string; isClean?: boolean }>;
+	gitStates?: Record<string, { currentBranch?: string; isClean?: boolean; isDetached?: boolean; isHeadBehindBranch?: boolean }>;
 	existingDirs?: string[];
 	goAvailable?: boolean;
 } = { config: { workspaces: [] } }) {
@@ -44,6 +44,8 @@ function makeDeps({
 			git = new FakeGit({
 				currentBranch: state.currentBranch ?? "main",
 				isClean: state.isClean ?? true,
+				isDetached: state.isDetached ?? false,
+				isHeadBehindBranch: state.isHeadBehindBranch ?? false,
 			});
 			gitInstances.set(cwd, git);
 		}
@@ -156,6 +158,62 @@ Deno.test("SyncService: branch mismatch → checkoutBranch then pull", async () 
 	const checkoutCalls = git.calls.filter((c) => c.method === "checkoutBranch");
 	assertEquals(checkoutCalls.length, 1);
 	assertEquals(checkoutCalls[0].args[0], "feature");
+});
+
+Deno.test("SyncService: detached HEAD behind branch tip → re-attach and pull", async () => {
+	const config: WorkspaceConfig = {
+		workspaces: [
+			{ url: "git@github.com:user/repo.git", path: "repo", branch: "develop", isGolang: false, active: true },
+		],
+	};
+	const repoPath = join(workspaceRoot, "repo");
+	const { service, getGit } = makeDeps({
+		config,
+		existingDirs: [repoPath],
+		gitStates: { [repoPath]: { currentBranch: "HEAD", isDetached: true, isHeadBehindBranch: true } },
+	});
+
+	const result = await service.run({});
+
+	assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
+	const git = getGit(repoPath);
+	if (!git) throw new Error("Expected git instance for repoPath");
+	const checkoutCalls = git.calls.filter((c) => c.method === "checkoutBranch");
+	const pullCalls = git.calls.filter((c) => c.method === "pullOriginBranch");
+	const isHeadBehindCalls = git.calls.filter((c) => c.method === "isHeadBehindBranch");
+
+	assertEquals(isHeadBehindCalls.length, 1);
+	assertEquals(checkoutCalls.length, 1);
+	assertEquals(checkoutCalls[0].args[0], "develop");
+	assertEquals(pullCalls.length, 1);
+	assertEquals(pullCalls[0].args[0], "develop");
+});
+
+Deno.test("SyncService: detached HEAD with commits not on branch → warn-and-skip", async () => {
+	const config: WorkspaceConfig = {
+		workspaces: [
+			{ url: "git@github.com:user/repo.git", path: "repo", branch: "develop", isGolang: false, active: true },
+		],
+	};
+	const repoPath = join(workspaceRoot, "repo");
+	const { service, getGit } = makeDeps({
+		config,
+		existingDirs: [repoPath],
+		gitStates: { [repoPath]: { currentBranch: "HEAD", isDetached: true, isHeadBehindBranch: false } },
+	});
+
+	const result = await service.run({});
+
+	assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
+	assertEquals(result.value.syncedCount, 1);
+	assertEquals(result.value.skippedDetachedCount, 1);
+
+	const git = getGit(repoPath);
+	if (!git) throw new Error("Expected git instance for repoPath");
+	const checkoutCalls = git.calls.filter((c) => c.method === "checkoutBranch");
+	const pullCalls = git.calls.filter((c) => c.method === "pullOriginBranch");
+	assertEquals(checkoutCalls.length, 0, "should not checkout a diverged detached HEAD");
+	assertEquals(pullCalls.length, 0, "should not pull a skipped workspace");
 });
 
 Deno.test("SyncService: dirty workspace → stash, pull, stashPop", async () => {
