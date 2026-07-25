@@ -100,37 +100,8 @@ export class GitManager implements GitPort {
 	}
 
 	async getCurrentBranch(): Promise<Result<string, AppError>> {
-		// Check if the improved branch detection is enabled via feature flag
 		// This handles worktree scenarios where submodules are in detached HEAD state
-		// Set WM_USE_NAME_REV=1 to enable
-		const useNameRev = Deno.env.get("WM_USE_NAME_REV") === "1";
-
-		if (useNameRev) {
-			return await this.getCurrentBranchWithNameRev();
-		}
-
-		// Original behavior: use rev-parse --abbrev-ref HEAD
-		return await Result.fromAsyncCatching(async () => {
-			const result = await this.runCommand([
-				"rev-parse",
-				"--abbrev-ref",
-				"HEAD",
-			]);
-			if (!result.ok) {
-				throw result.error;
-			}
-			return new TextDecoder().decode(result.value.stdout).trim();
-		}).mapError(
-			(error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to get current branch`, { cause: error }),
-		);
-	}
-
-	/**
-	 * Enhanced branch detection that uses git name-rev for detached HEAD scenarios.
-	 * This is useful in worktrees where submodules may be in detached HEAD state.
-	 * Enable via WM_USE_NAME_REV=1 environment variable.
-	 */
-	private async getCurrentBranchWithNameRev(): Promise<Result<string, AppError>> {
+		// by finding the local branch whose tip points at HEAD, falling back to rev-parse.
 		return await Result.fromAsyncCatching(async () => {
 			// Try git symbolic-ref --short HEAD first (fails if HEAD is detached)
 			const symbolicRefResult = await this.runCommand([
@@ -143,15 +114,19 @@ export class GitManager implements GitPort {
 				return new TextDecoder().decode(symbolicRefResult.value.stdout).trim();
 			}
 
-			// If HEAD is detached, try git name-rev to find the closest branch/tag
-			const nameRevResult = await this.runCommand([
-				"name-rev",
-				"--name-only",
+			// Detached HEAD: find the local branch whose tip == HEAD (exact, not "contains")
+			// This correctly handles worktree submodules which are always in detached HEAD state
+			// but at a known branch tip. Returns the exact branch at tip, or degrades honestly.
+			const headsResult = await this.runCommand([
+				"for-each-ref",
+				"--points-at",
 				"HEAD",
+				"--format=%(refname:short)",
+				"refs/heads/",
 			]);
 
-			if (nameRevResult.ok && nameRevResult.value.success) {
-				const branchName = new TextDecoder().decode(nameRevResult.value.stdout).trim();
+			if (headsResult.ok && headsResult.value.success) {
+				const branchName = new TextDecoder().decode(headsResult.value.stdout).trim();
 				if (branchName) {
 					return branchName;
 				}
