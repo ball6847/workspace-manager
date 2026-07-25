@@ -5,7 +5,8 @@
  * (A) a normal checkout, or
  * (B) a real `git worktree` (where submodules are in detached HEAD state).
  *
- * Tests run with WM_USE_NAME_REV=1 (the hardened path slated to become default).
+ * The hardened resolver (symbolic-ref → for-each-ref --points-at → rev-parse)
+ * is now the default — no feature flag needed.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -65,29 +66,6 @@ function wireServicesForFixture(fixture: WorktreeFixture) {
 	});
 
 	return { gitFactory, statusService, saveService, syncService, fileSystem };
-}
-
-/**
- * Helper: save and restore WM_USE_NAME_REV env var, restoring in finally.
- */
-function withNameRevEnv(value: string | undefined, fn: () => Promise<void>): () => Promise<void> {
-	return async () => {
-		const original = Deno.env.get("WM_USE_NAME_REV");
-		try {
-			if (value === undefined) {
-				Deno.env.delete("WM_USE_NAME_REV");
-			} else {
-				Deno.env.set("WM_USE_NAME_REV", value);
-			}
-			await fn();
-		} finally {
-			if (original === undefined) {
-				Deno.env.delete("WM_USE_NAME_REV");
-			} else {
-				Deno.env.set("WM_USE_NAME_REV", original);
-			}
-		}
-	};
 }
 
 // -----------------------------------------------------------------------------
@@ -221,32 +199,14 @@ async function runTopologyAssertions(
 
 Deno.test(
 	"worktree branch resolution — normal checkout",
-	withNameRevEnv("1", async () => {
+	async () => {
 		await runTopologyAssertions(() => buildNormalFixture({ branch: "feature" }));
-	}),
+	},
 );
 
 Deno.test(
 	"worktree branch resolution — worktree topology",
-	withNameRevEnv("1", async () => {
+	async () => {
 		await runTopologyAssertions(() => buildWorktreeFixture({ branch: "feature" }));
-	}),
-);
-
-Deno.test(
-	"TC-6: worktree + flag OFF returns HEAD (baseline regression)",
-	withNameRevEnv(undefined, async () => {
-		const fixture = await buildWorktreeFixture({ branch: "feature" });
-		try {
-			const git = new GitManager(fixture.submodulePath);
-			const r = await git.getCurrentBranch();
-			assert(r.ok);
-
-			// With flag OFF, we expect the legacy buggy behavior: returns "HEAD"
-			// This documents pre-promotion behavior; deletable when flag is removed.
-			assertEquals(r.value, "HEAD");
-		} finally {
-			await fixture.cleanup();
-		}
-	}),
+	},
 );
