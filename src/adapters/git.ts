@@ -224,6 +224,51 @@ export class GitManager implements GitPort {
 		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check detached HEAD state`, { cause: error }));
 	}
 
+	async isHeadBehindBranch(branch: string): Promise<Result<boolean, AppError>> {
+		return await Result.fromAsyncCatching(async () => {
+			// Compare against local branch and origin/<branch> — heal is safe if HEAD
+			// is contained in either ref's history.
+			const candidates: string[] = [];
+			if (await this.refExists(`refs/heads/${branch}`)) {
+				candidates.push(branch);
+			}
+			if (await this.refExists(`refs/remotes/origin/${branch}`)) {
+				candidates.push(`origin/${branch}`);
+			}
+
+			for (const target of candidates) {
+				// exit 0 -> HEAD is ancestor of (or equal to) target
+				// exit 1 -> not an ancestor (diverged)
+				// other   -> genuine failure
+				const proc = await new Deno.Command("git", {
+					args: ["merge-base", "--is-ancestor", "HEAD", target],
+					cwd: this.cwd,
+					stdout: "null",
+					stderr: "null",
+				}).output();
+
+				if (proc.success) {
+					return true;
+				}
+				if (proc.code !== 1) {
+					throw new Error(`Git command failed with exit code ${proc.code}: git merge-base --is-ancestor HEAD ${target}`);
+				}
+			}
+
+			return false;
+		}).mapError((error) => new AppError(AppErrorCode.GIT_FAILED, `Failed to check HEAD ancestry against branch ${branch}`, { cause: error }));
+	}
+
+	private async refExists(ref: string): Promise<boolean> {
+		const proc = await new Deno.Command("git", {
+			args: ["rev-parse", "--verify", "--quiet", ref],
+			cwd: this.cwd,
+			stdout: "null",
+			stderr: "null",
+		}).output();
+		return proc.success;
+	}
+
 	async getHeadSha(): Promise<Result<string, AppError>> {
 		return await Result.fromAsyncCatching(async () => {
 			const result = await this.runCommand(["rev-parse", "HEAD"]);

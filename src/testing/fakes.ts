@@ -16,6 +16,7 @@ export type FakeGitState = {
 	modifiedFiles?: number;
 	untrackedFiles?: number;
 	isDetached?: boolean;
+	isHeadBehindBranch?: boolean;
 	headSha?: string;
 	failNext?: string;
 };
@@ -51,7 +52,12 @@ export class FakeGit implements GitPort {
 
 	checkoutBranch(branch: string): Promise<Result<void, AppError>> {
 		this.record("checkoutBranch", [branch]);
-		return Promise.resolve(this.nextResult());
+		const result = this.nextResult();
+		if (result.ok) {
+			this.state.currentBranch = branch;
+			this.state.isDetached = false;
+		}
+		return Promise.resolve(result);
 	}
 
 	getCurrentBranch(): Promise<Result<string, AppError>> {
@@ -66,6 +72,11 @@ export class FakeGit implements GitPort {
 	isDetachedHead(): Promise<Result<boolean, AppError>> {
 		this.record("isDetachedHead", []);
 		return Promise.resolve(Result.ok(this.state.isDetached ?? false));
+	}
+
+	isHeadBehindBranch(branch: string): Promise<Result<boolean, AppError>> {
+		this.record("isHeadBehindBranch", [branch]);
+		return Promise.resolve(Result.ok(this.state.isHeadBehindBranch ?? false));
 	}
 
 	getHeadSha(): Promise<Result<string, AppError>> {

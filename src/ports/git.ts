@@ -18,6 +18,14 @@ export type GitPort = {
 	 */
 	isDetachedHead(): Promise<Result<boolean, AppError>>;
 	/**
+	 * Returns true if HEAD is contained in the given branch's history — i.e. HEAD is
+	 * an ancestor of (or equal to) the branch tip — so re-attaching a detached HEAD
+	 * via checkout + pull abandons no commits.
+	 * Compares against the local branch and `origin/<branch>` (whichever refs exist).
+	 * Returns false when HEAD has commits not on the branch, or no such ref exists.
+	 */
+	isHeadBehindBranch(branch: string): Promise<Result<boolean, AppError>>;
+	/**
 	 * Returns the full lowercase SHA of HEAD.
 	 */
 	getHeadSha(): Promise<Result<string, AppError>>;
