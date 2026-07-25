@@ -19,5 +19,8 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Allow git file protocol for tests
+        run: git config --global protocol.file.allow always
+
       - name: Run deno task check
         run: deno task check
