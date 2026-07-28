@@ -62,6 +62,7 @@ workspace-manager add
 workspace-manager save
 workspace-manager status
 workspace-manager link
+workspace-manager unlink
 workspace-manager completions
 ```
 
@@ -206,24 +207,6 @@ The status command displays:
 - **Go module indicators** (🐹) for repositories included in go.work
 - **Missing repository detection** with error details
 
-Example output:
-
-```
-📊 Workspace Status - 3 active repositories
-
-✅ Clean Repositories (2)
-────────────────────────────────────────────────────────────────────────────────
-  🐹 modules/auth-service                main → main        ✅ clean
-      frontend/dashboard                  develop → develop  ✅ clean
-
-⚠️  Modified Repositories (1)
-────────────────────────────────────────────────────────────────────────────────
-  🐹 api/gateway                         staging → staging  ⚠️  3M 2U
-
-SUMMARY
-✅ 2 clean  ⚠️  1 modified  🐹 2 Go modules
-```
-
 ### Open Command
 
 Open workspace submodules in your configured editor via interactive selection:
@@ -333,6 +316,28 @@ workspace-manager link [options]
 
 > **Note:** `--yes` / non-interactive mode and sync-integration are planned for a future release.
 
+### Unlink Command
+
+Remove symlinks created by the `link` command. Scans all workspaces that have a `link` map in `workspace.yml` and removes the corresponding symlinks from each submodule:
+
+```bash
+workspace-manager unlink [options]
+```
+
+**Options:**
+
+- `-c, --config <file>` - Workspace config file (default: workspace.yml)
+- `-w, --workspace-root <path>` - Workspace root directory (default: .)
+- `-d, --debug` - Enable debug mode
+
+**Behavior:**
+
+1. **Symlink-only removal** — only removes destinations that are already symlinks. Real files or directories are never touched; a warning is emitted instead.
+2. **Interactive confirmation** — you are prompted `y/N` before removing each symlink.
+3. **Idempotent** — destinations that no longer exist (already removed or never linked) are silently skipped and counted toward `skippedCount`.
+4. **Missing submodules are skipped** — workspaces whose submodule directory is absent emit a warning and are skipped; they do not fail the run.
+5. **Safe by default** — when a destination is not a symlink (e.g. a real file was created in its place), the entry is warned and left untouched; the run continues.
+
 ### Add Command
 
 Add a new repository to the workspace configuration:
@@ -403,16 +408,19 @@ workspace-manager completions zsh
 To enable shell completions, add the following to your shell configuration:
 
 **Bash** (add to `~/.bashrc`):
+
 ```bash
 source <(workspace-manager completions bash)
 ```
 
 **Fish** (add to `~/.config/fish/config.fish`):
+
 ```bash
 source (workspace-manager completions fish | psub)
 ```
 
 **Zsh** (add to `~/.zshrc`):
+
 ```bash
 source <(workspace-manager completions zsh)
 ```
@@ -471,24 +479,20 @@ deno task check
 
 ### High Priority
 
-- [ ] **Add schema validation** using Zod (already imported) for the workspace configuration
-- [ ] **Implement the `--yes` option** to handle automatic confirmations when removing dirty directories
-- [ ] **Confirm before removing** - list what will be removed and let user confirm it
+- [ ] **Implement the `--yes` option for sync** — the flag is registered in the CLI but not wired through to the sync service; dirty-workspace handling still stashes unconditionally with no opt-out
+- [ ] **Confirm before removing inactive workspaces** — `removeInactiveWorkspace` deletes the submodule directory without prompting; add a confirmation step (respecting `--yes` when implemented)
 
 ### Medium Priority
 
-- [ ] **Improve git error reporting** by capturing stderr for better debugging instead of suppressing with `stderr: "null"`
-- [ ] **Add input validation** for workspace URLs and paths to prevent invalid configurations
-- [ ] **Scan for nested go.mod** inside the cloned repository and import them to `go.work`
-- [x] **Status command** for quick workspace status showing current tracking branch for each active submodules (with dirty status, JSON output, verbose mode)
+- [ ] **Improve git error reporting** — most git invocations still suppress stderr with `stderr: "null"`; capture and surface stderr on failure for easier debugging
+- [ ] **Add URL and path safety validation** — Zod schema validates non-empty strings but does not check URL format or reject unsafe paths (e.g. absolute paths, `..` traversal)
+- [ ] **Scan for nested go.mod** inside cloned repositories and import them into `go.work` automatically
+- [ ] **Add spinner / progress indicator** for long-running sync and update operations
 
 ### Low Priority
 
-- [ ] **Consider adding transaction-like behavior** to rollback changes if any step fails during sync
-- [x] **Status command** - Show current workspace state with branch tracking and dirty status detection
-- [ ] **Add confirmation prompts** for destructive operations when `--yes` is not specified
-- [ ] **Add spinner for long-running actions** to improve user experience
-- [ ] **Auto-generate .env file from template** to maintain a single .env file and distribute it across submodules
+- [ ] **Transaction-like rollback** — if a sync step fails partway through, there is no way to undo partial changes
+- [ ] **Auto-generate `.env` file from template** — maintain a single `.env` file at the workspace root and distribute it across submodules
 
 ## Important Notes
 
