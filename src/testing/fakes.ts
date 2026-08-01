@@ -354,8 +354,6 @@ export class FakeHookRunner implements HookRunner {
 			Result.ok({
 				success: true,
 				exitCode: 0,
-				stdout: "",
-				stderr: "",
 				duration: 0,
 			}),
 		);
@@ -368,8 +366,6 @@ export class FakeHookRunner implements HookRunner {
 			results.push({
 				success: true,
 				exitCode: 0,
-				stdout: "",
-				stderr: "",
 				duration: 0,
 			});
 		}

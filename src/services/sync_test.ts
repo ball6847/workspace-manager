@@ -5,11 +5,11 @@ import { AppError, AppErrorCode } from "../libs/app-error.ts";
 import type { ConfigStore } from "../ports/config-store.ts";
 import type { GitPort, GitPortFactory } from "../ports/git.ts";
 import type { GoWorkPortFactory } from "../ports/go-work.ts";
-import type { HookRunner } from "../ports/hook-runner.ts";
+import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook-runner.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import { FakeConfigStore, FakeDiscovery, FakeFileSystem, FakeGit, FakeGoWork, FakeHookRunner } from "../testing/fakes.ts";
 import type { FakeGitState } from "../testing/fakes.ts";
-import type { WorkspaceConfig } from "../types/config.ts";
+import type { PostSyncHook, WorkspaceConfig } from "../types/config.ts";
 import { SyncService } from "./sync.ts";
 
 const workspaceRoot = "/ws";
@@ -24,11 +24,13 @@ function makeDeps({
 	gitStates,
 	existingDirs,
 	goAvailable,
+	hookRunner: customHookRunner,
 }: {
 	config: WorkspaceConfig;
 	gitStates?: Record<string, FakeGitState>;
 	existingDirs?: string[];
 	goAvailable?: boolean;
+	hookRunner?: HookRunner;
 } = { config: { workspaces: [] } }) {
 	const discovery = makeDiscovery();
 	const configStore = new FakeConfigStore(configPath, config);
@@ -72,7 +74,7 @@ function makeDeps({
 		return goWork;
 	};
 
-	const hookRunner = new FakeHookRunner();
+	const hookRunner = customHookRunner ?? new FakeHookRunner();
 
 	const createDiscovery = (_options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort => discovery;
 	const createConfigStore = (_configPath: string): ConfigStore => configStore;
@@ -116,7 +118,7 @@ Deno.test("SyncService: missing workspace dir → calls checkout (submoduleAdd)"
 	assertEquals(result.value.syncedCount, 1);
 	assertEquals(result.value.removedCount, 0);
 	// No global hooks configured → no hook calls
-	assertEquals(hookRunner.hooks.length, 0);
+	assertEquals((hookRunner as FakeHookRunner).hooks.length, 0);
 });
 
 Deno.test("SyncService: existing clean repo on correct branch → syncBranch", async () => {
@@ -334,9 +336,9 @@ Deno.test("SyncService: global post-sync hooks → FakeHookRunner records execut
 
 	assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
 	// 2 global hooks should have been recorded
-	assertEquals(hookRunner.hooks.length, 2);
-	assertEquals(hookRunner.hooks[0].hook.cmd[0], "echo");
-	assertEquals(hookRunner.hooks[0].context.root, workspaceRoot);
+	assertEquals((hookRunner as FakeHookRunner).hooks.length, 2);
+	assertEquals((hookRunner as FakeHookRunner).hooks[0].hook.cmd[0], "echo");
+	assertEquals((hookRunner as FakeHookRunner).hooks[0].context.root, workspaceRoot);
 });
 
 Deno.test("SyncService: timing fields are populated for active workspaces", async () => {
@@ -642,6 +644,70 @@ Deno.test("SyncService: batch failure does not abort; per-path fallback engages"
 	const addPaths = addCalls.map((c) => c.args[1]);
 	assert(addPaths.includes("repo-a"));
 	assert(addPaths.includes("repo-b"));
+});
+
+/**
+ * Records per-executeHooks-call start/end events so tests can assert that
+ * workspace hooks run one workspace at a time (no interleaving).
+ */
+class TrackingHookRunner implements HookRunner {
+	events: Array<{ workspace: string; phase: "start" | "end" }> = [];
+
+	constructor(private readonly delayMs: number = 20) {}
+
+	executeHook(_hook: PostSyncHook, _context: HookContext): Promise<Result<HookExecutionResult, AppError>> {
+		return Promise.resolve(Result.ok({ success: true, exitCode: 0, duration: 0 }));
+	}
+
+	async executeHooks(hooks: PostSyncHook[], context: HookContext): Promise<Result<HookExecutionResult[], AppError>> {
+		this.events.push({ workspace: context.path, phase: "start" });
+		await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+		this.events.push({ workspace: context.path, phase: "end" });
+		return Promise.resolve(Result.ok(hooks.map(() => ({ success: true, exitCode: 0, duration: 0 }))));
+	}
+}
+
+Deno.test("SyncService: workspace post-sync hooks execute sequentially in config order", async () => {
+	const config: WorkspaceConfig = {
+		workspaces: [
+			{
+				url: "git@github.com:user/repo-a.git",
+				path: "repo-a",
+				branch: "main",
+				isGolang: false,
+				active: true,
+				postSyncHooks: [{ cmd: ["echo", "a1"] }, { cmd: ["echo", "a2"] }],
+			},
+			{
+				url: "git@github.com:user/repo-b.git",
+				path: "repo-b",
+				branch: "main",
+				isGolang: false,
+				active: true,
+				postSyncHooks: [{ cmd: ["echo", "b1"] }],
+			},
+		],
+	};
+	const repoAPath = join(workspaceRoot, "repo-a");
+	const repoBPath = join(workspaceRoot, "repo-b");
+	const trackingRunner = new TrackingHookRunner(20);
+	const { service } = makeDeps({
+		config,
+		existingDirs: [repoAPath, repoBPath],
+		gitStates: {
+			[repoAPath]: { currentBranch: "main", isClean: true, syncBranchUpdated: false },
+			[repoBPath]: { currentBranch: "main", isClean: true, syncBranchUpdated: false },
+		},
+		hookRunner: trackingRunner,
+	});
+
+	const result = await service.run({});
+
+	assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
+	assertEquals(result.value.workspaceHookResults.length, 2);
+	// Hooks for workspace N+1 must not start until workspace N's hooks have completed.
+	const phases = trackingRunner.events.map((e) => `${e.workspace}:${e.phase}`);
+	assertEquals(phases, ["repo-a:start", "repo-a:end", "repo-b:start", "repo-b:end"]);
 });
 
 Deno.test("FakeGit: submoduleInitMany with empty paths returns ok without side effects", async () => {

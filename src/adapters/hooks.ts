@@ -24,8 +24,11 @@ export class HookExecutor implements HookRunner {
 			args: substitutedCmd.slice(1),
 			cwd: substitutedWorkDir,
 			env,
-			stdout: "piped",
-			stderr: "piped",
+			// Hooks inherit the terminal: interactive commands (prompts) can read stdin
+			// and output streams live with colors, exactly as if run by the user.
+			stdin: "inherit",
+			stdout: "inherit",
+			stderr: "inherit",
 		});
 
 		const timeout = hook.timeout || 60000;
@@ -33,61 +36,51 @@ export class HookExecutor implements HookRunner {
 		// Spawn the process
 		const child = command.spawn();
 
-		// Create a timeout promise that kills the process
+		// Create a timeout promise that kills the process. With inherited stdio there is
+		// no child.output() fallback, so we race against child.status directly.
+		let timer: ReturnType<typeof setTimeout> | undefined;
 		const timeoutPromise = new Promise<never>((_, reject) => {
-			const timer = setTimeout(() => {
+			timer = setTimeout(() => {
 				child.kill();
 				reject(new Error(`Hook execution timed out after ${timeout}ms`));
 			}, timeout);
-			// Prevent unhandled rejection when timeout is cleared
-			void Promise.resolve().then(() => clearTimeout(timer));
 		});
 
 		// Wait for process to complete OR timeout using functional error handling
-		const raceResult = await Result.fromAsyncCatching(() => Promise.race([child.output(), timeoutPromise]));
+		const raceResult = await Result.fromAsyncCatching(() => Promise.race([child.status, timeoutPromise]));
+
+		// Timer is no longer needed once the race has settled (no-op if it already fired).
+		if (timer !== undefined) {
+			clearTimeout(timer);
+		}
 
 		// Handle timeout case separately from other errors
 		if (raceResult.error && raceResult.error.message.includes("timed out")) {
 			return Result.error(new AppError(AppErrorCode.HOOK_FAILED, raceResult.error.message, { cause: raceResult.error }));
 		}
 
-		// Get the output - either from race (if successful) or from child.output() fallback
-		const outputResult = raceResult.ok ? Result.ok(raceResult.value) : await Result.fromAsyncCatching(() => child.output());
-
-		if (!outputResult.ok) {
+		if (!raceResult.ok) {
 			return Result.error(
-				new AppError(AppErrorCode.HOOK_FAILED, `Hook execution failed: ${raceResult.error}`, { cause: outputResult.error }),
+				new AppError(AppErrorCode.HOOK_FAILED, `Hook execution failed: ${raceResult.error}`, { cause: raceResult.error }),
 			);
 		}
 
 		const duration = Date.now() - startTime;
-		const output = outputResult.value;
-		const stdout = new TextDecoder().decode(output.stdout);
-		const stderr = new TextDecoder().decode(output.stderr);
+		const status = raceResult.value;
 
 		if (this._debug) {
 			console.log(gray(`Hook completed in ${duration}ms`));
-			if (stdout) {
-				console.log(gray(`  stdout: ${stdout}`));
-			}
-			if (stderr) {
-				console.log(gray(`  stderr: ${stderr}`));
-			}
 		}
 
 		const executionResult: HookExecutionResult = {
-			success: output.success,
-			exitCode: output.code,
-			stdout,
-			stderr,
+			success: status.success,
+			exitCode: status.code,
 			duration,
 		};
 
-		if (!output.success) {
-			console.log(yellow(`Hook exited with non-zero status: ${output.code}`));
-			if (stderr) {
-				console.log(yellow(`  stderr: ${stderr}`));
-			}
+		if (!status.success) {
+			// stderr was already streamed live to the terminal; no re-print here.
+			console.log(yellow(`Hook exited with non-zero status: ${status.code}`));
 		}
 
 		return Result.ok(executionResult);
