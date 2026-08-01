@@ -5,8 +5,6 @@ import type { PostSyncHook } from "../types/config.ts";
 export type HookExecutionResult = {
 	success: boolean;
 	exitCode?: number;
-	stdout: string;
-	stderr: string;
 	duration: number;
 };
 

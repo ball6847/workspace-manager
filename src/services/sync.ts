@@ -231,25 +231,19 @@ export class SyncService {
 		if (workspacesWithHooks.length > 0) {
 			console.log(blue(`Executing workspace-specific post-sync hooks for ${workspacesWithHooks.length} workspaces...`));
 
-			const workspaceHooksResult = await processConcurrently(
-				workspacesWithHooks,
-				async (workspace) => {
-					console.log(blue(`Executing ${workspace.postSyncHooks!.length} hooks for ${workspace.path}...`));
+			// Workspace hooks run one workspace at a time (in config order): hook children
+			// inherit the terminal, so concurrent children would interleave output and
+			// fight over stdin.
+			for (const workspace of workspacesWithHooks) {
+				console.log(blue(`Executing ${workspace.postSyncHooks!.length} hooks for ${workspace.path}...`));
 
-					const result = await hookExecutor.executeHooks(workspace.postSyncHooks!, { root: workspaceRoot, path: workspace.path });
+				const result = await hookExecutor.executeHooks(workspace.postSyncHooks!, { root: workspaceRoot, path: workspace.path });
 
-					if (!result.ok) {
-						return Result.error(result.error);
-					}
+				if (!result.ok) {
+					return Result.error(result.error);
+				}
 
-					report.workspaceHookResults.push({ path: workspace.path, results: result.value });
-					return Result.ok();
-				},
-				concurrency,
-			);
-
-			if (!workspaceHooksResult.ok) {
-				return Result.error(workspaceHooksResult.error);
+				report.workspaceHookResults.push({ path: workspace.path, results: result.value });
 			}
 		}
 

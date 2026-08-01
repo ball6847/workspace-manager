@@ -56,7 +56,25 @@ workspaces:
 
 1. All workspaces sync (concurrent)
 2. Global hooks run once sequentially
-3. Workspace hooks run per workspace (in order)
+3. Workspace hooks run per workspace, **one workspace at a time (sequentially)** —
+   hook children share your terminal, so concurrent execution would interleave
+   output and fight over stdin
+
+## Interactivity & Output
+
+Hooks inherit the terminal: stdin, stdout, and stderr are connected directly to the
+hook process, exactly as if you ran the command yourself. This means:
+
+- **Interactive commands work as hooks** — prompts, spinners, and colored output
+  behave normally. For example, `cmd: ["workspace-manager", "link"]` as a global
+  post-sync hook can prompt for an overwrite decision and receive your answer
+- **Hook output streams live** to your terminal during execution; it is no longer
+  captured or buffered
+- **`--debug`** shows the hook's `workDir` and duration, but no `stdout:`/`stderr:`
+  dump — there is nothing captured
+
+In non-TTY environments (CI, cron), prompting hooks will fail on stdin EOF — avoid
+prompting hooks there, or have the hook detect a TTY itself.
 
 ## Execution Rules
 

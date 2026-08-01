@@ -75,9 +75,6 @@ function processHookResult(hookResult: HookExecutionResult, workspacePath: strin
 	}
 
 	console.log(yellow(`⚠️  Hook failed for ${workspacePath} with exit code ${hookResult.exitCode}`));
-	if (hookResult.stderr) {
-		console.log(yellow(`stderr: ${hookResult.stderr}`));
-	}
 }
 
 function processGlobalHookResult(hookResult: HookExecutionResult): void {
@@ -87,7 +84,4 @@ function processGlobalHookResult(hookResult: HookExecutionResult): void {
 	}
 
 	console.log(yellow(`⚠️  Global hook failed with exit code ${hookResult.exitCode}`));
-	if (hookResult.stderr) {
-		console.log(yellow(`stderr: ${hookResult.stderr}`));
-	}
 }
