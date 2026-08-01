@@ -8,6 +8,7 @@ import type { GitPortFactory } from "../ports/git.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { WorkspaceConfigItem } from "../types/config.ts";
 import { blue } from "@std/fmt/colors";
+import { getDefaultConcurrency } from "../libs/env.ts";
 
 export type RepositoryReadiness = "ready" | "not_initialized" | "detached_at_tip" | "detached";
 
@@ -64,7 +65,7 @@ export class StatusService {
 
 		const { workspaceRoot, configPath } = discoverResult.value;
 		const debug = input.debug ?? false;
-		const concurrency = input.concurrency ?? 8;
+		const concurrency = input.concurrency ?? getDefaultConcurrency();
 		const verbose = input.verbose ?? false;
 
 		const configStore = this.deps.createConfigStore(configPath);
