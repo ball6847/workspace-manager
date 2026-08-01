@@ -7,6 +7,7 @@ import type { FileSystemPort } from "../ports/file-system.ts";
 import type { GitPortFactory } from "../ports/git.ts";
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import { blue, gray, green, red, yellow } from "@std/fmt/colors";
+import { getDefaultConcurrency } from "../libs/env.ts";
 
 export type UpdateServiceDeps = {
 	createDiscovery(options: WorkspaceDiscoveryOptions): WorkspaceDiscoveryPort;
@@ -38,7 +39,7 @@ export class UpdateService {
 
 		const { workspaceRoot, configPath } = discoverResult.value;
 		const debug = input.debug ?? false;
-		const concurrency = input.concurrency ?? 8;
+		const concurrency = input.concurrency ?? getDefaultConcurrency();
 
 		const configStore = this.deps.createConfigStore(configPath);
 		const parseResult = await configStore.getConfig();

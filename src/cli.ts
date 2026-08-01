@@ -12,6 +12,7 @@ import { createAppContext } from "./composition.ts";
 import { CommandErrorHandler } from "./libs/command-error-handler.ts";
 import { linkCommand } from "./cmds/link.ts";
 import { unlinkCommand } from "./cmds/unlink.ts";
+import { getDefaultConcurrency } from "./libs/env.ts";
 
 // Create CLI application
 export const cli = new Command()
@@ -27,10 +28,7 @@ cli
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 8,
-		},
+		"Number of concurrent operations (default: $WM_CONCURRENCY or 8)",
 	)
 	.option("-y, --yes", "Accept all changes")
 	.action(async (options) => {
@@ -39,7 +37,7 @@ cli
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
-			concurrency: options.concurrency,
+			concurrency: options.concurrency ?? getDefaultConcurrency(),
 		});
 		CommandErrorHandler.withExit(result, "Sync", { debug: options.debug });
 	});
@@ -55,10 +53,7 @@ cli
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 8,
-		},
+		"Number of concurrent operations (default: $WM_CONCURRENCY or 8)",
 	)
 	.action(async (options) => {
 		const ctx = createAppContext({ debug: options.debug });
@@ -66,7 +61,7 @@ cli
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
-			concurrency: options.concurrency,
+			concurrency: options.concurrency ?? getDefaultConcurrency(),
 		});
 		CommandErrorHandler.withExit(result, "Update", { debug: options.debug });
 	});
@@ -79,10 +74,7 @@ cli
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 8,
-		},
+		"Number of concurrent operations (default: $WM_CONCURRENCY or 8)",
 	)
 	.option("-y, --yes", "Skip sync confirmation prompt")
 	.action(async (options) => {
@@ -91,7 +83,7 @@ cli
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
-			concurrency: options.concurrency,
+			concurrency: options.concurrency ?? getDefaultConcurrency(),
 			yes: options.yes,
 		});
 		CommandErrorHandler.withExit(result, "Enable", { debug: options.debug });
@@ -127,10 +119,7 @@ cli
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 8,
-		},
+		"Number of concurrent operations (default: $WM_CONCURRENCY or 8)",
 	)
 	.option("-b, --branch <branch:string>", "Git branch to checkout", {
 		default: "main",
@@ -158,7 +147,7 @@ cli
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
-			concurrency: options.concurrency,
+			concurrency: options.concurrency ?? getDefaultConcurrency(),
 		});
 		CommandErrorHandler.withExit(result, "Add", { debug: options.debug });
 	});
@@ -172,10 +161,7 @@ cli
 	.option("-d, --debug", "Enable debug mode", { default: false })
 	.option(
 		"-j, --concurrency <concurrency:number>",
-		"Number of concurrent operations",
-		{
-			default: 8,
-		},
+		"Number of concurrent operations (default: $WM_CONCURRENCY or 8)",
 	)
 	.option("--json", "Output in JSON format", { default: false })
 	.option("-v, --verbose", "Show verbose git information", { default: false })
@@ -185,7 +171,7 @@ cli
 			config: options.config,
 			workspaceRoot: options.workspaceRoot,
 			debug: options.debug,
-			concurrency: options.concurrency,
+			concurrency: options.concurrency ?? getDefaultConcurrency(),
 			json: options.json,
 			verbose: options.verbose,
 		});

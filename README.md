@@ -39,6 +39,21 @@ Host github.com
   ControlPersist 60
 ```
 
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `WM_CONCURRENCY` | Default concurrency for all commands that support `-j` flag. Overrides the built-in default of 8. CLI flag `-j` takes precedence when provided. |
+| `EDITOR` / `VISUAL` | Default editor for the `open` command. Overridden by `--editor` flag or `editor` config. |
+| `GIT_SSH_COMMAND` | Custom SSH command for Git operations. When set, SSH connection multiplexing is disabled. |
+
+**Example:**
+```bash
+export WM_CONCURRENCY=4
+workspace-manager sync  # uses concurrency 4
+workspace-manager sync -j 16  # uses concurrency 16 (flag overrides env var)
+```
+
 ## Installation
 
 Requires Deno 2.4 or later.
@@ -104,7 +119,7 @@ workspace-manager sync [options]
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: $WM_CONCURRENCY or 8)
 - `-y, --yes` - Accept all changes (⚠️ not yet implemented)
 
 **Sync behavior:**
@@ -134,7 +149,7 @@ workspace-manager update [options]
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: $WM_CONCURRENCY or 8)
 
 ### Enable Command
 
@@ -158,7 +173,7 @@ This command will:
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: $WM_CONCURRENCY or 8)
 - `-y, --yes` - Automatically sync after enabling without prompting
 
 ### Save Command
@@ -363,7 +378,7 @@ This command will:
 - `-c, --config <file>` - Workspace config file (default: workspace.yml)
 - `-w, --workspace-root <path>` - Workspace root directory (default: .)
 - `-d, --debug` - Enable debug mode
-- `-j, --concurrency <number>` - Number of concurrent operations (default: 4)
+- `-j, --concurrency <number>` - Number of concurrent operations (default: $WM_CONCURRENCY or 8)
 - `-b, --branch <branch>` - Git branch to checkout (default: main)
 - `--go` - Mark as Go module for go.work integration (default: false)
 - `--sync` - Sync workspace after adding repository (default: false)

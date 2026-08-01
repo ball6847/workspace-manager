@@ -10,6 +10,7 @@ import type { HookContext, HookExecutionResult, HookRunner } from "../ports/hook
 import type { WorkspaceDiscoveryOptions, WorkspaceDiscoveryPort } from "../ports/workspace-discovery.ts";
 import type { WorkspaceConfigItem } from "../types/config.ts";
 import { blue, green, red, yellow } from "@std/fmt/colors";
+import { getDefaultConcurrency } from "../libs/env.ts";
 import { WorkspaceManager } from "./workspace-manager.ts";
 
 export type SyncTiming = {
@@ -70,7 +71,7 @@ export class SyncService {
 		}
 
 		const { workspaceRoot, configPath } = discoverResult.value;
-		const concurrency = input.concurrency ?? 8;
+		const concurrency = input.concurrency ?? getDefaultConcurrency();
 		const debug = input.debug ?? false;
 		const totalStart = performance.now();
 
