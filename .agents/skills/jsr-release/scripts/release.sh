@@ -325,6 +325,15 @@ else
   die "Failed to push tag $NEW_TAG."
 fi
 
+# ── 12. Push version bump commit to main ─────────────────────────────────────
+step "Pushing version bump to main"
+
+if git push origin "$CURRENT_BRANCH"; then
+  ok "Version bump commit pushed to $CURRENT_BRANCH"
+else
+  die "Failed to push version bump to $CURRENT_BRANCH."
+fi
+
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}✓ Released $NEW_TAG${NC}"

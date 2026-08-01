@@ -23,6 +23,7 @@ The release is fully scripted in `scripts/release.sh`. The script:
 7. **Confirmation** — shows the proposed version and asks for approval (skip with `--yes`).
 8. **Version bump** — updates `version` in `deno.json` and commits it.
 9. **Tag & push** — creates the git tag locally and pushes it to `origin`, which triggers the GitHub Actions JSR publish workflow.
+10. **Push commit** — pushes the version-bump commit to `main` so the `deno.json` change is not left local-only.
 
 ## Usage
 
@@ -47,4 +48,5 @@ The agent runs the script directly. Users do not need to invoke it themselves.
 - The script resolves the repository root from its own location, so it can be invoked from anywhere.
 - The `--yes` flag is required when the agent invokes it so it does not block on interactive input.
 - The script updates `deno.json` and creates a commit for the version bump before tagging.
+- The version-bump commit is pushed to `main` (not just the tag), so `deno.json` stays in sync on the remote.
 - Pushing the tag triggers the GitHub Actions workflow (`.github/workflows/publish.yml`) which publishes to JSR.
