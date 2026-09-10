@@ -104,35 +104,43 @@ export class GitManager implements GitPort {
 	}
 
 	async submoduleRemove(path: string): Promise<Result<void, AppError>> {
-		// De-initialize the submodule
-		const deInit = await this.deinit(path);
-		if (!deInit.ok) {
-			return Result.error(deInit.error);
-		}
-
-		// Remove the submodule from git
+		// deinit and rm are best-effort. After a pull removes a submodule from
+		// .gitmodules and the index, both commands fail with a pathspec error even
+		// though the working tree still holds the directory. We still want that
+		// directory gone, so every step is allowed to fail and we fall back to
+		// direct filesystem removal.
+		await this.deinit(path);
 		const rm = await this.rm(path);
+
+		// Always drop the submodule's git metadata directory when present.
+		const gitMeta = await this.removeDirectoryIfPresent(`${this.cwd}/.git/modules/${path}`, AppErrorCode.GIT_FAILED);
+		if (!gitMeta.ok) {
+			return Result.error(gitMeta.error);
+		}
+
+		// When `git rm` could not clear the working tree, remove it ourselves.
 		if (!rm.ok) {
-			return Result.error(rm.error);
-		}
-
-		// Remove the submodule's git directory if it exists
-		const gitModulePath = `${this.cwd}/.git/modules/${path}`;
-		const stat = await Result.fromAsyncCatching(() => Deno.stat(gitModulePath));
-		if (!stat.ok) {
-			// Directory doesn't exist, no need to remove
-			return Result.ok(undefined);
-		}
-
-		// Not a directory
-		if (stat.value.isDirectory) {
-			const remove = await Result.fromAsyncCatching(() => Deno.remove(gitModulePath, { recursive: true }));
-			if (!remove.ok) {
-				return wrapErrorResult(`Failed to remove submodule git directory at ${gitModulePath}`, remove.error, AppErrorCode.GIT_FAILED);
+			const workspace = await this.removeDirectoryIfPresent(`${this.cwd}/${path}`, AppErrorCode.FS_FAILED);
+			if (!workspace.ok) {
+				return Result.error(workspace.error);
 			}
 		}
 
 		return Result.ok();
+	}
+
+	private async removeDirectoryIfPresent(dirPath: string, code: AppErrorCode): Promise<Result<void, AppError>> {
+		const stat = await Result.fromAsyncCatching(() => Deno.stat(dirPath));
+		if (!stat.ok || !stat.value.isDirectory) {
+			return Result.ok(undefined);
+		}
+
+		const remove = await Result.fromAsyncCatching(() => Deno.remove(dirPath, { recursive: true }));
+		if (!remove.ok) {
+			return wrapErrorResult(`Failed to remove directory at ${dirPath}`, remove.error, code);
+		}
+
+		return Result.ok(undefined);
 	}
 
 	async deinit(path: string): Promise<Result<void, AppError>> {
