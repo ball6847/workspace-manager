@@ -420,27 +420,36 @@ Deno.test("SyncService: discovery error propagates as error Result", async () =>
 });
 
 Deno.test("SyncService: default concurrency is 8 when not provided", async () => {
-	const config: WorkspaceConfig = {
-		workspaces: [],
-	};
-	const { service } = makeDeps({ config });
-
-	const logs: string[] = [];
-	const originalLog = console.log;
-	console.log = (...args: unknown[]) => {
-		logs.push(args.map((arg) => String(arg)).join(" "));
-	};
-
+	const original = Deno.env.get("WM_CONCURRENCY");
 	try {
-		const result = await service.run({ debug: true });
-		assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
-	} finally {
-		console.log = originalLog;
-	}
+		Deno.env.delete("WM_CONCURRENCY");
 
-	const debugLine = logs.find((line) => line.includes("Starting workspace sync"));
-	assert(debugLine, "expected debug line to be logged");
-	assert(debugLine.includes("concurrency: 8"), `expected default concurrency 8 in debug line, got: ${debugLine}`);
+		const config: WorkspaceConfig = {
+			workspaces: [],
+		};
+		const { service } = makeDeps({ config });
+
+		const logs: string[] = [];
+		const originalLog = console.log;
+		console.log = (...args: unknown[]) => {
+			logs.push(args.map((arg) => String(arg)).join(" "));
+		};
+
+		try {
+			const result = await service.run({ debug: true });
+			assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
+		} finally {
+			console.log = originalLog;
+		}
+
+		const debugLine = logs.find((line) => line.includes("Starting workspace sync"));
+		assert(debugLine, "expected debug line to be logged");
+		assert(debugLine.includes("concurrency: 8"), `expected default concurrency 8 in debug line, got: ${debugLine}`);
+	} finally {
+		if (original !== undefined) {
+			Deno.env.set("WM_CONCURRENCY", original);
+		}
+	}
 });
 
 Deno.test("SyncService: report counts updated vs up-to-date workspaces", async () => {
@@ -528,39 +537,48 @@ Deno.test("SyncService: dirty up-to-date workspace still stashes and pops", asyn
 });
 
 Deno.test("SyncService: cold workspaces batched into one init call", async () => {
-	const config: WorkspaceConfig = {
-		workspaces: [
-			{ url: "git@github.com:user/repo-a.git", path: "repo-a", branch: "main", isGolang: false, active: true },
-			{ url: "git@github.com:user/repo-b.git", path: "repo-b", branch: "main", isGolang: false, active: true },
-			{ url: "git@github.com:user/repo-c.git", path: "repo-c", branch: "main", isGolang: false, active: true },
-		],
-	};
-	const { service, getGit } = makeDeps({
-		config,
-		gitStates: {
-			[workspaceRoot]: { batchInitInitializes: ["repo-a", "repo-b", "repo-c"] },
-		},
-	});
+	const original = Deno.env.get("WM_CONCURRENCY");
+	try {
+		Deno.env.delete("WM_CONCURRENCY");
 
-	const result = await service.run({});
+		const config: WorkspaceConfig = {
+			workspaces: [
+				{ url: "git@github.com:user/repo-a.git", path: "repo-a", branch: "main", isGolang: false, active: true },
+				{ url: "git@github.com:user/repo-b.git", path: "repo-b", branch: "main", isGolang: false, active: true },
+				{ url: "git@github.com:user/repo-c.git", path: "repo-c", branch: "main", isGolang: false, active: true },
+			],
+		};
+		const { service, getGit } = makeDeps({
+			config,
+			gitStates: {
+				[workspaceRoot]: { batchInitInitializes: ["repo-a", "repo-b", "repo-c"] },
+			},
+		});
 
-	assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
-	assertEquals(result.value.syncedCount, 3);
-	assertEquals(result.value.updatedCount, 3);
+		const result = await service.run({});
 
-	const rootGit = getGit(workspaceRoot);
-	if (!rootGit) throw new Error("Expected root git instance");
-	const batchCalls = rootGit.calls.filter((c) => c.method === "submoduleInitMany");
-	assertEquals(batchCalls.length, 1, "expected exactly one batch init call");
-	assertEquals(batchCalls[0].args, ["repo-a", "repo-b", "repo-c", "8"]);
+		assert(result.ok, `expected ok, got: ${JSON.stringify(result.error)}`);
+		assertEquals(result.value.syncedCount, 3);
+		assertEquals(result.value.updatedCount, 3);
 
-	const addCalls = rootGit.calls.filter((c) => c.method === "submoduleAdd");
-	assertEquals(addCalls.length, 0, "expected no submoduleAdd fallback calls");
+		const rootGit = getGit(workspaceRoot);
+		if (!rootGit) throw new Error("Expected root git instance");
+		const batchCalls = rootGit.calls.filter((c) => c.method === "submoduleInitMany");
+		assertEquals(batchCalls.length, 1, "expected exactly one batch init call");
+		assertEquals(batchCalls[0].args, ["repo-a", "repo-b", "repo-c", "8"]);
 
-	for (const path of ["repo-a", "repo-b", "repo-c"]) {
-		const git = getGit(join(workspaceRoot, path));
-		if (!git) throw new Error(`Expected git instance for ${path}`);
-		assertEquals(git.calls.filter((c) => c.method === "syncBranch").length, 1);
+		const addCalls = rootGit.calls.filter((c) => c.method === "submoduleAdd");
+		assertEquals(addCalls.length, 0, "expected no submoduleAdd fallback calls");
+
+		for (const path of ["repo-a", "repo-b", "repo-c"]) {
+			const git = getGit(join(workspaceRoot, path));
+			if (!git) throw new Error(`Expected git instance for ${path}`);
+			assertEquals(git.calls.filter((c) => c.method === "syncBranch").length, 1);
+		}
+	} finally {
+		if (original !== undefined) {
+			Deno.env.set("WM_CONCURRENCY", original);
+		}
 	}
 });
 

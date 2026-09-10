@@ -1,8 +1,18 @@
 import { assertEquals } from "@std/assert";
 import { getDefaultConcurrency } from "./env.ts";
 
-Deno.test("getDefaultConcurrency: returns 8 when WM_CONCURRENCY is not set", () => {
-	assertEquals(getDefaultConcurrency(), 8);
+Deno.test("getDefaultConcurrency: returns 8 when WM_CONCURRENCY is not set", async (t) => {
+	const original = Deno.env.get("WM_CONCURRENCY");
+	try {
+		Deno.env.delete("WM_CONCURRENCY");
+		await t.step("default is 8", () => {
+			assertEquals(getDefaultConcurrency(), 8);
+		});
+	} finally {
+		if (original !== undefined) {
+			Deno.env.set("WM_CONCURRENCY", original);
+		}
+	}
 });
 
 Deno.test("getDefaultConcurrency: parses WM_CONCURRENCY correctly when valid", async (t) => {
